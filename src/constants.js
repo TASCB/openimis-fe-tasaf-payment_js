@@ -30,13 +30,13 @@ export const DEFAULT_DEBOUNCE_TIME = 500;
 export const CONTAINS_LOOKUP = 'Icontains';
 export const EMPTY_STRING = '';
 
-// Verification status integers — match backend VerificationStatus IntegerChoices
+// Verification status enum names — align with GraphQL/openIMIS conventions
 export const VERIFICATION_STATUS = {
-  PENDING:      0,
-  VERIFIED:     1,
-  FAILED:       2,
-  MANUAL:       3,
-  PENDING_MUSE: 4,  // sent to MUSE, awaiting result
+  PENDING: 'PENDING',
+  VERIFIED: 'VERIFIED',
+  FAILED: 'FAILED',
+  MANUAL: 'MANUAL',
+  PENDING_MUSE: 'PENDING_MUSE',
 };
 
 export const VERIFICATION_STATUS_LIST = [
@@ -46,6 +46,19 @@ export const VERIFICATION_STATUS_LIST = [
   VERIFICATION_STATUS.MANUAL,
   VERIFICATION_STATUS.PENDING_MUSE,
 ];
+
+// Backend persistence remains integer-based; keep explicit maps for compatibility.
+export const VERIFICATION_STATUS_CODE = {
+  [VERIFICATION_STATUS.PENDING]: 0,
+  [VERIFICATION_STATUS.VERIFIED]: 1,
+  [VERIFICATION_STATUS.FAILED]: 2,
+  [VERIFICATION_STATUS.MANUAL]: 3,
+  [VERIFICATION_STATUS.PENDING_MUSE]: 4,
+};
+
+export const VERIFICATION_STATUS_BY_CODE = Object.fromEntries(
+  Object.entries(VERIFICATION_STATUS_CODE).map(([status, code]) => [code, status]),
+);
 
 export const FSP_TYPE = {
   BANK:   'BANK',

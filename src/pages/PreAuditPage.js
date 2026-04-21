@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
-import { Button, Tooltip, Box } from '@material-ui/core';
+import { makeStyles } from '@material-ui/styles';
 import FactCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 
 import {
+  Helmet,
   Searcher,
   useModulesManager,
   useTranslations,
@@ -24,8 +25,10 @@ import {
 import { fetchPaymentAccounts, runPreAudit } from '../actions';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import StatusBadge from '../components/StatusBadge';
+import { defaultPageStyles } from '../utils/styles';
 
 const VERIFIED_FILTER = `verificationStatus: ${VERIFICATION_STATUS.VERIFIED}`;
+const useStyles = makeStyles((theme) => defaultPageStyles(theme));
 
 function PreAuditPage({
   fetchPaymentAccounts,
@@ -43,6 +46,7 @@ function PreAuditPage({
   confirmed,
   journalize,
 }) {
+  const classes = useStyles();
   const modulesManager = useModulesManager();
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
@@ -96,24 +100,18 @@ function PreAuditPage({
   ];
 
   const canAct = selectedAccounts.length > 0 && !submittingMutation && rights.includes(RIGHT_RUN_PRE_AUDIT);
+  const searcherActions = [
+    {
+      label: formatMessage('button.runPreAudit'),
+      icon: <FactCheckIcon />,
+      onClick: () => setPendingAudit(selectedAccounts),
+      authorized: canAct,
+    },
+  ];
 
   return (
-    <div>
-      <Box mb={1}>
-        <Tooltip title={formatMessage('button.runPreAudit')}>
-          <span>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<FactCheckIcon />}
-              disabled={!canAct}
-              onClick={() => setPendingAudit(selectedAccounts)}
-            >
-              {formatMessage('button.runPreAudit')}
-            </Button>
-          </span>
-        </Tooltip>
-      </Box>
+    <div className={classes.page}>
+      <Helmet title={formatMessage('preAudit.page.title')} />
       <Searcher
         module={MODULE_NAME}
         FilterPane={(props) => <PaymentAccountFilter {...props} showStatusFilter={false} showPreAuditFilter />}
@@ -131,6 +129,9 @@ function PreAuditPage({
         rowIdentifier={(row) => row.id}
         withSelection="multiple"
         onChangeSelection={setSelectedAccounts}
+        enableActionButtons
+        searcherActions={searcherActions}
+        searcherActionsPosition="header-right"
       />
     </div>
   );

@@ -13,7 +13,13 @@ import { Tab } from '@material-ui/core';
 import { useTranslations } from '@openimis/fe-core';
 import { MODULE_NAME, TAB_PASSED, TAB_FAILED } from '../constants';
 
-export function VerificationPassedTabLabel({ onChange, tabStyle, isSelected, modulesManager }) {
+export function VerificationPassedTabLabel({
+  onChange,
+  tabStyle,
+  isSelected,
+  modulesManager,
+  passedCount,
+}) {
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
   return (
     <Tab
@@ -21,12 +27,18 @@ export function VerificationPassedTabLabel({ onChange, tabStyle, isSelected, mod
       className={tabStyle(TAB_PASSED)}
       selected={isSelected(TAB_PASSED)}
       value={TAB_PASSED}
-      label={formatMessage('verificationResults.tab.passed')}
+      label={`${passedCount ?? 0} ${formatMessage('verificationResults.tab.passed')}`}
     />
   );
 }
 
-export function VerificationFailedTabLabel({ onChange, tabStyle, isSelected, modulesManager }) {
+export function VerificationFailedTabLabel({
+  onChange,
+  tabStyle,
+  isSelected,
+  modulesManager,
+  failedCount,
+}) {
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
   return (
     <Tab
@@ -34,7 +46,7 @@ export function VerificationFailedTabLabel({ onChange, tabStyle, isSelected, mod
       className={tabStyle(TAB_FAILED)}
       selected={isSelected(TAB_FAILED)}
       value={TAB_FAILED}
-      label={formatMessage('verificationResults.tab.failed')}
+      label={`${failedCount ?? 0} ${formatMessage('verificationResults.tab.failed')}`}
     />
   );
 }

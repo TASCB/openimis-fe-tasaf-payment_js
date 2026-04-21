@@ -242,16 +242,16 @@ export function runPreAudit(accountUuids, clientMutationLabel) {
 export function fetchDashboardCounts() {
   // Single aliased GQL query — one network request for all 10 counts
   const payload = `{
-    acctPending:  paymentAccount(verificationStatus: 0) { totalCount }
-    acctVerified: paymentAccount(verificationStatus: 1) { totalCount }
-    acctFailed:   paymentAccount(verificationStatus: 2) { totalCount }
-    acctManual:   paymentAccount(verificationStatus: 3) { totalCount }
-    acctMuse:     paymentAccount(verificationStatus: 4) { totalCount }
-    plDraft:    paylist(status: "DRAFT")            { totalCount }
-    plPending:  paylist(status: "PENDING_APPROVAL") { totalCount }
-    plApproved: paylist(status: "APPROVED")         { totalCount }
-    plSubmitted:paylist(status: "SUBMITTED")        { totalCount }
-    plClosed:   paylist(status: "CLOSED")           { totalCount }
+    acctPending:  paymentAccount(verificationStatus: PENDING) { totalCount }
+    acctVerified: paymentAccount(verificationStatus: VERIFIED) { totalCount }
+    acctFailed:   paymentAccount(verificationStatus: FAILED) { totalCount }
+    acctManual:   paymentAccount(verificationStatus: MANUAL) { totalCount }
+    acctMuse:     paymentAccount(verificationStatus: PENDING_MUSE) { totalCount }
+    plDraft:    paylist(status: DRAFT) { totalCount }
+    plPending:  paylist(status: PENDING_APPROVAL) { totalCount }
+    plApproved: paylist(status: APPROVED) { totalCount }
+    plSubmitted:paylist(status: SUBMITTED) { totalCount }
+    plClosed:   paylist(status: CLOSED) { totalCount }
   }`;
   return graphql(payload, ACTION_TYPE.FETCH_DASHBOARD_COUNTS);
 }

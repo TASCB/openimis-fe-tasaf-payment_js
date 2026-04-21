@@ -2,12 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
-import { Button } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import CancelIcon from '@material-ui/icons/Cancel';
 
 import {
+  Helmet,
   Searcher,
   useModulesManager,
   useTranslations,
@@ -26,9 +26,10 @@ import {
 import { fetchPaymentAccounts, approvePaymentAccounts } from '../actions';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import StatusBadge from '../components/StatusBadge';
+import { defaultPageStyles } from '../utils/styles';
 
 const useStyles = makeStyles((theme) => ({
-  actions: { display: 'flex', gap: theme.spacing(1), marginBottom: theme.spacing(1) },
+  ...defaultPageStyles(theme),
 }));
 
 const MANUAL_FILTER = `verificationStatus: ${VERIFICATION_STATUS.MANUAL}`;
@@ -111,29 +112,24 @@ function AccountApprovalPage({
 
   const canAct = selectedAccounts.length > 0 && !submittingMutation
     && rights.includes(RIGHT_APPROVE_ACCOUNTS);
+  const searcherActions = [
+    {
+      label: formatMessage('button.approve'),
+      icon: <CheckCircleIcon />,
+      onClick: () => openConfirmDialog(true),
+      authorized: canAct,
+    },
+    {
+      label: formatMessage('button.reject'),
+      icon: <CancelIcon />,
+      onClick: () => openConfirmDialog(false),
+      authorized: canAct,
+    },
+  ];
 
   return (
-    <div>
-      <div className={classes.actions}>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<CheckCircleIcon />}
-          onClick={() => openConfirmDialog(true)}
-          disabled={!canAct}
-        >
-          {formatMessage('button.approve')}
-        </Button>
-        <Button
-          variant="outlined"
-          color="secondary"
-          startIcon={<CancelIcon />}
-          onClick={() => openConfirmDialog(false)}
-          disabled={!canAct}
-        >
-          {formatMessage('button.reject')}
-        </Button>
-      </div>
+    <div className={classes.page}>
+      <Helmet title={formatMessage('accountApproval.page.title')} />
       <Searcher
         module={MODULE_NAME}
         FilterPane={(props) => <PaymentAccountFilter {...props} showStatusFilter={false} />}
@@ -151,6 +147,9 @@ function AccountApprovalPage({
         rowIdentifier={(row) => row.id}
         withSelection="multiple"
         onChangeSelection={setSelectedAccounts}
+        enableActionButtons
+        searcherActions={searcherActions}
+        searcherActionsPosition="header-right"
       />
     </div>
   );

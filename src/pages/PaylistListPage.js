@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import { useHistory } from 'react-router-dom';
 
-import { Grid } from '@material-ui/core';
-import { Chip } from '@material-ui/core';
+import { makeStyles } from '@material-ui/styles';
 
 import {
+  Helmet,
+  PublishedComponent,
   Searcher,
-  SelectInput,
   useModulesManager,
   useTranslations,
 } from '@openimis/fe-core';
@@ -18,10 +18,13 @@ import {
   RIGHT_PAYLIST_SEARCH,
   DEFAULT_PAGE_SIZE,
   ROWS_PER_PAGE_OPTIONS,
-  BATCH_TYPE_LIST,
-  PAYLIST_STATUS,
 } from '../constants';
 import { fetchPaylists } from '../actions';
+import PaylistFilter from '../components/PaylistFilter';
+import StatusChip from '../components/StatusChip';
+import { defaultPageStyles } from '../utils/styles';
+
+const useStyles = makeStyles((theme) => defaultPageStyles(theme));
 
 const STATUS_COLORS = {
   DRAFT:            '#9e9e9e',
@@ -30,49 +33,6 @@ const STATUS_COLORS = {
   SUBMITTED:        '#9c27b0',
   CLOSED:           '#4caf50',
 };
-
-function PaylistFilter({ filters, onChangeFilters }) {
-  const modulesManager = useModulesManager();
-  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
-  const filterValue = (key) => filters?.[key]?.value ?? null;
-
-  const batchTypeOptions = [
-    { value: null, label: formatMessage('tooltip.any') },
-    ...BATCH_TYPE_LIST.map((t) => ({ value: t, label: formatMessage(`paylist.batchType.${t}`) })),
-  ];
-
-  const statusOptions = [
-    { value: null, label: formatMessage('tooltip.any') },
-    ...Object.values(PAYLIST_STATUS).map((s) => ({ value: s, label: formatMessage(`paylist.status.${s}`) })),
-  ];
-
-  return (
-    <Grid container spacing={2} alignItems="center">
-      <Grid item xs={3}>
-        <SelectInput
-          module={MODULE_NAME}
-          label="filter.batchType"
-          options={batchTypeOptions}
-          value={filterValue('batchType')}
-          onChange={(val) => onChangeFilters([
-            { id: 'batchType', value: val, filter: val ? `batchType: "${val}"` : '' },
-          ])}
-        />
-      </Grid>
-      <Grid item xs={3}>
-        <SelectInput
-          module={MODULE_NAME}
-          label="filter.paylistStatus"
-          options={statusOptions}
-          value={filterValue('status')}
-          onChange={(val) => onChangeFilters([
-            { id: 'status', value: val, filter: val ? `status: "${val}"` : '' },
-          ])}
-        />
-      </Grid>
-    </Grid>
-  );
-}
 
 function PaylistListPage({
   fetchPaylists,
@@ -83,6 +43,7 @@ function PaylistListPage({
   paylistsPageInfo,
   paylistsTotalCount,
 }) {
+  const classes = useStyles();
   const modulesManager = useModulesManager();
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
@@ -101,35 +62,43 @@ function PaylistListPage({
   const itemFormatters = () => [
     (row) => formatMessage(`paylist.batchType.${row.batchType}`),
     (row) => (
-      <Chip
+      <StatusChip
         label={formatMessage(`paylist.status.${row.status}`)}
-        size="small"
-        style={{ backgroundColor: STATUS_COLORS[row.status] || '#9e9e9e', color: '#fff', fontWeight: 500 }}
+        color={STATUS_COLORS[row.status]}
       />
     ),
     (row) => row.itemCount ?? '-',
-    (row) => row.generatedAt ? new Date(row.generatedAt).toLocaleDateString() : '-',
+    (row) => (
+      <PublishedComponent
+        pubRef="core.DatePicker"
+        value={row.generatedAt}
+        readOnly
+      />
+    ),
     (row) => row.museBatchReference ?? '-',
   ];
 
   return (
-    <Searcher
-      module={MODULE_NAME}
-      FilterPane={PaylistFilter}
-      fetch={fetchPaylists}
-      items={paylists}
-      itemsPageInfo={paylistsPageInfo}
-      fetchingItems={fetchingPaylists}
-      fetchedItems={fetchedPaylists}
-      errorItems={errorPaylists}
-      tableTitle={formatMessageWithValues('paylist.searcher.results', { totalCount: paylistsTotalCount })}
-      headers={headers}
-      itemFormatters={itemFormatters}
-      rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-      defaultPageSize={DEFAULT_PAGE_SIZE}
-      rowIdentifier={(row) => row.id}
-      onDoubleClick={(row) => history.push(`/tasafPayment/paylist/${row.uuid}`)}
-    />
+    <div className={classes.page}>
+      <Helmet title={formatMessage('paylistList.page.title')} />
+      <Searcher
+        module={MODULE_NAME}
+        FilterPane={PaylistFilter}
+        fetch={fetchPaylists}
+        items={paylists}
+        itemsPageInfo={paylistsPageInfo}
+        fetchingItems={fetchingPaylists}
+        fetchedItems={fetchedPaylists}
+        errorItems={errorPaylists}
+        tableTitle={formatMessageWithValues('paylist.searcher.results', { totalCount: paylistsTotalCount })}
+        headers={headers}
+        itemFormatters={itemFormatters}
+        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+        defaultPageSize={DEFAULT_PAGE_SIZE}
+        rowIdentifier={(row) => row.id}
+        onDoubleClick={(row) => history.push(`/tasafPayment/paylist/${row.uuid}`)}
+      />
+    </div>
   );
 }
 

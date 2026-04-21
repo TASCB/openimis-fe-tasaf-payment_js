@@ -2,13 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
-import { Paper, Grid, Button, Tooltip, Box } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import SendIcon from '@material-ui/icons/Send';
 import AssignmentReturnIcon from '@material-ui/icons/AssignmentReturn';
 
 import {
-  Contributions,
+  Helmet,
   Searcher,
   useModulesManager,
   useTranslations,
@@ -24,12 +23,12 @@ import {
   DEFAULT_PAGE_SIZE,
   ROWS_PER_PAGE_OPTIONS,
   VERIFICATION_STATUS,
-  TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY,
   TAB_PASSED,
   TAB_FAILED,
 } from '../constants';
 import {
   fetchPaymentAccounts,
+  fetchDashboardCounts,
   runVerification,
   routeToCorrection,
 } from '../actions';
@@ -37,27 +36,12 @@ import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import StatusBadge from '../components/StatusBadge';
 
 const useStyles = makeStyles((theme) => ({
-  paper: theme.paper.paper,
-  tableTitle: theme.table.title,
-  tabs: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  selectedTab: {
-    borderBottom: '4px solid white',
-  },
-  unselectedTab: {
-    borderBottom: '4px solid transparent',
-  },
-  actions: {
-    display: 'flex',
-    gap: theme.spacing(1),
-    padding: theme.spacing(1, 0),
-  },
+  page: theme.page,
 }));
 
 function VerificationResultsPage({
   fetchPaymentAccounts,
+  fetchDashboardCounts,
   runVerification,
   routeToCorrection,
   fetchingPaymentAccounts,
@@ -66,6 +50,7 @@ function VerificationResultsPage({
   paymentAccounts,
   paymentAccountsPageInfo,
   paymentAccountsTotalCount,
+  dashboardCounts,
   submittingMutation,
   mutation,
   coreConfirm,
@@ -83,13 +68,17 @@ function VerificationResultsPage({
   const [pendingAction, setPendingAction] = useState(null);
   const prevSubmittingMutationRef = useRef();
 
-  const isSelected = (tab) => tab === activeTab;
-  const tabStyle = (tab) => (isSelected(tab) ? classes.selectedTab : classes.unselectedTab);
   const handleTabChange = (_, tab) => { setActiveTab(tab); setSelectedAccounts([]); };
 
   const tabStatus = activeTab === TAB_PASSED
     ? VERIFICATION_STATUS.VERIFIED
     : VERIFICATION_STATUS.FAILED;
+  const passedCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.VERIFIED] ?? 0;
+  const failedCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.FAILED] ?? 0;
+
+  useEffect(() => {
+    fetchDashboardCounts();
+  }, [fetchDashboardCounts]);
 
   useEffect(() => {
     if (!pendingAction) return;
@@ -148,56 +137,40 @@ function VerificationResultsPage({
   ];
 
   const canAct = selectedAccounts.length > 0 && !submittingMutation;
+  const searcherActions = [
+    {
+      label: formatMessage('button.sendToMuse'),
+      icon: <SendIcon />,
+      onClick: () => setPendingAction({ type: 'resend', accounts: selectedAccounts }),
+      authorized: rights.includes(RIGHT_RUN_VERIFICATION) && canAct,
+    },
+    {
+      label: formatMessage('button.routeToCorrection'),
+      icon: <AssignmentReturnIcon />,
+      onClick: () => setPendingAction({ type: 'routeCorrection', accounts: selectedAccounts }),
+      authorized: activeTab === TAB_FAILED && rights.includes(RIGHT_APPROVE_ACCOUNTS) && canAct,
+    },
+  ];
 
   return (
-    <Paper className={classes.paper}>
-      <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
-        <Contributions
-          contributionKey={TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY}
-          value={activeTab}
-          onChange={handleTabChange}
-          isSelected={isSelected}
-          tabStyle={tabStyle}
-          modulesManager={modulesManager}
-        />
-      </Grid>
-
-      <Box className={classes.actions}>
-        {rights.includes(RIGHT_RUN_VERIFICATION) && (
-          <Tooltip title={formatMessage('button.sendToMuse')}>
-            <span>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<SendIcon />}
-                disabled={!canAct}
-                onClick={() => setPendingAction({ type: 'resend', accounts: selectedAccounts })}
-              >
-                {formatMessage('button.sendToMuse')}
-              </Button>
-            </span>
-          </Tooltip>
-        )}
-        {activeTab === TAB_FAILED && rights.includes(RIGHT_APPROVE_ACCOUNTS) && (
-          <Tooltip title={formatMessage('button.routeToCorrection')}>
-            <span>
-              <Button
-                variant="outlined"
-                color="secondary"
-                startIcon={<AssignmentReturnIcon />}
-                disabled={!canAct}
-                onClick={() => setPendingAction({ type: 'routeCorrection', accounts: selectedAccounts })}
-              >
-                {formatMessage('button.routeToCorrection')}
-              </Button>
-            </span>
-          </Tooltip>
-        )}
-      </Box>
-
+    <div className={classes.page}>
+      <Helmet title={formatMessage('verificationResults.page.title')} />
       <Searcher
         module={MODULE_NAME}
-        FilterPane={(props) => <PaymentAccountFilter {...props} showStatusFilter={false} />}
+        FilterPane={(props) => (
+          <PaymentAccountFilter
+            {...props}
+            showStatusFilter={false}
+            verificationTabs={{
+              activeTab,
+              onChange: handleTabChange,
+              passedValue: TAB_PASSED,
+              failedValue: TAB_FAILED,
+              passedCount,
+              failedCount,
+            }}
+          />
+        )}
         fetch={(params) => fetchPaymentAccounts([...(params || []), `verificationStatus: ${tabStatus}`])}
         items={paymentAccounts}
         itemsPageInfo={paymentAccountsPageInfo}
@@ -212,8 +185,11 @@ function VerificationResultsPage({
         rowIdentifier={(row) => row.id}
         withSelection="multiple"
         onChangeSelection={setSelectedAccounts}
+        enableActionButtons
+        searcherActions={searcherActions}
+        searcherActionsPosition="header-right"
       />
-    </Paper>
+    </div>
   );
 }
 
@@ -224,6 +200,7 @@ const mapStateToProps = (state) => ({
   paymentAccounts: state.tasafPayment.paymentAccounts,
   paymentAccountsPageInfo: state.tasafPayment.paymentAccountsPageInfo,
   paymentAccountsTotalCount: state.tasafPayment.paymentAccountsTotalCount,
+  dashboardCounts: state.tasafPayment.dashboardCounts,
   submittingMutation: state.tasafPayment.submittingMutation,
   mutation: state.tasafPayment.mutation,
   confirmed: state.core.confirmed,
@@ -232,6 +209,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
     fetchPaymentAccounts,
+    fetchDashboardCounts,
     runVerification,
     routeToCorrection,
     journalize,

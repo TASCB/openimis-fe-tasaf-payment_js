@@ -35,6 +35,11 @@
   "tasafPayment.paymentAccount.verificationStatus.2": "Failed",
   "tasafPayment.paymentAccount.verificationStatus.3": "Manual Review",
   "tasafPayment.paymentAccount.verificationStatus.4": "Pending MUSE",
+  "tasafPayment.paymentAccount.verificationStatus.PENDING": "Pending",
+  "tasafPayment.paymentAccount.verificationStatus.VERIFIED": "Verified",
+  "tasafPayment.paymentAccount.verificationStatus.FAILED": "Failed",
+  "tasafPayment.paymentAccount.verificationStatus.MANUAL": "Manual Review",
+  "tasafPayment.paymentAccount.verificationStatus.PENDING_MUSE": "Pending MUSE",
 
   "tasafPayment.paymentAccount.fspType.BANK": "Bank",
   "tasafPayment.paymentAccount.fspType.MOBILE": "Mobile Money",

@@ -8,6 +8,7 @@ import { makeStyles } from '@material-ui/styles';
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd';
 
 import {
+  Helmet,
   useModulesManager,
   useTranslations,
   journalize,
@@ -21,8 +22,10 @@ import {
   BATCH_TYPE_LIST,
 } from '../constants';
 import { generatePaylist } from '../actions';
+import { defaultPageStyles } from '../utils/styles';
 
 const useStyles = makeStyles((theme) => ({
+  ...defaultPageStyles(theme),
   paper: theme.paper.paper,
   header: { padding: theme.spacing(2), borderBottom: `1px solid ${theme.palette.divider}` },
   form: { padding: theme.spacing(2) },
@@ -69,57 +72,60 @@ function BatchGenerationPage({
   };
 
   return (
-    <Paper className={classes.paper}>
-      <Grid container className={classes.header} alignItems="center">
-        <Typography variant="h6">{formatMessage('batchGeneration.page.title')}</Typography>
-      </Grid>
-
-      <Grid container spacing={2} className={classes.form}>
-        <Grid item xs={4}>
-          <TextInput
-            module={MODULE_NAME}
-            label="batchGeneration.payrollId"
-            value={payrollId}
-            onChange={(val) => setPayrollId(val)}
-            type="number"
-          />
-        </Grid>
-        <Grid item xs={4}>
-          <SelectInput
-            module={MODULE_NAME}
-            label="batchGeneration.batchType"
-            required
-            options={[
-              { value: null, label: formatMessage('tooltip.any') },
-              ...BATCH_TYPE_LIST.map((t) => ({ value: t, label: formatMessage(`paylist.batchType.${t}`) })),
-            ]}
-            value={batchType}
-            onChange={(val) => setBatchType(val)}
-          />
-        </Grid>
-        <Grid item xs={4}>
-          <TextInput
-            module={MODULE_NAME}
-            label="batchGeneration.locationId"
-            value={locationId}
-            onChange={(val) => setLocationId(val)}
-            type="number"
-          />
+    <div className={classes.page}>
+      <Helmet title={formatMessage('batchGeneration.page.title')} />
+      <Paper className={classes.paper}>
+        <Grid container className={classes.header} alignItems="center">
+          <Typography variant="h6">{formatMessage('batchGeneration.page.title')}</Typography>
         </Grid>
 
-        <Grid item xs={12} className={classes.actions}>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<PlaylistAddIcon />}
-            disabled={!canGenerate}
-            onClick={handleGenerate}
-          >
-            {formatMessage('button.generatePaylist')}
-          </Button>
+        <Grid container spacing={2} className={classes.form}>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextInput
+              module={MODULE_NAME}
+              label="batchGeneration.payrollId"
+              value={payrollId}
+              onChange={(val) => setPayrollId(val)}
+              type="number"
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <SelectInput
+              module={MODULE_NAME}
+              label="batchGeneration.batchType"
+              required
+              options={[
+                { value: null, label: formatMessage('tooltip.any') },
+                ...BATCH_TYPE_LIST.map((t) => ({ value: t, label: formatMessage(`paylist.batchType.${t}`) })),
+              ]}
+              value={batchType}
+              onChange={(val) => setBatchType(val)}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <TextInput
+              module={MODULE_NAME}
+              label="batchGeneration.locationId"
+              value={locationId}
+              onChange={(val) => setLocationId(val)}
+              type="number"
+            />
+          </Grid>
+
+          <Grid item xs={12} className={classes.actions}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PlaylistAddIcon />}
+              disabled={!canGenerate}
+              onClick={handleGenerate}
+            >
+              {formatMessage('button.generatePaylist')}
+            </Button>
+          </Grid>
         </Grid>
-      </Grid>
-    </Paper>
+      </Paper>
+    </div>
   );
 }
 

@@ -11,6 +11,12 @@ import {
   decodeId,
 } from '@openimis/fe-core';
 import { CLEAR, ERROR, REQUEST, SUCCESS } from './utils/action-type';
+import { VERIFICATION_STATUS, VERIFICATION_STATUS_BY_CODE } from './constants';
+
+const normalizeVerificationStatus = (status) => {
+  if (status === null || status === undefined || status === '') return status;
+  return VERIFICATION_STATUS_BY_CODE[status] ?? status;
+};
 
 export const ACTION_TYPE = {
   MUTATION: 'TASAF_PAYMENT_MUTATION',
@@ -142,6 +148,7 @@ function reducer(state = STORE_STATE, action) {
         paymentAccounts: parseData(action.payload.data.paymentAccount)?.map((a) => ({
           ...a,
           id: decodeId(a.id),
+          verificationStatus: normalizeVerificationStatus(a.verificationStatus),
         })),
         paymentAccountsPageInfo: pageInfo(action.payload.data.paymentAccount),
         paymentAccountsTotalCount: action.payload.data.paymentAccount?.totalCount ?? 0,
@@ -157,7 +164,11 @@ function reducer(state = STORE_STATE, action) {
         ...state,
         fetchingPaymentAccount: false,
         fetchedPaymentAccount: true,
-        paymentAccount: parseData(action.payload.data.paymentAccount)?.map((a) => ({ ...a, id: decodeId(a.id) }))?.[0],
+        paymentAccount: parseData(action.payload.data.paymentAccount)?.map((a) => ({
+          ...a,
+          id: decodeId(a.id),
+          verificationStatus: normalizeVerificationStatus(a.verificationStatus),
+        }))?.[0],
         errorPaymentAccount: formatGraphQLError(action.payload),
       };
     case ERROR(ACTION_TYPE.GET_PAYMENT_ACCOUNT):
@@ -239,11 +250,11 @@ function reducer(state = STORE_STATE, action) {
         fetchedDashboard: true,
         dashboardCounts: {
           accounts: {
-            0: action.payload.data.acctPending?.totalCount ?? 0,      // PENDING
-            1: action.payload.data.acctVerified?.totalCount ?? 0,     // VERIFIED
-            2: action.payload.data.acctFailed?.totalCount ?? 0,       // FAILED
-            3: action.payload.data.acctManual?.totalCount ?? 0,       // MANUAL
-            4: action.payload.data.acctMuse?.totalCount ?? 0,         // PENDING_MUSE
+            [VERIFICATION_STATUS.PENDING]: action.payload.data.acctPending?.totalCount ?? 0,
+            [VERIFICATION_STATUS.VERIFIED]: action.payload.data.acctVerified?.totalCount ?? 0,
+            [VERIFICATION_STATUS.FAILED]: action.payload.data.acctFailed?.totalCount ?? 0,
+            [VERIFICATION_STATUS.MANUAL]: action.payload.data.acctManual?.totalCount ?? 0,
+            [VERIFICATION_STATUS.PENDING_MUSE]: action.payload.data.acctMuse?.totalCount ?? 0,
           },
           paylists: {
             DRAFT:            action.payload.data.plDraft?.totalCount ?? 0,

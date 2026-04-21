@@ -2,16 +2,48 @@ import React, { useCallback } from 'react';
 import _debounce from 'lodash/debounce';
 
 import { Grid } from '@material-ui/core';
+import { makeStyles } from '@material-ui/styles';
 
-import { useModulesManager, useTranslations, TextInput, SelectInput } from '@openimis/fe-core';
+import {
+  Contributions,
+  useModulesManager,
+  useTranslations,
+  TextInput,
+  SelectInput,
+} from '@openimis/fe-core';
 
 import {
   MODULE_NAME,
   FSP_TYPE_LIST,
+  TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY,
   VERIFICATION_STATUS_LIST,
   PRE_AUDIT_STATUS,
   DEFAULT_DEBOUNCE_TIME,
 } from '../constants';
+
+const useStyles = makeStyles((theme) => ({
+  form: {
+    width: '100%',
+    paddingBottom: theme.spacing(1),
+  },
+  item: {
+    padding: theme.spacing(1),
+  },
+  tabsItem: {
+    padding: theme.spacing(2, 1, 0),
+  },
+  tableTitle: theme.table.title,
+  tabs: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  selectedTab: {
+    borderBottom: '4px solid white',
+  },
+  unselectedTab: {
+    borderBottom: '4px solid transparent',
+  },
+}));
 
 function PaymentAccountFilter({
   filters,
@@ -19,7 +51,9 @@ function PaymentAccountFilter({
   showStatusFilter = true,
   showPreAuditFilter = false,
   fixedVerificationStatus = null,
+  verificationTabs = null,
 }) {
+  const classes = useStyles();
   const modulesManager = useModulesManager();
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
 
@@ -57,8 +91,8 @@ function PaymentAccountFilter({
   ];
 
   return (
-    <Grid container spacing={2} alignItems="center">
-      <Grid item xs={3}>
+    <Grid container className={classes.form} alignItems="center">
+      <Grid item xs={12} sm={6} md={4} className={classes.item}>
         <TextInput
           module={MODULE_NAME}
           label="filter.accountNumber"
@@ -66,7 +100,7 @@ function PaymentAccountFilter({
           onChange={onChangeText('accountNumber_Icontains')}
         />
       </Grid>
-      <Grid item xs={3}>
+      <Grid item xs={12} sm={6} md={4} className={classes.item}>
         <SelectInput
           module={MODULE_NAME}
           label="filter.fspType"
@@ -77,7 +111,7 @@ function PaymentAccountFilter({
           ])}
         />
       </Grid>
-      <Grid item xs={3}>
+      <Grid item xs={12} sm={6} md={4} className={classes.item}>
         <TextInput
           module={MODULE_NAME}
           label="filter.fspName"
@@ -86,7 +120,7 @@ function PaymentAccountFilter({
         />
       </Grid>
       {showStatusFilter && fixedVerificationStatus === null && (
-        <Grid item xs={3}>
+        <Grid item xs={12} sm={6} md={4} className={classes.item}>
           <SelectInput
             module={MODULE_NAME}
             label="filter.verificationStatus"
@@ -103,16 +137,32 @@ function PaymentAccountFilter({
         </Grid>
       )}
       {showPreAuditFilter && (
-        <Grid item xs={3}>
+        <Grid item xs={12} sm={6} md={4} className={classes.item}>
           <SelectInput
             module={MODULE_NAME}
             label="filter.preAuditStatus"
             options={preAuditStatusOptions}
             value={filterValue('preAuditStatus')}
             onChange={(val) => onChangeFilters([
-              { id: 'preAuditStatus', value: val, filter: val ? `preAuditStatus: "${val}"` : '' },
+              { id: 'preAuditStatus', value: val, filter: val ? `preAuditStatus: ${val}` : '' },
             ])}
           />
+        </Grid>
+      )}
+      {!!verificationTabs && (
+        <Grid item xs={12} className={classes.tabsItem}>
+          <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
+            <Contributions
+              contributionKey={TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY}
+              value={verificationTabs.activeTab}
+              onChange={verificationTabs.onChange}
+              isSelected={(tab) => tab === verificationTabs.activeTab}
+              tabStyle={(tab) => (tab === verificationTabs.activeTab ? classes.selectedTab : classes.unselectedTab)}
+              modulesManager={modulesManager}
+              passedCount={verificationTabs.passedCount}
+              failedCount={verificationTabs.failedCount}
+            />
+          </Grid>
         </Grid>
       )}
     </Grid>

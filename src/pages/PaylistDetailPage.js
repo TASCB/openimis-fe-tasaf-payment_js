@@ -2,12 +2,13 @@ import React, { useEffect, useRef } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
-import { Paper, Grid, Button, Box, Typography, Chip } from '@material-ui/core';
+import { Paper, Grid, Button, Box, Typography } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import SendIcon from '@material-ui/icons/Send';
 
 import {
+  Helmet,
   Searcher,
   useModulesManager,
   useTranslations,
@@ -25,8 +26,11 @@ import {
   PAYLIST_STATUS,
 } from '../constants';
 import { fetchPaylistItems, approvePaylist, submitPaylist } from '../actions';
+import StatusChip from '../components/StatusChip';
+import { defaultPageStyles } from '../utils/styles';
 
 const useStyles = makeStyles((theme) => ({
+  ...defaultPageStyles(theme),
   paper: theme.paper.paper,
   header: { padding: theme.spacing(2), borderBottom: `1px solid ${theme.palette.divider}` },
   actions: { display: 'flex', gap: theme.spacing(1), padding: theme.spacing(1, 2) },
@@ -111,64 +115,66 @@ function PaylistDetailPage({
       ? formatMessage(`paymentAccount.fspType.${row.paymentAccount.fspType}`) : '-',
     (row) => row.amount ?? '-',
     (row) => (
-      <Chip
+      <StatusChip
         label={formatMessage(`paylistItem.status.${row.status}`)}
-        size="small"
-        style={{ backgroundColor: ITEM_STATUS_COLORS[row.status] || '#9e9e9e', color: '#fff', fontWeight: 500 }}
+        color={ITEM_STATUS_COLORS[row.status]}
       />
     ),
     (row) => row.museReference ?? '-',
   ];
 
   return (
-    <Paper className={classes.paper}>
-      <Grid container className={classes.header} justifyContent="space-between" alignItems="center">
-        <Typography variant="h6">
-          {formatMessageWithValues('paylist.detail.title', { uuid: paylistUuid })}
-        </Typography>
-      </Grid>
+    <div className={classes.page}>
+      <Helmet title={formatMessageWithValues('paylist.detail.title', { uuid: paylistUuid })} />
+      <Paper className={classes.paper}>
+        <Grid container className={classes.header} justifyContent="space-between" alignItems="center">
+          <Typography variant="h6">
+            {formatMessageWithValues('paylist.detail.title', { uuid: paylistUuid })}
+          </Typography>
+        </Grid>
 
-      <Box className={classes.actions}>
-        {rights.includes(RIGHT_APPROVE_PAYLIST) && (
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<CheckCircleIcon />}
-            disabled={submittingMutation}
-            onClick={handleApprove}
-          >
-            {formatMessage('button.approvePaylist')}
-          </Button>
-        )}
-        {rights.includes(RIGHT_SUBMIT_PAYLIST) && (
-          <Button
-            variant="contained"
-            style={{ backgroundColor: '#9c27b0', color: '#fff' }}
-            startIcon={<SendIcon />}
-            disabled={submittingMutation}
-            onClick={handleSubmit}
-          >
-            {formatMessage('button.submitPaylist')}
-          </Button>
-        )}
-      </Box>
+        <Box className={classes.actions}>
+          {rights.includes(RIGHT_APPROVE_PAYLIST) && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<CheckCircleIcon />}
+              disabled={submittingMutation}
+              onClick={handleApprove}
+            >
+              {formatMessage('button.approvePaylist')}
+            </Button>
+          )}
+          {rights.includes(RIGHT_SUBMIT_PAYLIST) && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<SendIcon />}
+              disabled={submittingMutation}
+              onClick={handleSubmit}
+            >
+              {formatMessage('button.submitPaylist')}
+            </Button>
+          )}
+        </Box>
 
-      <Searcher
-        module={MODULE_NAME}
-        fetch={(params) => fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`])}
-        items={paylistItems}
-        itemsPageInfo={paylistItemsPageInfo}
-        fetchingItems={fetchingPaylistItems}
-        fetchedItems={fetchedPaylistItems}
-        errorItems={errorPaylistItems}
-        tableTitle={formatMessageWithValues('paylistItem.searcher.results', { totalCount: paylistItemsTotalCount })}
-        headers={headers}
-        itemFormatters={itemFormatters}
-        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-        defaultPageSize={DEFAULT_PAGE_SIZE}
-        rowIdentifier={(row) => row.id}
-      />
-    </Paper>
+        <Searcher
+          module={MODULE_NAME}
+          fetch={(params) => fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`])}
+          items={paylistItems}
+          itemsPageInfo={paylistItemsPageInfo}
+          fetchingItems={fetchingPaylistItems}
+          fetchedItems={fetchedPaylistItems}
+          errorItems={errorPaylistItems}
+          tableTitle={formatMessageWithValues('paylistItem.searcher.results', { totalCount: paylistItemsTotalCount })}
+          headers={headers}
+          itemFormatters={itemFormatters}
+          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+          defaultPageSize={DEFAULT_PAGE_SIZE}
+          rowIdentifier={(row) => row.id}
+        />
+      </Paper>
+    </div>
   );
 }
 

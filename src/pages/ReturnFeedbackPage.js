@@ -2,11 +2,12 @@ import React from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
-import { Grid, Chip } from '@material-ui/core';
+import { makeStyles } from '@material-ui/styles';
 
 import {
+  formatDateTimeFromISO,
+  Helmet,
   Searcher,
-  SelectInput,
   useModulesManager,
   useTranslations,
 } from '@openimis/fe-core';
@@ -16,45 +17,18 @@ import {
   RIGHT_RETURN_FEEDBACK,
   DEFAULT_PAGE_SIZE,
   ROWS_PER_PAGE_OPTIONS,
-  RETURN_FEEDBACK_TYPE,
 } from '../constants';
 import { fetchReturnFeedback } from '../actions';
+import ReturnFeedbackFilter from '../components/ReturnFeedbackFilter';
+import StatusChip from '../components/StatusChip';
+import { defaultPageStyles } from '../utils/styles';
 
+const useStyles = makeStyles((theme) => defaultPageStyles(theme));
 const FEEDBACK_COLORS = {
   UNAPPLIED: '#ff9800',
   RETURNED:  '#f44336',
   PARTIAL:   '#9c27b0',
 };
-
-function ReturnFeedbackFilter({ filters, onChangeFilters }) {
-  const modulesManager = useModulesManager();
-  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
-  const filterValue = (key) => filters?.[key]?.value ?? null;
-
-  const feedbackTypeOptions = [
-    { value: null, label: formatMessage('tooltip.any') },
-    ...Object.values(RETURN_FEEDBACK_TYPE).map((t) => ({
-      value: t,
-      label: formatMessage(`returnFeedback.type.${t}`),
-    })),
-  ];
-
-  return (
-    <Grid container spacing={2} alignItems="center">
-      <Grid item xs={4}>
-        <SelectInput
-          module={MODULE_NAME}
-          label="filter.feedbackType"
-          options={feedbackTypeOptions}
-          value={filterValue('feedbackType')}
-          onChange={(val) => onChangeFilters([
-            { id: 'feedbackType', value: val, filter: val ? `feedbackType: "${val}"` : '' },
-          ])}
-        />
-      </Grid>
-    </Grid>
-  );
-}
 
 function ReturnFeedbackPage({
   fetchReturnFeedback,
@@ -65,6 +39,7 @@ function ReturnFeedbackPage({
   returnFeedbackPageInfo,
   returnFeedbackTotalCount,
 }) {
+  const classes = useStyles();
   const modulesManager = useModulesManager();
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
@@ -81,35 +56,37 @@ function ReturnFeedbackPage({
 
   const itemFormatters = () => [
     (row) => (
-      <Chip
+      <StatusChip
         label={formatMessage(`returnFeedback.type.${row.feedbackType}`)}
-        size="small"
-        style={{ backgroundColor: FEEDBACK_COLORS[row.feedbackType] || '#9e9e9e', color: '#fff', fontWeight: 500 }}
+        color={FEEDBACK_COLORS[row.feedbackType]}
       />
     ),
     (row) => row.reasonCode ?? '-',
     (row) => row.reasonDescription ?? '-',
-    (row) => row.receivedAt ? new Date(row.receivedAt).toLocaleString() : '-',
+    (row) => formatDateTimeFromISO(modulesManager, null, row.receivedAt) || '-',
     (row) => row.paylistItem?.uuid ?? '-',
   ];
 
   return (
-    <Searcher
-      module={MODULE_NAME}
-      FilterPane={ReturnFeedbackFilter}
-      fetch={fetchReturnFeedback}
-      items={returnFeedback}
-      itemsPageInfo={returnFeedbackPageInfo}
-      fetchingItems={fetchingReturnFeedback}
-      fetchedItems={fetchedReturnFeedback}
-      errorItems={errorReturnFeedback}
-      tableTitle={formatMessageWithValues('returnFeedback.searcher.results', { totalCount: returnFeedbackTotalCount })}
-      headers={headers}
-      itemFormatters={itemFormatters}
-      rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-      defaultPageSize={DEFAULT_PAGE_SIZE}
-      rowIdentifier={(row) => row.id}
-    />
+    <div className={classes.page}>
+      <Helmet title={formatMessage('returnFeedback.page.title')} />
+      <Searcher
+        module={MODULE_NAME}
+        FilterPane={ReturnFeedbackFilter}
+        fetch={fetchReturnFeedback}
+        items={returnFeedback}
+        itemsPageInfo={returnFeedbackPageInfo}
+        fetchingItems={fetchingReturnFeedback}
+        fetchedItems={fetchedReturnFeedback}
+        errorItems={errorReturnFeedback}
+        tableTitle={formatMessageWithValues('returnFeedback.searcher.results', { totalCount: returnFeedbackTotalCount })}
+        headers={headers}
+        itemFormatters={itemFormatters}
+        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+        defaultPageSize={DEFAULT_PAGE_SIZE}
+        rowIdentifier={(row) => row.id}
+      />
+    </div>
   );
 }
 
