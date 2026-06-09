@@ -1,4 +1,5 @@
 {
+  "tasafPayment.menu.workspace": "TASAF Payments",
   "tasafPayment.menu.verificationResults": "Verification Results",
   "tasafPayment.menu.approval": "Manual Approval",
   "tasafPayment.menu.preAudit": "Pre-Audit",
@@ -6,6 +7,26 @@
   "tasafPayment.menu.batchGeneration": "Generate Batch",
   "tasafPayment.menu.returnFeedback": "Return Feedback",
   "tasafPayment.menu.dashboard": "Payment Dashboard",
+
+  "tasafPayment.workspace.page.title": "TASAF Payments",
+  "tasafPayment.workspace.tab.dashboard": "Dashboard",
+  "tasafPayment.workspace.tab.verification": "Verification",
+  "tasafPayment.workspace.tab.approval": "Approval",
+  "tasafPayment.workspace.tab.preAudit": "Pre-Audit",
+  "tasafPayment.workspace.tab.generate": "Generate",
+  "tasafPayment.workspace.tab.paylists": "Paylists",
+  "tasafPayment.workspace.tab.returns": "Returns",
+
+  "tasafPayment.button.next": "Next",
+  "tasafPayment.button.back": "Back",
+
+  "tasafPayment.generation.step.payroll": "Select Payroll",
+  "tasafPayment.generation.step.scope": "Batch Type & Scope",
+  "tasafPayment.generation.step.review": "Review & Generate",
+  "tasafPayment.generation.payroll": "Payroll",
+  "tasafPayment.generation.payroll.placeholder": "Select a payroll…",
+  "tasafPayment.generation.review.help": "Confirm the parameters below, then generate the paylist. Only verified and pre-audited primary accounts are included.",
+  "tasafPayment.generation.review.cycle": "Payment Cycle",
 
   "tasafPayment.verificationResults.page.title": "Verification Results",
   "tasafPayment.accountApproval.page.title": "Manual Account Approval",
@@ -20,6 +41,7 @@
 
   "tasafPayment.verificationResults.tab.passed": "Passed",
   "tasafPayment.verificationResults.tab.failed": "Failed",
+  "tasafPayment.verificationResults.tab.manual": "Manual Approval",
 
   "tasafPayment.paymentAccount.accountNumber": "Account Number",
   "tasafPayment.paymentAccount.accountName": "Account Name",
@@ -55,6 +77,8 @@
   "tasafPayment.paymentAccount.activeCheckStatus.INACTIVE": "Inactive",
 
   "tasafPayment.paylist.batchType": "Batch Type",
+  "tasafPayment.paylist.batch": "Batch",
+  "tasafPayment.paylist.batch.label": "{seq} of {total}",
   "tasafPayment.paylist.status": "Status",
   "tasafPayment.paylist.itemCount": "Items",
   "tasafPayment.paylist.generatedAt": "Generated",
@@ -107,6 +131,7 @@
   "tasafPayment.button.cancel": "Cancel",
   "tasafPayment.button.approvePaylist": "Approve Paylist",
   "tasafPayment.button.submitPaylist": "Submit to MUSE",
+  "tasafPayment.button.exportPaylistPdf": "Export Paylist (PDF)",
 
   "tasafPayment.tooltip.any": "Any",
 
@@ -152,7 +177,23 @@
   "tasafPayment.dashboard.stat.paylistSubmitted": "Submitted",
   "tasafPayment.dashboard.stat.paylistClosed": "Closed",
   "tasafPayment.dashboard.refresh": "Refresh dashboard",
-  "tasafPayment.dashboard.lastRefreshed": "Last refreshed:",
+  "tasafPayment.dashboard.lastRefreshed": "Last refreshed",
+  "tasafPayment.dashboard.kpi.accounts": "Payment Accounts",
+  "tasafPayment.dashboard.kpi.accountsCaption": "across all statuses",
+  "tasafPayment.dashboard.kpi.verified": "Verified",
+  "tasafPayment.dashboard.kpi.verifiedCaption": "ready for payment",
+  "tasafPayment.dashboard.kpi.attention": "Needs Attention",
+  "tasafPayment.dashboard.kpi.attentionCaption": "manual review + failed",
+  "tasafPayment.dashboard.kpi.pendingApproval": "Paylists to Approve",
+  "tasafPayment.dashboard.kpi.pendingApprovalCaption": "awaiting sign-off",
+  "tasafPayment.dashboard.kpi.inProcess": "In Process",
+  "tasafPayment.dashboard.kpi.inProcessCaption": "submitted to MUSE",
+  "tasafPayment.dashboard.kpi.paid": "Paid",
+  "tasafPayment.dashboard.kpi.paidCaption": "disbursed (processed)",
+  "tasafPayment.dashboard.pipeline.verification": "Verification",
+  "tasafPayment.dashboard.pipeline.paylists": "Paylists",
+  "tasafPayment.dashboard.open": "Open",
+  "tasafPayment.dashboard.noData": "No data yet",
 
   "tasafPayment.mutation.createLabel": "Create Payment Account {id}",
   "tasafPayment.mutation.updateLabel": "Update Payment Account {id}",

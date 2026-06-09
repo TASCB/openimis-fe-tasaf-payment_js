@@ -43,6 +43,8 @@ export const ACTION_TYPE = {
   SEARCH_PAYLISTS:                'TASAF_PAYMENT_PAYLISTS',
   SEARCH_PAYLIST_ITEMS:           'TASAF_PAYMENT_PAYLIST_ITEMS',
   SEARCH_RETURN_FEEDBACK:         'TASAF_PAYMENT_RETURN_FEEDBACK',
+  SEARCH_PAYROLLS:                'TASAF_PAYMENT_PAYROLLS',
+  GET_PAYLIST_EXPORT:             'TASAF_PAYMENT_PAYLIST_EXPORT',
   // Dashboard
   FETCH_DASHBOARD_COUNTS:         'TASAF_PAYMENT_DASHBOARD_COUNTS',
 };
@@ -124,6 +126,18 @@ const STORE_STATE = {
   fetchedDashboard: false,
   errorDashboard: null,
   dashboardCounts: { accounts: {}, paylists: {} },
+
+  // Payrolls (read-only, for the generation stepper picker)
+  fetchingPayrolls: false,
+  fetchedPayrolls: false,
+  errorPayrolls: null,
+  payrolls: [],
+
+  // Single paylist + its rich payroll (read-only, for the paylist PDF export)
+  fetchingPaylistExport: false,
+  fetchedPaylistExport: false,
+  errorPaylistExport: null,
+  paylistExport: null,
 };
 
 function reducer(state = STORE_STATE, action) {
@@ -240,32 +254,72 @@ function reducer(state = STORE_STATE, action) {
     case ERROR(ACTION_TYPE.SEARCH_RETURN_FEEDBACK):
       return { ...state, fetchingReturnFeedback: false, errorReturnFeedback: formatServerError(action.payload) };
 
+    // ─── Payrolls (stepper picker) ──────────────────────────────────────────
+    case REQUEST(ACTION_TYPE.SEARCH_PAYROLLS):
+      return {
+        ...state, fetchingPayrolls: true, fetchedPayrolls: false, payrolls: [], errorPayrolls: null,
+      };
+    case SUCCESS(ACTION_TYPE.SEARCH_PAYROLLS):
+      return {
+        ...state,
+        fetchingPayrolls: false,
+        fetchedPayrolls: true,
+        payrolls: parseData(action.payload.data.payroll)?.map((p) => ({ ...p, uuid: decodeId(p.id) })) ?? [],
+        errorPayrolls: formatGraphQLError(action.payload),
+      };
+    case ERROR(ACTION_TYPE.SEARCH_PAYROLLS):
+      return { ...state, fetchingPayrolls: false, errorPayrolls: formatServerError(action.payload) };
+
+    // ─── Single paylist (+ rich payroll) for PDF export ─────────────────────
+    case REQUEST(ACTION_TYPE.GET_PAYLIST_EXPORT):
+      return {
+        ...state, fetchingPaylistExport: true, fetchedPaylistExport: false, paylistExport: null, errorPaylistExport: null,
+      };
+    case SUCCESS(ACTION_TYPE.GET_PAYLIST_EXPORT):
+      return {
+        ...state,
+        fetchingPaylistExport: false,
+        fetchedPaylistExport: true,
+        paylistExport: parseData(action.payload.data.paylist)?.[0] ?? null,
+        errorPaylistExport: formatGraphQLError(action.payload),
+      };
+    case ERROR(ACTION_TYPE.GET_PAYLIST_EXPORT):
+      return { ...state, fetchingPaylistExport: false, errorPaylistExport: formatServerError(action.payload) };
+
     // ─── Dashboard ─────────────────────────────────────────────────────────
     case REQUEST(ACTION_TYPE.FETCH_DASHBOARD_COUNTS):
       return { ...state, fetchingDashboard: true, fetchedDashboard: false, errorDashboard: null };
-    case SUCCESS(ACTION_TYPE.FETCH_DASHBOARD_COUNTS):
+    case SUCCESS(ACTION_TYPE.FETCH_DASHBOARD_COUNTS): {
+      const summary = action.payload.data.paymentDashboardSummary ?? {};
+      const accounts = {};
+      (summary.accounts ?? []).forEach((row) => { accounts[row.status] = row.count ?? 0; });
+      const paylists = {};
+      const paylistAmounts = {};
+      const paylistBeneficiaries = {};
+      (summary.paylists ?? []).forEach((row) => {
+        paylists[row.status] = row.count ?? 0;
+        paylistAmounts[row.status] = row.amount ?? 0;
+        paylistBeneficiaries[row.status] = row.beneficiaries ?? 0;
+      });
       return {
         ...state,
         fetchingDashboard: false,
         fetchedDashboard: true,
         dashboardCounts: {
-          accounts: {
-            [VERIFICATION_STATUS.PENDING]: action.payload.data.acctPending?.totalCount ?? 0,
-            [VERIFICATION_STATUS.VERIFIED]: action.payload.data.acctVerified?.totalCount ?? 0,
-            [VERIFICATION_STATUS.FAILED]: action.payload.data.acctFailed?.totalCount ?? 0,
-            [VERIFICATION_STATUS.MANUAL]: action.payload.data.acctManual?.totalCount ?? 0,
-            [VERIFICATION_STATUS.PENDING_MUSE]: action.payload.data.acctMuse?.totalCount ?? 0,
-          },
-          paylists: {
-            DRAFT:            action.payload.data.plDraft?.totalCount ?? 0,
-            PENDING_APPROVAL: action.payload.data.plPending?.totalCount ?? 0,
-            APPROVED:         action.payload.data.plApproved?.totalCount ?? 0,
-            SUBMITTED:        action.payload.data.plSubmitted?.totalCount ?? 0,
-            CLOSED:           action.payload.data.plClosed?.totalCount ?? 0,
+          accounts,
+          paylists,
+          paylistAmounts,
+          paylistBeneficiaries,
+          totals: {
+            accounts: summary.totalAccounts ?? 0,
+            paylists: summary.totalPaylists ?? 0,
+            inProcessAmount: summary.inProcessAmount ?? 0,
+            paidAmount: summary.paidAmount ?? 0,
           },
         },
         errorDashboard: formatGraphQLError(action.payload),
       };
+    }
     case ERROR(ACTION_TYPE.FETCH_DASHBOARD_COUNTS):
       return { ...state, fetchingDashboard: false, errorDashboard: formatServerError(action.payload) };
 

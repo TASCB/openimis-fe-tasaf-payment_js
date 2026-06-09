@@ -50,6 +50,9 @@ export const PAYLIST_PROJECTION = () => [
   'submittedAt',
   'museBatchReference',
   'itemCount',
+  'batchGroup',
+  'batchSequence',
+  'batchTotal',
   'payroll { id }',
   'paymentCycle { id }',
 ];
@@ -74,6 +77,27 @@ export const RETURN_FEEDBACK_PROJECTION = () => [
   'reasonDescription',
   'receivedAt',
   'paylistItem { id uuid paylist { id uuid } }',
+];
+
+// Read-only projection for the generation-stepper payroll picker.
+export const PAYROLL_PICKER_PROJECTION = () => [
+  'id',
+  'name',
+  'status',
+  'paymentCycle { id code }',
+];
+
+// Paylist + its rich payroll, shaped for payroll/buildPaylistPayload (PDF export).
+// The payroll FK resolves to payroll's PayrollGQLType, so benefitConsumption etc. are available.
+export const PAYLIST_EXPORT_PROJECTION = () => [
+  'id',
+  'uuid',
+  'payroll { id name paymentMethod '
+    + 'paymentCycle { code startDate endDate } '
+    + 'paymentPoint { id name location { id name parent { id name parent { id name } } } } '
+    + 'benefitConsumption { id status code amount jsonExt '
+    + 'individual { firstName lastName } '
+    + 'benefitAttachment { bill { id code amountTotal } } } }',
 ];
 
 // ─── GQL string builder ───────────────────────────────────────────────────────
@@ -155,6 +179,28 @@ export function fetchReturnFeedback(params) {
     RETURN_FEEDBACK_PROJECTION(),
   );
   return graphql(payload, ACTION_TYPE.SEARCH_RETURN_FEEDBACK);
+}
+
+// ─── Payroll query (read-only, generation stepper) ─────────────────────────────
+
+export function fetchPayrolls(params = []) {
+  const payload = formatPageQueryWithCount(
+    'payroll',
+    params,
+    PAYROLL_PICKER_PROJECTION(),
+  );
+  return graphql(payload, ACTION_TYPE.SEARCH_PAYROLLS);
+}
+
+// Fetch one paylist (with its rich payroll) for the paylist PDF export.
+// uuid === id for HistoryModels, and the `id` exact filter accepts the raw UUID.
+export function fetchPaylistForExport(paylistUuid) {
+  const payload = formatPageQueryWithCount(
+    'paylist',
+    [`id: "${paylistUuid}"`],
+    PAYLIST_EXPORT_PROJECTION(),
+  );
+  return graphql(payload, ACTION_TYPE.GET_PAYLIST_EXPORT);
 }
 
 // ─── PaymentAccount mutations ─────────────────────────────────────────────────
@@ -240,18 +286,17 @@ export function runPreAudit(accountUuids, clientMutationLabel) {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export function fetchDashboardCounts() {
-  // Single aliased GQL query — one network request for all 10 counts
+  // Single backend-aggregated summary: per-status counts for accounts, plus
+  // per-paylist-status counts, beneficiaries and summed amounts, and two totals.
   const payload = `{
-    acctPending:  paymentAccount(verificationStatus: PENDING) { totalCount }
-    acctVerified: paymentAccount(verificationStatus: VERIFIED) { totalCount }
-    acctFailed:   paymentAccount(verificationStatus: FAILED) { totalCount }
-    acctManual:   paymentAccount(verificationStatus: MANUAL) { totalCount }
-    acctMuse:     paymentAccount(verificationStatus: PENDING_MUSE) { totalCount }
-    plDraft:    paylist(status: DRAFT) { totalCount }
-    plPending:  paylist(status: PENDING_APPROVAL) { totalCount }
-    plApproved: paylist(status: APPROVED) { totalCount }
-    plSubmitted:paylist(status: SUBMITTED) { totalCount }
-    plClosed:   paylist(status: CLOSED) { totalCount }
+    paymentDashboardSummary {
+      accounts { status count }
+      paylists { status count beneficiaries amount }
+      totalAccounts
+      totalPaylists
+      inProcessAmount
+      paidAmount
+    }
   }`;
   return graphql(payload, ACTION_TYPE.FETCH_DASHBOARD_COUNTS);
 }
@@ -259,11 +304,12 @@ export function fetchDashboardCounts() {
 // ─── Paylist mutations ────────────────────────────────────────────────────────
 
 export function generatePaylist(payrollId, batchType, paymentCycleId, locationId, clientMutationLabel) {
+  // payrollId / paymentCycleId are UUIDs (quoted); locationId is an integer PK.
   const parts = [
-    `payrollId: ${payrollId}`,
+    `payrollId: "${payrollId}"`,
     `batchType: "${batchType}"`,
   ];
-  if (paymentCycleId) parts.push(`paymentCycleId: ${paymentCycleId}`);
+  if (paymentCycleId) parts.push(`paymentCycleId: "${paymentCycleId}"`);
   if (locationId) parts.push(`locationId: ${locationId}`);
   const mutation = formatMutation('generatePaylist', parts.join(', '), clientMutationLabel);
   return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.GENERATE_PAYLIST]);

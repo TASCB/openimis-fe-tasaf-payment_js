@@ -6,6 +6,7 @@ import { Paper, Grid, Button, Box, Typography } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import SendIcon from '@material-ui/icons/Send';
+import PictureAsPdfIcon from '@material-ui/icons/PictureAsPdf';
 
 import {
   Helmet,
@@ -16,16 +17,20 @@ import {
   clearConfirm,
   journalize,
 } from '@openimis/fe-core';
+// Reuse the payroll module's PDF helpers — the MUSE dispatch paylist is built
+// from the underlying payroll, but the export lives here on the TASAF surface.
+import { exportPaylistPdf, buildPaylistPayload } from '@openimis/fe-payroll';
 
 import {
   MODULE_NAME,
   RIGHT_APPROVE_PAYLIST,
   RIGHT_SUBMIT_PAYLIST,
+  RIGHT_PAYLIST_SEARCH,
   DEFAULT_PAGE_SIZE,
   ROWS_PER_PAGE_OPTIONS,
   PAYLIST_STATUS,
 } from '../constants';
-import { fetchPaylistItems, approvePaylist, submitPaylist } from '../actions';
+import { fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistForExport } from '../actions';
 import StatusChip from '../components/StatusChip';
 import { defaultPageStyles } from '../utils/styles';
 
@@ -48,12 +53,15 @@ function PaylistDetailPage({
   fetchPaylistItems,
   approvePaylist,
   submitPaylist,
+  fetchPaylistForExport,
   fetchingPaylistItems,
   fetchedPaylistItems,
   errorPaylistItems,
   paylistItems,
   paylistItemsPageInfo,
   paylistItemsTotalCount,
+  paylistExport,
+  fetchingPaylistExport,
   submittingMutation,
   mutation,
   coreConfirm,
@@ -74,6 +82,16 @@ function PaylistDetailPage({
     if (prevSubmittingMutationRef.current && !submittingMutation) journalize(mutation);
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
+
+  // Load the paylist + its payroll so the PDF export is ready on demand.
+  useEffect(() => {
+    if (paylistUuid) fetchPaylistForExport(paylistUuid);
+  }, [paylistUuid]);
+
+  const exportPayroll = paylistExport?.payroll;
+  const handleExportPdf = () => {
+    if (exportPayroll) exportPaylistPdf(buildPaylistPayload(exportPayroll));
+  };
 
   useEffect(() => {
     if (confirmed && pendingActionRef.current) {
@@ -156,6 +174,17 @@ function PaylistDetailPage({
               {formatMessage('button.submitPaylist')}
             </Button>
           )}
+          {rights.includes(RIGHT_PAYLIST_SEARCH) && (
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<PictureAsPdfIcon />}
+              disabled={fetchingPaylistExport || !exportPayroll}
+              onClick={handleExportPdf}
+            >
+              {formatMessage('button.exportPaylistPdf')}
+            </Button>
+          )}
         </Box>
 
         <Searcher
@@ -185,13 +214,18 @@ const mapStateToProps = (state) => ({
   paylistItems: state.tasafPayment.paylistItems,
   paylistItemsPageInfo: state.tasafPayment.paylistItemsPageInfo,
   paylistItemsTotalCount: state.tasafPayment.paylistItemsTotalCount,
+  paylistExport: state.tasafPayment.paylistExport,
+  fetchingPaylistExport: state.tasafPayment.fetchingPaylistExport,
   submittingMutation: state.tasafPayment.submittingMutation,
   mutation: state.tasafPayment.mutation,
   confirmed: state.core.confirmed,
 });
 
 const mapDispatchToProps = (dispatch) => bindActionCreators(
-  { fetchPaylistItems, approvePaylist, submitPaylist, journalize, coreConfirm, clearConfirm },
+  {
+    fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistForExport,
+    journalize, coreConfirm, clearConfirm,
+  },
   dispatch,
 );
 

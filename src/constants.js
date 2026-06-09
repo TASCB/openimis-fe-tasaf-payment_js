@@ -114,3 +114,18 @@ export const TASAF_PAYMENT_TABS_PANEL_CONTRIBUTION_KEY = 'tasafPayment.TabPanel.
 // Verification Results tab values — exported so tab label contributions can import them
 export const TAB_PASSED = 'passed';
 export const TAB_FAILED = 'failed';
+export const TAB_MANUAL = 'manual';
+
+// ── Consolidated workspace ────────────────────────────────────────────────
+// Separate contribution keys from the VerificationResults internal tabs above
+// so the two tab hosts never collide.
+export const TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY = 'tasafPayment.WorkspaceTabPanel.label';
+export const TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY = 'tasafPayment.WorkspaceTabPanel.panel';
+
+export const WS_TAB_DASHBOARD    = 'dashboard';
+export const WS_TAB_VERIFICATION = 'verification';
+export const WS_TAB_APPROVAL     = 'approval';
+export const WS_TAB_PRE_AUDIT    = 'preAudit';
+export const WS_TAB_GENERATE     = 'generate';
+export const WS_TAB_PAYLISTS     = 'paylists';
+export const WS_TAB_RETURNS      = 'returns';

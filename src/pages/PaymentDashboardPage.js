@@ -5,18 +5,19 @@ import { bindActionCreators } from 'redux';
 import {
   Box,
   Button,
-  Divider,
   Grid,
   IconButton,
   Paper,
   Tooltip,
   Typography,
 } from '@material-ui/core';
+import { useTheme } from '@material-ui/core/styles';
+import { alpha } from '@material-ui/core/styles/colorManipulator';
 import RefreshIcon from '@material-ui/icons/Refresh';
+import ArrowForwardIcon from '@material-ui/icons/ArrowForwardIos';
 import { makeStyles } from '@material-ui/styles';
 
 import {
-  Block,
   Helmet,
   ProgressOrError,
   useHistory,
@@ -26,109 +27,270 @@ import {
 
 import {
   MODULE_NAME,
-  RIGHT_APPROVE_ACCOUNTS,
   RIGHT_DASHBOARD,
-  RIGHT_GENERATE_PAYLIST,
   RIGHT_PAYLIST_SEARCH,
   RIGHT_PAYMENT_ACCOUNT_SEARCH,
-  RIGHT_RETURN_FEEDBACK,
-  RIGHT_RUN_PRE_AUDIT,
   VERIFICATION_STATUS,
   PAYLIST_STATUS,
 } from '../constants';
 import { fetchDashboardCounts } from '../actions';
 import { defaultPageStyles } from '../utils/styles';
 
+// Compact amount formatter (compacts large figures: 1.2M). No currency prefix.
+const fmtTZS = (v) => {
+  const n = Number(v) || 0;
+  return new Intl.NumberFormat('en-US', {
+    notation: Math.abs(n) >= 100000 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(n);
+};
+
+// Semantic status colours, all sourced from the active openIMIS theme palette.
+// (theme.palette.secondary is white in this theme, so it is intentionally unused.)
+const dashColors = (theme) => ({
+  primary: theme.palette.primary.main, // brand teal — accounts / submitted / manual
+  success: theme.palette.success.main, // verified / closed
+  warning: theme.palette.warning.main, // pending / draft / needs-attention
+  info: theme.palette.info.main, // awaiting MUSE / approved
+  error: theme.palette.error.main, // failed
+  neutral: theme.palette.grey[500], // draft / neutral
+});
+
 const useStyles = makeStyles((theme) => ({
   ...defaultPageStyles(theme),
-  paper: theme.paper.paper,
-  header: theme.paper.header,
-  title: theme.paper.title,
-  subtitle: theme.paper.message,
-  pageHeader: {
+
+  // ── header ──
+  headerBar: {
+    display: 'flex',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: theme.spacing(2),
+    marginBottom: theme.spacing(3),
   },
-  pageHeaderMeta: {
+  title: {
+    fontWeight: 700,
+    color: theme.palette.text.primary,
+    lineHeight: 1.15,
+  },
+  subtitle: {
+    color: theme.palette.grey[600],
+    marginTop: theme.spacing(0.5),
+  },
+  headerMeta: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    flexWrap: 'wrap',
-    gap: theme.spacing(1),
+    gap: theme.spacing(1.5),
   },
-  section: {
-    marginTop: theme.spacing(2),
+  refreshedLabel: {
+    color: theme.palette.grey[600],
+    whiteSpace: 'nowrap',
+    fontSize: '0.8rem',
   },
-  summaryCard: {
+  refreshBtn: {
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    borderRadius: 10,
+    padding: theme.spacing(1),
+    color: theme.palette.primary.main,
+    '&:hover': { backgroundColor: alpha(theme.palette.primary.main, 0.08) },
+  },
+
+  // ── kpi cards ──
+  kpiCard: {
+    position: 'relative',
     padding: theme.spacing(2.5),
+    borderRadius: 16,
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    boxShadow: 'none',
+    height: '100%',
+    overflow: 'hidden',
+    transition: 'transform .15s ease, box-shadow .15s ease',
+  },
+  kpiClickable: {
+    cursor: 'pointer',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.12)}`,
+    },
+  },
+  kpiAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 4,
     height: '100%',
   },
-  summaryCardTitle: {
-    marginBottom: theme.spacing(1),
+  kpiLabel: {
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    color: theme.palette.grey[600],
   },
-  summaryCardValue: {
+  kpiValue: {
+    fontSize: '2.4rem',
     fontWeight: 700,
-    lineHeight: 1.1,
+    lineHeight: 1,
+    marginTop: theme.spacing(1),
   },
-  overviewCardValue: {
-    fontSize: '2rem',
+  kpiCaption: {
+    fontSize: '0.78rem',
+    color: theme.palette.grey[600],
+    marginTop: theme.spacing(0.75),
   },
-  statusCardValue: {
-    fontSize: '1.5rem',
+
+  // ── pipeline section ──
+  panel: {
+    padding: theme.spacing(3),
+    borderRadius: 16,
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    boxShadow: 'none',
   },
-  statusCard: {
-    borderLeft: `4px solid ${theme.palette.primary.main}`,
-  },
-  sectionTop: {
+  panelHead: {
     display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: theme.spacing(2),
-    marginBottom: theme.spacing(2),
-    flexWrap: 'wrap',
+    marginBottom: theme.spacing(2.5),
   },
-  sectionCopy: {
-    flex: '1 1 280px',
-  },
-  actionRow: {
+  panelTitle: {
+    fontWeight: 700,
+    color: theme.palette.text.primary,
     display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: theme.spacing(1),
   },
-  actionButton: {
-    whiteSpace: 'nowrap',
+  panelTitleDot: {
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
   },
-  lastUpdated: {
-    whiteSpace: 'nowrap',
+  openBtn: {
+    textTransform: 'none',
+    fontWeight: 600,
+    color: theme.palette.primary.main,
+    '& .MuiButton-endIcon svg': { fontSize: 13 },
   },
-  statusGridItem: {
-    [theme.breakpoints.up('lg')]: {
-      flexBasis: '20%',
-      maxWidth: '20%',
-    },
+  pipeline: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+  },
+  node: {
+    flex: '1 1 0',
+    minWidth: 92,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    textAlign: 'center',
+    borderRadius: 12,
+    padding: theme.spacing(1.5, 1),
+    cursor: 'pointer',
+    transition: 'background-color .15s ease',
+    '&:hover': { backgroundColor: theme.palette.action.hover },
+  },
+  nodeDisc: {
+    width: 54,
+    height: 54,
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1.35rem',
+    fontWeight: 700,
+    border: '2px solid',
+  },
+  nodeLabel: {
+    marginTop: theme.spacing(1),
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    color: theme.palette.text.primary,
+  },
+  nodeSub: {
+    marginTop: theme.spacing(0.25),
+    fontSize: '0.72rem',
+    color: theme.palette.grey[600],
+  },
+  connector: {
+    flex: '0 0 24px',
+    alignSelf: 'center',
+    height: 2,
+    backgroundColor: theme.palette.divider,
+    marginTop: theme.spacing(1.5),
+    borderRadius: 2,
   },
 }));
 
-function SummaryCard({
-  classes,
-  label,
-  value,
-  valueClassName = '',
-  className = '',
+// ── small presentational pieces ──────────────────────────────────────────────
+
+function KpiCard({
+  classes, label, value, caption, color, onClick,
 }) {
   return (
-    <Paper elevation={3} className={`${classes.summaryCard} ${className}`.trim()}>
-      <Typography variant="h6" gutterBottom className={classes.summaryCardTitle}>
-        {label}
-      </Typography>
-      <Typography className={`${classes.summaryCardValue} ${valueClassName}`.trim()}>
-        {value}
-      </Typography>
+    <Paper
+      className={`${classes.kpiCard} ${onClick ? classes.kpiClickable : ''}`.trim()}
+      onClick={onClick}
+    >
+      <span className={classes.kpiAccent} style={{ backgroundColor: color }} />
+      <Typography className={classes.kpiLabel}>{label}</Typography>
+      <Typography className={classes.kpiValue} style={{ color }}>{value}</Typography>
+      {caption && <Typography className={classes.kpiCaption}>{caption}</Typography>}
     </Paper>
   );
 }
+
+function PipelineNode({ classes, node, onClick }) {
+  return (
+    <div className={classes.node} onClick={onClick} role="button" tabIndex={0}>
+      <div
+        className={classes.nodeDisc}
+        style={{ color: node.color, borderColor: node.color, backgroundColor: alpha(node.color, 0.1) }}
+      >
+        {node.value}
+      </div>
+      <Typography className={classes.nodeLabel}>{node.label}</Typography>
+      {node.sub ? <Typography className={classes.nodeSub}>{node.sub}</Typography> : null}
+    </div>
+  );
+}
+
+function Pipeline({
+  classes, title, dotColor, nodes, actionLabel, onAction,
+}) {
+  return (
+    <Paper className={classes.panel}>
+      <div className={classes.panelHead}>
+        <Typography variant="subtitle1" className={classes.panelTitle}>
+          <span className={classes.panelTitleDot} style={{ backgroundColor: dotColor }} />
+          {title}
+        </Typography>
+        {onAction && (
+          <Button
+            size="small"
+            className={classes.openBtn}
+            endIcon={<ArrowForwardIcon />}
+            onClick={onAction}
+          >
+            {actionLabel}
+          </Button>
+        )}
+      </div>
+      <div className={classes.pipeline}>
+        {nodes.map((node, idx) => (
+          <React.Fragment key={node.key}>
+            {idx > 0 && <div className={classes.connector} />}
+            <PipelineNode classes={classes} node={node} onClick={node.onClick} />
+          </React.Fragment>
+        ))}
+      </div>
+    </Paper>
+  );
+}
+
+// ── page ─────────────────────────────────────────────────────────────────────
 
 function PaymentDashboardPage({
   fetchDashboardCounts,
@@ -138,6 +300,8 @@ function PaymentDashboardPage({
   dashboardCounts,
 }) {
   const classes = useStyles();
+  const theme = useTheme();
+  const color = dashColors(theme);
   const history = useHistory();
   const modulesManager = useModulesManager();
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
@@ -154,250 +318,146 @@ function PaymentDashboardPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!rights.includes(RIGHT_DASHBOARD)) return null;
+  const acct = dashboardCounts?.accounts ?? {};
+  const pl = dashboardCounts?.paylists ?? {};
+  const plAmt = dashboardCounts?.paylistAmounts ?? {};
+  const totals = dashboardCounts?.totals ?? {};
+  const loaded = fetchedDashboard;
+  const num = (v) => (loaded ? (v ?? 0) : '–');
+  const money = (v) => (loaded ? fmtTZS(v) : '–');
 
-  const openRoute = (routeKey) => history.push(`/${modulesManager.getRef(routeKey)}`);
+  const goVerification = rights.includes(RIGHT_PAYMENT_ACCOUNT_SEARCH)
+    ? () => history.push(`/${modulesManager.getRef('tasafPayment.route.verificationResults')}`)
+    : null;
+  const goPaylists = rights.includes(RIGHT_PAYLIST_SEARCH)
+    ? () => history.push(`/${modulesManager.getRef('tasafPayment.route.paylists')}`)
+    : null;
 
-  const accountCounts = dashboardCounts?.accounts ?? {};
-  const paylistCounts = dashboardCounts?.paylists ?? {};
+  const totalAccounts = useMemo(
+    () => (totals.accounts != null
+      ? totals.accounts
+      : Object.values(acct).reduce((s, v) => s + (v ?? 0), 0)),
+    [acct, totals.accounts],
+  );
+  const attention = (acct[VERIFICATION_STATUS.MANUAL] ?? 0) + (acct[VERIFICATION_STATUS.FAILED] ?? 0);
 
-  const verificationStats = useMemo(() => ([
+  const kpis = [
     {
-      status: VERIFICATION_STATUS.MANUAL,
-      label: formatMessage('dashboard.stat.manual'),
-      className: classes.statusCard,
+      label: formatMessage('dashboard.kpi.accounts'),
+      value: loaded ? totalAccounts : '–',
+      caption: loaded
+        ? `${acct[VERIFICATION_STATUS.VERIFIED] ?? 0} ${formatMessage('dashboard.kpi.verifiedCaption')}`
+        : formatMessage('dashboard.kpi.accountsCaption'),
+      color: color.primary,
+      onClick: goVerification,
     },
     {
-      status: VERIFICATION_STATUS.FAILED,
-      label: formatMessage('dashboard.stat.failed'),
-      className: classes.statusCard,
+      label: formatMessage('dashboard.kpi.attention'),
+      value: loaded ? attention : '–',
+      caption: formatMessage('dashboard.kpi.attentionCaption'),
+      color: color.warning,
+      onClick: goVerification,
     },
     {
-      status: VERIFICATION_STATUS.PENDING_MUSE,
-      label: formatMessage('dashboard.stat.pendingMuse'),
-      className: classes.statusCard,
+      label: formatMessage('dashboard.kpi.inProcess'),
+      value: money(totals.inProcessAmount),
+      caption: formatMessage('dashboard.kpi.inProcessCaption'),
+      color: color.info,
+      onClick: goPaylists,
     },
     {
-      status: VERIFICATION_STATUS.PENDING,
-      label: formatMessage('dashboard.stat.pending'),
-      className: classes.statusCard,
-    },
-    {
-      status: VERIFICATION_STATUS.VERIFIED,
-      label: formatMessage('dashboard.stat.verified'),
-      className: classes.statusCard,
-    },
-  ]), [classes.statusCard, formatMessage]);
-
-  const paylistStats = useMemo(() => ([
-    {
-      status: PAYLIST_STATUS.PENDING_APPROVAL,
-      label: formatMessage('dashboard.stat.paylistPending'),
-      className: classes.statusCard,
-    },
-    {
-      status: PAYLIST_STATUS.DRAFT,
-      label: formatMessage('dashboard.stat.paylistDraft'),
-      className: classes.statusCard,
-    },
-    {
-      status: PAYLIST_STATUS.APPROVED,
-      label: formatMessage('dashboard.stat.paylistApproved'),
-      className: classes.statusCard,
-    },
-    {
-      status: PAYLIST_STATUS.SUBMITTED,
-      label: formatMessage('dashboard.stat.paylistSubmitted'),
-      className: classes.statusCard,
-    },
-    {
-      status: PAYLIST_STATUS.CLOSED,
-      label: formatMessage('dashboard.stat.paylistClosed'),
-      className: classes.statusCard,
-    },
-  ]), [classes.statusCard, formatMessage]);
-
-  const totalAccounts = Object.values(accountCounts).reduce((sum, value) => sum + (value ?? 0), 0);
-  const totalPaylists = Object.values(paylistCounts).reduce((sum, value) => sum + (value ?? 0), 0);
-
-  const overviewStats = [
-    { label: formatMessage('dashboard.summary.accounts'), value: fetchedDashboard ? totalAccounts : '-' },
-    { label: formatMessage('dashboard.summary.paylists'), value: fetchedDashboard ? totalPaylists : '-' },
-    {
-      label: formatMessage('dashboard.summary.manualReview'),
-      value: fetchedDashboard ? accountCounts[VERIFICATION_STATUS.MANUAL] ?? 0 : '-',
-    },
-    {
-      label: formatMessage('dashboard.summary.pendingApproval'),
-      value: fetchedDashboard ? paylistCounts[PAYLIST_STATUS.PENDING_APPROVAL] ?? 0 : '-',
+      label: formatMessage('dashboard.kpi.paid'),
+      value: money(totals.paidAmount),
+      caption: formatMessage('dashboard.kpi.paidCaption'),
+      color: color.success,
+      onClick: goPaylists,
     },
   ];
 
-  const verificationActions = [
-    rights.includes(RIGHT_PAYMENT_ACCOUNT_SEARCH) && {
-      label: formatMessage('dashboard.action.verification'),
-      routeKey: 'tasafPayment.route.verificationResults',
-    },
-    rights.includes(RIGHT_APPROVE_ACCOUNTS) && {
-      label: formatMessage('dashboard.action.approval'),
-      routeKey: 'tasafPayment.route.approval',
-    },
-    rights.includes(RIGHT_RUN_PRE_AUDIT) && {
-      label: formatMessage('dashboard.action.preAudit'),
-      routeKey: 'tasafPayment.route.preAudit',
-    },
-  ].filter(Boolean);
+  const verificationNodes = [
+    { key: 'pending', label: formatMessage('dashboard.stat.pending'), value: num(acct[VERIFICATION_STATUS.PENDING]), color: color.warning, onClick: goVerification },
+    { key: 'muse', label: formatMessage('dashboard.stat.pendingMuse'), value: num(acct[VERIFICATION_STATUS.PENDING_MUSE]), color: color.info, onClick: goVerification },
+    { key: 'verified', label: formatMessage('dashboard.stat.verified'), value: num(acct[VERIFICATION_STATUS.VERIFIED]), color: color.success, onClick: goVerification },
+    { key: 'manual', label: formatMessage('dashboard.stat.manual'), value: num(acct[VERIFICATION_STATUS.MANUAL]), color: color.primary, onClick: goVerification },
+    { key: 'failed', label: formatMessage('dashboard.stat.failed'), value: num(acct[VERIFICATION_STATUS.FAILED]), color: color.error, onClick: goVerification },
+  ];
 
-  const paylistActions = [
-    rights.includes(RIGHT_PAYLIST_SEARCH) && {
-      label: formatMessage('dashboard.action.paylists'),
-      routeKey: 'tasafPayment.route.paylists',
-    },
-    rights.includes(RIGHT_GENERATE_PAYLIST) && {
-      label: formatMessage('dashboard.action.batchGeneration'),
-      routeKey: 'tasafPayment.route.batchGeneration',
-    },
-    rights.includes(RIGHT_RETURN_FEEDBACK) && {
-      label: formatMessage('dashboard.action.returnFeedback'),
-      routeKey: 'tasafPayment.route.returnFeedback',
-    },
-  ].filter(Boolean);
+  const paylistNodes = [
+    { key: 'draft', label: formatMessage('dashboard.stat.paylistDraft'), value: num(pl[PAYLIST_STATUS.DRAFT]), sub: loaded ? money(plAmt[PAYLIST_STATUS.DRAFT]) : null, color: color.neutral, onClick: goPaylists },
+    { key: 'pending', label: formatMessage('dashboard.stat.paylistPending'), value: num(pl[PAYLIST_STATUS.PENDING_APPROVAL]), sub: loaded ? money(plAmt[PAYLIST_STATUS.PENDING_APPROVAL]) : null, color: color.warning, onClick: goPaylists },
+    { key: 'approved', label: formatMessage('dashboard.stat.paylistApproved'), value: num(pl[PAYLIST_STATUS.APPROVED]), sub: loaded ? money(plAmt[PAYLIST_STATUS.APPROVED]) : null, color: color.info, onClick: goPaylists },
+    { key: 'submitted', label: formatMessage('dashboard.stat.paylistSubmitted'), value: num(pl[PAYLIST_STATUS.SUBMITTED]), sub: loaded ? money(plAmt[PAYLIST_STATUS.SUBMITTED]) : null, color: color.primary, onClick: goPaylists },
+    { key: 'closed', label: formatMessage('dashboard.stat.paylistClosed'), value: num(pl[PAYLIST_STATUS.CLOSED]), sub: loaded ? money(plAmt[PAYLIST_STATUS.CLOSED]) : null, color: color.success, onClick: goPaylists },
+  ];
 
   const formattedTime = lastRefreshed
     ? lastRefreshed.toLocaleString([], {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
+      month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit',
     })
     : null;
+
+  if (!rights.includes(RIGHT_DASHBOARD)) return null;
 
   return (
     <div className={classes.page}>
       <Helmet title={formatMessage('dashboard.page.title')} />
 
-      <Paper className={classes.paper}>
-        <Grid container className={`${classes.header} ${classes.pageHeader}`}>
-          <Grid item xs={12} md={8} className={classes.title}>
-            <Typography variant="h6">
-              {formatMessage('dashboard.page.title')}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} md={4} className={classes.pageHeaderMeta}>
-            {formattedTime && (
-              <Typography variant="body2" color="textSecondary" className={classes.lastUpdated}>
-                {formatMessage('dashboard.lastRefreshed')} {formattedTime}
-              </Typography>
-            )}
-            <Tooltip title={formatMessage('dashboard.refresh')}>
-              <span>
-                <IconButton onClick={refresh} disabled={fetchingDashboard}>
-                  <RefreshIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Grid>
-        </Grid>
-
-        <Box p={2}>
-          <Typography variant="body2" color="textSecondary" className={classes.subtitle}>
+      <div className={classes.headerBar}>
+        <div>
+          <Typography variant="h5" className={classes.title}>
+            {formatMessage('dashboard.page.title')}
+          </Typography>
+          <Typography variant="body2" className={classes.subtitle}>
             {formatMessage('dashboard.page.description')}
           </Typography>
-          <ProgressOrError progress={fetchingDashboard && !fetchedDashboard} error={errorDashboard} />
+        </div>
+        <div className={classes.headerMeta}>
+          {formattedTime && (
+            <Typography className={classes.refreshedLabel}>
+              {formatMessage('dashboard.lastRefreshed')} · {formattedTime}
+            </Typography>
+          )}
+          <Tooltip title={formatMessage('dashboard.refresh')}>
+            <span>
+              <IconButton className={classes.refreshBtn} onClick={refresh} disabled={fetchingDashboard}>
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </div>
+      </div>
 
-          <Grid container spacing={2} className={classes.section}>
-            {overviewStats.map(({ label, value }) => (
-              <Grid item xs={12} sm={6} md={3} key={label}>
-                <SummaryCard
-                  classes={classes}
-                  label={label}
-                  value={value}
-                  valueClassName={classes.overviewCardValue}
-                />
-              </Grid>
-            ))}
+      <ProgressOrError progress={fetchingDashboard && !fetchedDashboard} error={errorDashboard} />
+
+      <Grid container spacing={3}>
+        {kpis.map((kpi) => (
+          <Grid item xs={12} sm={6} md={3} key={kpi.label}>
+            <KpiCard classes={classes} {...kpi} />
           </Grid>
-        </Box>
-      </Paper>
+        ))}
+      </Grid>
 
-      <div className={classes.section}>
-        <Block title={formatMessage('dashboard.section.verification')} titleVariant="h6">
-          <div className={classes.sectionTop}>
-            <div className={classes.sectionCopy} />
-            {!!verificationActions.length && (
-              <div className={classes.actionRow}>
-                {verificationActions.map(({ label, routeKey }) => (
-                  <Button
-                    key={routeKey}
-                    variant="outlined"
-                    color="primary"
-                    className={classes.actionButton}
-                    onClick={() => openRoute(routeKey)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-          <Divider />
-          <Box pt={2}>
-            <Grid container spacing={2}>
-              {verificationStats.map(({ status, label, className }) => (
-                <Grid item xs={12} sm={6} md={4} className={classes.statusGridItem} key={status}>
-                  <SummaryCard
-                    classes={classes}
-                    label={label}
-                    value={fetchedDashboard ? accountCounts[status] ?? 0 : '-'}
-                    valueClassName={classes.statusCardValue}
-                    className={className}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        </Block>
-      </div>
+      <Box mt={3}>
+        <Pipeline
+          classes={classes}
+          title={formatMessage('dashboard.pipeline.verification')}
+          dotColor={color.success}
+          nodes={verificationNodes}
+          actionLabel={formatMessage('dashboard.open')}
+          onAction={goVerification}
+        />
+      </Box>
 
-      <div className={classes.section}>
-        <Block title={formatMessage('dashboard.section.paylists')} titleVariant="h6">
-          <div className={classes.sectionTop}>
-            <div className={classes.sectionCopy} />
-            {!!paylistActions.length && (
-              <div className={classes.actionRow}>
-                {paylistActions.map(({ label, routeKey }) => (
-                  <Button
-                    key={routeKey}
-                    variant="outlined"
-                    color="primary"
-                    className={classes.actionButton}
-                    onClick={() => openRoute(routeKey)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </div>
-          <Divider />
-          <Box pt={2}>
-            <Grid container spacing={2}>
-              {paylistStats.map(({ status, label, className }) => (
-                <Grid item xs={12} sm={6} md={4} className={classes.statusGridItem} key={status}>
-                  <SummaryCard
-                    classes={classes}
-                    label={label}
-                    value={fetchedDashboard ? paylistCounts[status] ?? 0 : '-'}
-                    valueClassName={classes.statusCardValue}
-                    className={className}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        </Block>
-      </div>
+      <Box mt={3}>
+        <Pipeline
+          classes={classes}
+          title={formatMessage('dashboard.pipeline.paylists')}
+          dotColor={color.primary}
+          nodes={paylistNodes}
+          actionLabel={formatMessage('dashboard.open')}
+          onAction={goPaylists}
+        />
+      </Box>
     </div>
   );
 }

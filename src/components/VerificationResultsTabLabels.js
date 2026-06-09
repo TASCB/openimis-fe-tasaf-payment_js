@@ -11,7 +11,9 @@
 import React from 'react';
 import { Tab } from '@material-ui/core';
 import { useTranslations } from '@openimis/fe-core';
-import { MODULE_NAME, TAB_PASSED, TAB_FAILED } from '../constants';
+import {
+  MODULE_NAME, TAB_PASSED, TAB_FAILED, TAB_MANUAL,
+} from '../constants';
 
 export function VerificationPassedTabLabel({
   onChange,
@@ -47,6 +49,25 @@ export function VerificationFailedTabLabel({
       selected={isSelected(TAB_FAILED)}
       value={TAB_FAILED}
       label={`${failedCount ?? 0} ${formatMessage('verificationResults.tab.failed')}`}
+    />
+  );
+}
+
+export function VerificationManualTabLabel({
+  onChange,
+  tabStyle,
+  isSelected,
+  modulesManager,
+  manualCount,
+}) {
+  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
+  return (
+    <Tab
+      onChange={onChange}
+      className={tabStyle(TAB_MANUAL)}
+      selected={isSelected(TAB_MANUAL)}
+      value={TAB_MANUAL}
+      label={`${manualCount ?? 0} ${formatMessage('verificationResults.tab.manual')}`}
     />
   );
 }

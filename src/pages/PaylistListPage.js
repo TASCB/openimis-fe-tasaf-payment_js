@@ -53,6 +53,7 @@ function PaylistListPage({
 
   const headers = () => [
     formatMessage('paylist.batchType'),
+    formatMessage('paylist.batch'),
     formatMessage('paylist.status'),
     formatMessage('paylist.itemCount'),
     formatMessage('paylist.generatedAt'),
@@ -61,6 +62,9 @@ function PaylistListPage({
 
   const itemFormatters = () => [
     (row) => formatMessage(`paylist.batchType.${row.batchType}`),
+    (row) => (row.batchTotal && row.batchTotal > 1
+      ? formatMessageWithValues('paylist.batch.label', { seq: row.batchSequence, total: row.batchTotal })
+      : '-'),
     (row) => (
       <StatusChip
         label={formatMessage(`paylist.status.${row.status}`)}

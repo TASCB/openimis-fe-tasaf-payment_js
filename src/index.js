@@ -2,13 +2,7 @@
 
 import React from 'react';
 
-import AssignmentTurnedInIcon from '@material-ui/icons/AssignmentTurnedIn';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
-import SecurityIcon from '@material-ui/icons/Security';
-import ListAltIcon from '@material-ui/icons/ListAlt';
-import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd';
-import ReplyAllIcon from '@material-ui/icons/ReplyAll';
-import DashboardIcon from '@material-ui/icons/Dashboard';
+import AccountBalanceWalletIcon from '@material-ui/icons/AccountBalanceWallet';
 
 import { FormattedMessage } from '@openimis/fe-core';
 
@@ -17,18 +11,28 @@ import messages_en from './translations/en.json';
 import {
   VerificationPassedTabLabel,
   VerificationFailedTabLabel,
+  VerificationManualTabLabel,
 } from './components/VerificationResultsTabLabels';
 import VerificationResultsPage from './pages/VerificationResultsPage';
 import AccountApprovalPage from './pages/AccountApprovalPage';
 import PreAuditPage from './pages/PreAuditPage';
 import PaylistListPage from './pages/PaylistListPage';
 import PaylistDetailPage from './pages/PaylistDetailPage';
-import BatchGenerationPage from './pages/BatchGenerationPage';
 import ReturnFeedbackPage from './pages/ReturnFeedbackPage';
 import PaymentDashboardPage from './pages/PaymentDashboardPage';
+import TasafPaymentsPage from './pages/TasafPaymentsPage';
+import PaymentGenerationStepper from './components/generation/PaymentGenerationStepper';
+import {
+  DashboardTabLabel, VerificationTabLabel, PreAuditTabLabel,
+  GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel,
+  DashboardTabPanel, VerificationTabPanel, PreAuditTabPanel,
+  GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel,
+} from './components/workspace/WorkspaceTabs';
 
 import {
   TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY,
+  TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY,
+  TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY,
   RIGHT_PAYMENT_ACCOUNT_SEARCH,
   RIGHT_APPROVE_ACCOUNTS,
   RIGHT_RUN_PRE_AUDIT,
@@ -38,6 +42,7 @@ import {
   RIGHT_DASHBOARD,
 } from './constants';
 
+const ROUTE_WORKSPACE        = 'tasafPayment/workspace';
 const ROUTE_VERIFICATION     = 'tasafPayment/verificationResults';
 const ROUTE_APPROVAL         = 'tasafPayment/approval';
 const ROUTE_PRE_AUDIT        = 'tasafPayment/preAudit';
@@ -51,6 +56,7 @@ const DEFAULT_CONFIG = {
   translations: [{ key: 'en', messages: messages_en }],
   reducers: [{ key: 'tasafPayment', reducer }],
   refs: [
+    { key: 'tasafPayment.route.workspace',           ref: ROUTE_WORKSPACE },
     { key: 'tasafPayment.route.verificationResults', ref: ROUTE_VERIFICATION },
     { key: 'tasafPayment.route.approval',            ref: ROUTE_APPROVAL },
     { key: 'tasafPayment.route.preAudit',            ref: ROUTE_PRE_AUDIT },
@@ -62,68 +68,49 @@ const DEFAULT_CONFIG = {
   ],
   // Tab label contributions — other modules can add tabs to VerificationResultsPage
   // by contributing to this key in their own index.js DEFAULT_CONFIG
-  [TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY]: [VerificationPassedTabLabel, VerificationFailedTabLabel],
+  // Verification sub-tabs (passed / failed / manual). Approval is now folded in
+  // as the Manual sub-tab — same PaymentAccount entity, MANUAL verification_status.
+  [TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY]: [
+    VerificationPassedTabLabel, VerificationFailedTabLabel, VerificationManualTabLabel,
+  ],
+
+  // Consolidated workspace tabs (pipeline order). Other modules can inject tabs here.
+  [TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY]: [
+    DashboardTabLabel, VerificationTabLabel, PreAuditTabLabel,
+    GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel,
+  ],
+  [TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY]: [
+    DashboardTabPanel, VerificationTabPanel, PreAuditTabPanel,
+    GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel,
+  ],
 
   'core.Router': [
+    // Consolidated workspace (single menu entry).
+    { path: ROUTE_WORKSPACE,        component: TasafPaymentsPage },
+    // Standalone routes kept for deep-linking; paylist detail still needs its own URL.
     { path: ROUTE_VERIFICATION,     component: VerificationResultsPage },
     { path: ROUTE_APPROVAL,         component: AccountApprovalPage },
     { path: ROUTE_PRE_AUDIT,        component: PreAuditPage },
     { path: ROUTE_PAYLISTS,         component: PaylistListPage },
     { path: ROUTE_PAYLIST_DETAIL,   component: PaylistDetailPage },
-    { path: ROUTE_BATCH_GENERATION, component: BatchGenerationPage },
+    // Generation now uses the guided stepper (old form component retained but unrouted).
+    { path: ROUTE_BATCH_GENERATION, component: PaymentGenerationStepper },
     { path: ROUTE_RETURN_FEEDBACK,  component: ReturnFeedbackPage },
     { path: ROUTE_DASHBOARD,        component: PaymentDashboardPage },
   ],
-  // invoice.MainMenu is the correct slot for Legal & Finance menu items
+  // invoice.MainMenu is the correct slot for Legal & Finance menu items.
+  // One consolidated entry replaces the previous seven; the workspace shows
+  // each surface as a tab (filtered per-right inside the workspace).
   'invoice.MainMenu': [
     {
-      text: <FormattedMessage module="tasafPayment" id="menu.verificationResults" />,
-      icon: <AssignmentTurnedInIcon />,
-      route: `/${ROUTE_VERIFICATION}`,
-      filter: (rights) => rights.includes(RIGHT_PAYMENT_ACCOUNT_SEARCH),
-      id: 'tasafPayment.verificationResults',
-    },
-    {
-      text: <FormattedMessage module="tasafPayment" id="menu.approval" />,
-      icon: <CheckCircleIcon />,
-      route: `/${ROUTE_APPROVAL}`,
-      filter: (rights) => rights.includes(RIGHT_APPROVE_ACCOUNTS),
-      id: 'tasafPayment.approval',
-    },
-    {
-      text: <FormattedMessage module="tasafPayment" id="menu.preAudit" />,
-      icon: <SecurityIcon />,
-      route: `/${ROUTE_PRE_AUDIT}`,
-      filter: (rights) => rights.includes(RIGHT_RUN_PRE_AUDIT),
-      id: 'tasafPayment.preAudit',
-    },
-    {
-      text: <FormattedMessage module="tasafPayment" id="menu.paylists" />,
-      icon: <ListAltIcon />,
-      route: `/${ROUTE_PAYLISTS}`,
-      filter: (rights) => rights.includes(RIGHT_PAYLIST_SEARCH),
-      id: 'tasafPayment.paylists',
-    },
-    {
-      text: <FormattedMessage module="tasafPayment" id="menu.batchGeneration" />,
-      icon: <PlaylistAddIcon />,
-      route: `/${ROUTE_BATCH_GENERATION}`,
-      filter: (rights) => rights.includes(RIGHT_GENERATE_PAYLIST),
-      id: 'tasafPayment.batchGeneration',
-    },
-    {
-      text: <FormattedMessage module="tasafPayment" id="menu.returnFeedback" />,
-      icon: <ReplyAllIcon />,
-      route: `/${ROUTE_RETURN_FEEDBACK}`,
-      filter: (rights) => rights.includes(RIGHT_RETURN_FEEDBACK),
-      id: 'tasafPayment.returnFeedback',
-    },
-    {
-      text: <FormattedMessage module="tasafPayment" id="menu.dashboard" />,
-      icon: <DashboardIcon />,
-      route: `/${ROUTE_DASHBOARD}`,
-      filter: (rights) => rights.includes(RIGHT_DASHBOARD),
-      id: 'tasafPayment.dashboard',
+      text: <FormattedMessage module="tasafPayment" id="menu.workspace" />,
+      icon: <AccountBalanceWalletIcon />,
+      route: `/${ROUTE_WORKSPACE}`,
+      filter: (rights) => [
+        RIGHT_DASHBOARD, RIGHT_PAYMENT_ACCOUNT_SEARCH, RIGHT_APPROVE_ACCOUNTS,
+        RIGHT_RUN_PRE_AUDIT, RIGHT_GENERATE_PAYLIST, RIGHT_PAYLIST_SEARCH, RIGHT_RETURN_FEEDBACK,
+      ].some((r) => rights.includes(r)),
+      id: 'tasafPayment.workspace',
     },
   ],
 };

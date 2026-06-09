@@ -161,6 +161,7 @@ function PaymentAccountFilter({
               modulesManager={modulesManager}
               passedCount={verificationTabs.passedCount}
               failedCount={verificationTabs.failedCount}
+              manualCount={verificationTabs.manualCount}
             />
           </Grid>
         </Grid>

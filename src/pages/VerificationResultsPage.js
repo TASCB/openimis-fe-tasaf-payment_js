@@ -5,6 +5,8 @@ import { bindActionCreators } from 'redux';
 import { makeStyles } from '@material-ui/styles';
 import SendIcon from '@material-ui/icons/Send';
 import AssignmentReturnIcon from '@material-ui/icons/AssignmentReturn';
+import CheckCircleIcon from '@material-ui/icons/CheckCircle';
+import CancelIcon from '@material-ui/icons/Cancel';
 
 import {
   Helmet,
@@ -25,12 +27,14 @@ import {
   VERIFICATION_STATUS,
   TAB_PASSED,
   TAB_FAILED,
+  TAB_MANUAL,
 } from '../constants';
 import {
   fetchPaymentAccounts,
   fetchDashboardCounts,
   runVerification,
   routeToCorrection,
+  approvePaymentAccounts,
 } from '../actions';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import StatusBadge from '../components/StatusBadge';
@@ -44,6 +48,7 @@ function VerificationResultsPage({
   fetchDashboardCounts,
   runVerification,
   routeToCorrection,
+  approvePaymentAccounts,
   fetchingPaymentAccounts,
   fetchedPaymentAccounts,
   errorPaymentAccounts,
@@ -70,11 +75,14 @@ function VerificationResultsPage({
 
   const handleTabChange = (_, tab) => { setActiveTab(tab); setSelectedAccounts([]); };
 
+  const isManual = activeTab === TAB_MANUAL;
+  // eslint-disable-next-line no-nested-ternary
   const tabStatus = activeTab === TAB_PASSED
     ? VERIFICATION_STATUS.VERIFIED
-    : VERIFICATION_STATUS.FAILED;
+    : (isManual ? VERIFICATION_STATUS.MANUAL : VERIFICATION_STATUS.FAILED);
   const passedCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.VERIFIED] ?? 0;
   const failedCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.FAILED] ?? 0;
+  const manualCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.MANUAL] ?? 0;
 
   useEffect(() => {
     fetchDashboardCounts();
@@ -94,6 +102,11 @@ function VerificationResultsPage({
         formatMessage('verificationResults.routeCorrection.confirm.title'),
         formatMessageWithValues('verificationResults.routeCorrection.confirm.message', { count }),
       );
+    } else if (type === 'approve' || type === 'reject') {
+      coreConfirm(
+        formatMessage(`${type}.confirm.title`),
+        formatMessageWithValues(`${type}.confirm.message`, { count }),
+      );
     }
   }, [pendingAction]);
 
@@ -106,6 +119,13 @@ function VerificationResultsPage({
         runVerification(uuids, formatMessageWithValues('mutation.runVerificationLabel', { count: uuids.length }));
       } else if (type === 'routeCorrection') {
         routeToCorrection(uuids, '', formatMessage('mutation.routeToCorrectionLabel'));
+      } else if (type === 'approve' || type === 'reject') {
+        approvePaymentAccounts(
+          uuids,
+          type === 'approve',
+          '',
+          formatMessage(type === 'approve' ? 'mutation.approveLabel' : 'mutation.rejectLabel'),
+        );
       }
       setPendingAction(null);
     }
@@ -137,7 +157,9 @@ function VerificationResultsPage({
   ];
 
   const canAct = selectedAccounts.length > 0 && !submittingMutation;
-  const searcherActions = [
+  // Manual sub-tab → manual approval actions (MANUAL accounts cleared/rejected);
+  // passed/failed sub-tabs → verification actions. One Searcher, three sub-tabs.
+  const verificationActions = [
     {
       label: formatMessage('button.sendToMuse'),
       icon: <SendIcon />,
@@ -151,6 +173,21 @@ function VerificationResultsPage({
       authorized: activeTab === TAB_FAILED && rights.includes(RIGHT_APPROVE_ACCOUNTS) && canAct,
     },
   ];
+  const approvalActions = [
+    {
+      label: formatMessage('button.approve'),
+      icon: <CheckCircleIcon />,
+      onClick: () => setPendingAction({ type: 'approve', accounts: selectedAccounts }),
+      authorized: rights.includes(RIGHT_APPROVE_ACCOUNTS) && canAct,
+    },
+    {
+      label: formatMessage('button.reject'),
+      icon: <CancelIcon />,
+      onClick: () => setPendingAction({ type: 'reject', accounts: selectedAccounts }),
+      authorized: rights.includes(RIGHT_APPROVE_ACCOUNTS) && canAct,
+    },
+  ];
+  const searcherActions = isManual ? approvalActions : verificationActions;
 
   return (
     <div className={classes.page}>
@@ -166,8 +203,10 @@ function VerificationResultsPage({
               onChange: handleTabChange,
               passedValue: TAB_PASSED,
               failedValue: TAB_FAILED,
+              manualValue: TAB_MANUAL,
               passedCount,
               failedCount,
+              manualCount,
             }}
           />
         )}
@@ -212,6 +251,7 @@ const mapDispatchToProps = (dispatch) => bindActionCreators(
     fetchDashboardCounts,
     runVerification,
     routeToCorrection,
+    approvePaymentAccounts,
     journalize,
     coreConfirm,
     clearConfirm,
