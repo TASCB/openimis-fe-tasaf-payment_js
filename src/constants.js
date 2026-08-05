@@ -1,26 +1,26 @@
 // Permission codes — must match backend apps.py DEFAULT_CONFIG
 // Entity 20: PaymentAccount CRUD
-export const RIGHT_PAYMENT_ACCOUNT_SEARCH = 152001;
-export const RIGHT_PAYMENT_ACCOUNT_CREATE = 152002;
-export const RIGHT_PAYMENT_ACCOUNT_UPDATE = 152003;
-export const RIGHT_PAYMENT_ACCOUNT_DELETE = 152004;
+export const RIGHT_PAYMENT_ACCOUNT_SEARCH = 270001;
+export const RIGHT_PAYMENT_ACCOUNT_CREATE = 270002;
+export const RIGHT_PAYMENT_ACCOUNT_UPDATE = 270003;
+export const RIGHT_PAYMENT_ACCOUNT_DELETE = 270004;
 // Entity 21: Verification workflow
-export const RIGHT_RUN_VERIFICATION  = 152101;
-export const RIGHT_APPROVE_ACCOUNTS  = 152102;
-export const RIGHT_RESUBMIT_FAILED   = 152103;
+export const RIGHT_RUN_VERIFICATION  = 270101;
+export const RIGHT_APPROVE_ACCOUNTS  = 270102;
+export const RIGHT_RESUBMIT_FAILED   = 270103;
 // Entity 22: Pre-audit
-export const RIGHT_RUN_PRE_AUDIT     = 152201;
+export const RIGHT_RUN_PRE_AUDIT     = 270201;
 // Entity 23: Paylist
-export const RIGHT_PAYLIST_SEARCH    = 152301;
-export const RIGHT_GENERATE_PAYLIST  = 152302;
-export const RIGHT_APPROVE_PAYLIST   = 152303;
-export const RIGHT_SUBMIT_PAYLIST    = 152304;
+export const RIGHT_PAYLIST_SEARCH    = 270301;
+export const RIGHT_GENERATE_PAYLIST  = 270302;
+export const RIGHT_APPROVE_PAYLIST   = 270303;
+export const RIGHT_SUBMIT_PAYLIST    = 270304;
 // Entity 24: Return feedback
-export const RIGHT_RETURN_FEEDBACK   = 152401;
+export const RIGHT_RETURN_FEEDBACK   = 270401;
 // Entity 25: Dashboard
-export const RIGHT_DASHBOARD         = 152501;
+export const RIGHT_DASHBOARD         = 270501;
 // Entity 26: MUSE verification records
-export const RIGHT_MUSE_RECORDS      = 152601;
+export const RIGHT_MUSE_RECORDS      = 270601;
 
 export const MODULE_NAME = 'tasafPayment';
 
