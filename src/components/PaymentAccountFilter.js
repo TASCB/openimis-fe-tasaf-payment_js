@@ -12,6 +12,7 @@ import {
   SelectInput,
 } from '@openimis/fe-core';
 
+import PaaLocationFilter from './PaaLocationFilter';
 import {
   MODULE_NAME,
   FSP_TYPE_LIST,
@@ -50,8 +51,11 @@ function PaymentAccountFilter({
   onChangeFilters,
   showStatusFilter = true,
   showPreAuditFilter = false,
+  showLocationFilter = false,
   fixedVerificationStatus = null,
   verificationTabs = null,
+  onChangeLocation = null,
+  location = null,
 }) {
   const classes = useStyles();
   const modulesManager = useModulesManager();
@@ -149,6 +153,19 @@ function PaymentAccountFilter({
           />
         </Grid>
       )}
+      {showLocationFilter && (
+        <Grid item xs={12} className={classes.item}>
+          <PaaLocationFilter
+            value={location}
+            onChange={(loc) => {
+              onChangeLocation?.(loc);
+              onChangeFilters([
+                { id: 'locationId', value: loc?.id ?? null, filter: loc?.id ? `locationId: ${loc.id}` : '' },
+              ]);
+            }}
+          />
+        </Grid>
+      )}
       {!!verificationTabs && (
         <Grid item xs={12} className={classes.tabsItem}>
           <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
@@ -162,6 +179,7 @@ function PaymentAccountFilter({
               passedCount={verificationTabs.passedCount}
               failedCount={verificationTabs.failedCount}
               manualCount={verificationTabs.manualCount}
+              pendingCount={verificationTabs.pendingCount}
             />
           </Grid>
         </Grid>

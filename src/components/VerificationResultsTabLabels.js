@@ -1,21 +1,30 @@
-/**
- * Tab label contributions for VerificationResultsPage.
- *
- * Registered under 'tasafPayment.TabPanel.label' so other modules
- * can add tabs to the verification results view by contributing to
- * that key in their own index.js.
- *
- * Each label component receives: onChange, tabStyle, isSelected, modulesManager
- * from the <Contributions> host — same props as payroll/individual tab labels.
- */
 import React from 'react';
 import { Tab } from '@material-ui/core';
 import { useTranslations } from '@openimis/fe-core';
 import {
-  MODULE_NAME, TAB_PASSED, TAB_FAILED, TAB_MANUAL,
+  MODULE_NAME, TAB_PENDING, TAB_SUCCESS, TAB_FAILED,
 } from '../constants';
 
-export function VerificationPassedTabLabel({
+export function VerificationPendingTabLabel({
+  onChange,
+  tabStyle,
+  isSelected,
+  modulesManager,
+  pendingCount,
+}) {
+  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
+  return (
+    <Tab
+      onChange={onChange}
+      className={tabStyle(TAB_PENDING)}
+      selected={isSelected(TAB_PENDING)}
+      value={TAB_PENDING}
+      label={`${pendingCount ?? 0} ${formatMessage('verificationResults.tab.pending')}`}
+    />
+  );
+}
+
+export function VerificationSuccessTabLabel({
   onChange,
   tabStyle,
   isSelected,
@@ -26,10 +35,10 @@ export function VerificationPassedTabLabel({
   return (
     <Tab
       onChange={onChange}
-      className={tabStyle(TAB_PASSED)}
-      selected={isSelected(TAB_PASSED)}
-      value={TAB_PASSED}
-      label={`${passedCount ?? 0} ${formatMessage('verificationResults.tab.passed')}`}
+      className={tabStyle(TAB_SUCCESS)}
+      selected={isSelected(TAB_SUCCESS)}
+      value={TAB_SUCCESS}
+      label={`${passedCount ?? 0} ${formatMessage('verificationResults.tab.success')}`}
     />
   );
 }
@@ -40,6 +49,7 @@ export function VerificationFailedTabLabel({
   isSelected,
   modulesManager,
   failedCount,
+  manualCount,
 }) {
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
   return (
@@ -48,26 +58,8 @@ export function VerificationFailedTabLabel({
       className={tabStyle(TAB_FAILED)}
       selected={isSelected(TAB_FAILED)}
       value={TAB_FAILED}
-      label={`${failedCount ?? 0} ${formatMessage('verificationResults.tab.failed')}`}
+      label={`${(failedCount ?? 0) + (manualCount ?? 0)} ${formatMessage('verificationResults.tab.failed')}`}
     />
   );
 }
 
-export function VerificationManualTabLabel({
-  onChange,
-  tabStyle,
-  isSelected,
-  modulesManager,
-  manualCount,
-}) {
-  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
-  return (
-    <Tab
-      onChange={onChange}
-      className={tabStyle(TAB_MANUAL)}
-      selected={isSelected(TAB_MANUAL)}
-      value={TAB_MANUAL}
-      label={`${manualCount ?? 0} ${formatMessage('verificationResults.tab.manual')}`}
-    />
-  );
-}

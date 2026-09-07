@@ -7,8 +7,9 @@ export const RIGHT_PAYMENT_ACCOUNT_DELETE = 270004;
 // Entity 21: Verification workflow
 export const RIGHT_RUN_VERIFICATION  = 270101;
 export const RIGHT_APPROVE_ACCOUNTS  = 270102;
-export const RIGHT_RESUBMIT_FAILED   = 270103;
-// Entity 22: Pre-audit
+// Entity 22: Pre-audit. Viewing is separate from running so an auditor can read the
+// eligibility gate without being able to operate it.
+export const RIGHT_PRE_AUDIT_SEARCH  = 270202;
 export const RIGHT_RUN_PRE_AUDIT     = 270201;
 // Entity 23: Paylist
 export const RIGHT_PAYLIST_SEARCH    = 270301;
@@ -17,12 +18,27 @@ export const RIGHT_APPROVE_PAYLIST   = 270303;
 export const RIGHT_SUBMIT_PAYLIST    = 270304;
 // Entity 24: Return feedback
 export const RIGHT_RETURN_FEEDBACK   = 270401;
+// Tariff table. Editing a fee table must not ride on a returns-processing right.
+export const RIGHT_WITHDRAWAL_CHARGE_SEARCH = 270701;
+export const RIGHT_WITHDRAWAL_CHARGE_MANAGE = 270702;
+
+export const RIGHT_REPORTS           = 270801;
 // Entity 25: Dashboard
 export const RIGHT_DASHBOARD         = 270501;
 // Entity 26: MUSE verification records
 export const RIGHT_MUSE_RECORDS      = 270601;
 
+// case_management's right and route ref. A failed account is corrected there, so the
+// Failed sub-tab drills across; both are guarded, since that module may not be installed.
+export const RIGHT_ACCOUNT_CORRECTION = 290205;
+export const ROUTE_REF_ACCOUNT_CORRECTION = 'caseManagement.route.accountCorrection';
+
+export const ROUTE_REF_GROUP = 'individual.route.group';
+
 export const MODULE_NAME = 'tasafPayment';
+
+// Default width for every dialog in this module -- one edit, not one per dialog.
+export const DIALOG_MAX_WIDTH = 'md';
 
 export const DEFAULT_PAGE_SIZE = 10;
 export const ROWS_PER_PAGE_OPTIONS = [10, 20, 50, 100];
@@ -75,6 +91,17 @@ export const BATCH_TYPE = {
 
 export const BATCH_TYPE_LIST = [BATCH_TYPE.BANK, BATCH_TYPE.MNO, BATCH_TYPE.MIXED];
 
+// Mirrors tasaf_payment.models.PaymentDestination.
+export const DESTINATION = {
+  MUSE: 'MUSE',
+  GEPG: 'GEPG',
+};
+
+export const DESTINATION_LIST = [DESTINATION.MUSE, DESTINATION.GEPG];
+
+// payroll.models.PayrollStatus -- only approved payrolls may be disbursed.
+export const PAYROLL_STATUS_APPROVED = 'APPROVE_FOR_PAYMENT';
+
 export const PAYLIST_STATUS = {
   DRAFT:            'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
@@ -111,14 +138,10 @@ export const RETURN_FEEDBACK_TYPE = {
 export const TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY = 'tasafPayment.TabPanel.label';
 export const TASAF_PAYMENT_TABS_PANEL_CONTRIBUTION_KEY = 'tasafPayment.TabPanel.panel';
 
-// Verification Results tab values — exported so tab label contributions can import them
-export const TAB_PASSED = 'passed';
+export const TAB_PENDING = 'pending';
+export const TAB_SUCCESS = 'success';
 export const TAB_FAILED = 'failed';
-export const TAB_MANUAL = 'manual';
 
-// ── Consolidated workspace ────────────────────────────────────────────────
-// Separate contribution keys from the VerificationResults internal tabs above
-// so the two tab hosts never collide.
 export const TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY = 'tasafPayment.WorkspaceTabPanel.label';
 export const TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY = 'tasafPayment.WorkspaceTabPanel.panel';
 
@@ -129,3 +152,5 @@ export const WS_TAB_PRE_AUDIT    = 'preAudit';
 export const WS_TAB_GENERATE     = 'generate';
 export const WS_TAB_PAYLISTS     = 'paylists';
 export const WS_TAB_RETURNS      = 'returns';
+export const WS_TAB_CHARGES      = 'charges';
+export const WS_TAB_REPORTS      = 'reports';

@@ -4,12 +4,15 @@ import { bindActionCreators } from 'redux';
 
 import { makeStyles } from '@material-ui/styles';
 import FactCheckIcon from '@material-ui/icons/PlaylistAddCheck';
+import DoneAllIcon from '@material-ui/icons/DoneAll';
 
 import {
   Helmet,
   Searcher,
   useModulesManager,
   useTranslations,
+  useHistory,
+  historyPush,
   coreConfirm,
   clearConfirm,
   journalize,
@@ -18,21 +21,39 @@ import {
 import {
   MODULE_NAME,
   RIGHT_RUN_PRE_AUDIT,
+  ROUTE_REF_GROUP,
   DEFAULT_PAGE_SIZE,
   ROWS_PER_PAGE_OPTIONS,
   VERIFICATION_STATUS,
 } from '../constants';
-import { fetchPaymentAccounts, runPreAudit } from '../actions';
+import { fetchPaymentAccounts, runPreAudit, runBatchPreAudit } from '../actions';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
-import StatusBadge from '../components/StatusBadge';
 import { defaultPageStyles } from '../utils/styles';
 
 const VERIFIED_FILTER = `verificationStatus: ${VERIFICATION_STATUS.VERIFIED}`;
+
 const useStyles = makeStyles((theme) => defaultPageStyles(theme));
+
+const PRE_AUDIT_REASON_CODES = [
+  'NOT_VERIFIED', 'NOT_PRIMARY', 'NO_BENEFICIARY', 'BENEFICIARY_INACTIVE',
+];
+
+function rawPreAuditReasons(row) {
+  const raw = row?.jsonExt;
+  if (!raw) return [];
+  try {
+    const ext = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const reasons = ext?.pre_audit_failures;
+    return Array.isArray(reasons) ? reasons : [];
+  } catch (error) {
+    return [];
+  }
+}
 
 function PreAuditPage({
   fetchPaymentAccounts,
   runPreAudit,
+  runBatchPreAudit,
   fetchingPaymentAccounts,
   fetchedPaymentAccounts,
   errorPaymentAccounts,
@@ -50,9 +71,12 @@ function PreAuditPage({
   const modulesManager = useModulesManager();
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
+  const history = useHistory();
 
   const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [pendingAudit, setPendingAudit] = useState(null);
+  const [batchPending, setBatchPending] = useState(false);
+  const [location, setLocation] = useState(null);
   const prevSubmittingMutationRef = useRef();
 
   useEffect(() => {
@@ -65,6 +89,19 @@ function PreAuditPage({
   }, [pendingAudit]);
 
   useEffect(() => {
+    if (batchPending) {
+      coreConfirm(
+        formatMessage('preAudit.batch.confirm.title'),
+        location
+          ? formatMessageWithValues('preAudit.batch.confirm.message', {
+            location: location.name,
+          })
+          : formatMessage('batch.needsArea'),
+      );
+    }
+  }, [batchPending]);
+
+  useEffect(() => {
     if (pendingAudit && confirmed) {
       runPreAudit(
         pendingAudit.map((a) => a.uuid),
@@ -72,7 +109,14 @@ function PreAuditPage({
       );
       setPendingAudit(null);
     }
-    if (pendingAudit && confirmed !== null) setPendingAudit(null);
+    if (batchPending && confirmed && location) {
+      runBatchPreAudit(
+        { locationId: location?.id, rerun: true },
+        formatMessageWithValues('mutation.runBatchPreAuditLabel', { location: location?.name ?? '' }),
+      );
+      setBatchPending(false);
+    }
+    if (confirmed !== null) { setPendingAudit(null); setBatchPending(false); }
     return () => confirmed !== null && clearConfirm(false);
   }, [confirmed]);
 
@@ -86,8 +130,8 @@ function PreAuditPage({
     formatMessage('paymentAccount.accountName'),
     formatMessage('paymentAccount.fspType'),
     formatMessage('paymentAccount.fspName'),
-    formatMessage('paymentAccount.verificationStatus'),
     formatMessage('paymentAccount.preAuditStatus'),
+    formatMessage('paymentAccount.preAuditReason'),
   ];
 
   const itemFormatters = () => [
@@ -95,17 +139,47 @@ function PreAuditPage({
     (row) => row.accountName ?? '',
     (row) => formatMessage(`paymentAccount.fspType.${row.fspType}`),
     (row) => row.fspName,
-    (row) => <StatusBadge status={row.verificationStatus} />,
-    (row) => row.preAuditStatus ?? '-',
+    // The keys exist (paymentAccount.preAuditStatus.PASSED/FAILED/PENDING); rendering the
+    // bare enum here left an untranslated value in a translated table.
+    (row) => (row.preAuditStatus
+      ? formatMessage(`paymentAccount.preAuditStatus.${row.preAuditStatus}`)
+      : '-'),
+    // The reasons were always computed and stored; they were simply never displayed,
+    // so a FAILED row read as a verdict with no evidence behind it.
+    (row) => {
+      const reasons = rawPreAuditReasons(row).map((r) => (
+        PRE_AUDIT_REASON_CODES.includes(r) ? formatMessage(`preAudit.reason.${r}`) : r
+      ));
+      return reasons.length ? reasons.join('; ') : '-';
+    },
   ];
 
-  const canAct = selectedAccounts.length > 0 && !submittingMutation && rights.includes(RIGHT_RUN_PRE_AUDIT);
+  const groupUuidOf = (row) => row?.groupBeneficiary?.group?.uuid ?? null;
+  const canOpenGroup = !!modulesManager.getRef(ROUTE_REF_GROUP);
+  const openGroup = (row, newTab = false) => {
+    const uuid = groupUuidOf(row);
+    if (!uuid) return;
+    historyPush(modulesManager, history, ROUTE_REF_GROUP, [uuid], newTab);
+  };
+
+  const canRun = rights.includes(RIGHT_RUN_PRE_AUDIT);
+  const canAct = selectedAccounts.length > 0 && !submittingMutation && canRun;
   const searcherActions = [
     {
       label: formatMessage('button.runPreAudit'),
       icon: <FactCheckIcon />,
       onClick: () => setPendingAudit(selectedAccounts),
       authorized: canAct,
+    },
+    {
+      // Area-scoped -- see the note on the verification tab for why this is a labelled
+      // button beside the Area (PAA) filter and not a Fab.
+      label: location
+        ? formatMessageWithValues('button.preAuditAreaNamed', { location: location.name })
+        : formatMessage('button.preAuditArea'),
+      icon: <DoneAllIcon />,
+      onClick: () => setBatchPending(true),
+      authorized: !submittingMutation && canRun,
     },
   ];
 
@@ -114,7 +188,16 @@ function PreAuditPage({
       <Helmet title={formatMessage('preAudit.page.title')} />
       <Searcher
         module={MODULE_NAME}
-        FilterPane={(props) => <PaymentAccountFilter {...props} showStatusFilter={false} showPreAuditFilter />}
+        FilterPane={(props) => (
+          <PaymentAccountFilter
+            {...props}
+            showStatusFilter={false}
+            showPreAuditFilter
+            showLocationFilter
+            location={location}
+            onChangeLocation={setLocation}
+          />
+        )}
         fetch={(params) => fetchPaymentAccounts([...(params || []), VERIFIED_FILTER])}
         items={paymentAccounts}
         itemsPageInfo={paymentAccountsPageInfo}
@@ -127,6 +210,7 @@ function PreAuditPage({
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         defaultPageSize={DEFAULT_PAGE_SIZE}
         rowIdentifier={(row) => row.id}
+        onDoubleClick={canOpenGroup ? openGroup : undefined}
         withSelection="multiple"
         onChangeSelection={setSelectedAccounts}
         enableActionButtons
@@ -150,7 +234,7 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => bindActionCreators(
-  { fetchPaymentAccounts, runPreAudit, journalize, coreConfirm, clearConfirm },
+  { fetchPaymentAccounts, runPreAudit, runBatchPreAudit, journalize, coreConfirm, clearConfirm },
   dispatch,
 );
 

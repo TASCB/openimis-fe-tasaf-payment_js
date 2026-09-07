@@ -1,11 +1,3 @@
-/**
- * Consolidated "TASAF Payments" workspace.
- *
- * Single menu entry → one workspace with a canonical openIMIS tab bar
- * (mirrors payroll/PayrollTab: theme.paper.paper + theme.table.title band,
- * teal selected tab from the core MuiTab theme). Each standing surface is a
- * Contributions-registered tab so the workspace stays extensible.
- */
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Paper, Grid } from '@material-ui/core';
@@ -27,12 +19,16 @@ import {
   WS_TAB_GENERATE,
   WS_TAB_PAYLISTS,
   WS_TAB_RETURNS,
+  WS_TAB_CHARGES,
+  WS_TAB_REPORTS,
   RIGHT_DASHBOARD,
   RIGHT_PAYMENT_ACCOUNT_SEARCH,
-  RIGHT_RUN_PRE_AUDIT,
+  RIGHT_PRE_AUDIT_SEARCH,
   RIGHT_GENERATE_PAYLIST,
   RIGHT_PAYLIST_SEARCH,
   RIGHT_RETURN_FEEDBACK,
+  RIGHT_WITHDRAWAL_CHARGE_SEARCH,
+  RIGHT_REPORTS,
 } from '../constants';
 
 const useStyles = makeStyles((theme) => ({
@@ -48,10 +44,13 @@ const useStyles = makeStyles((theme) => ({
 const TAB_ORDER = [
   [WS_TAB_DASHBOARD, RIGHT_DASHBOARD],
   [WS_TAB_VERIFICATION, RIGHT_PAYMENT_ACCOUNT_SEARCH],
-  [WS_TAB_PRE_AUDIT, RIGHT_RUN_PRE_AUDIT],
+  [WS_TAB_PRE_AUDIT, RIGHT_PRE_AUDIT_SEARCH],
   [WS_TAB_GENERATE, RIGHT_GENERATE_PAYLIST],
   [WS_TAB_PAYLISTS, RIGHT_PAYLIST_SEARCH],
   [WS_TAB_RETURNS, RIGHT_RETURN_FEEDBACK],
+  // Configuration, not a pipeline stage -- last.
+  [WS_TAB_CHARGES, RIGHT_WITHDRAWAL_CHARGE_SEARCH],
+  [WS_TAB_REPORTS, RIGHT_REPORTS],
 ];
 
 function TasafPaymentsPage() {
