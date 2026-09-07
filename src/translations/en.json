@@ -336,5 +336,13 @@
   "tasaf_payment.validation.payroll_id_required": "A payroll must be selected.",
   "tasaf_payment.validation.invalid_batch_type": "Batch type must be BANK, MNO or MIXED.",
   "tasaf_payment.validation.fsp_type_invalid": "FSP type must be BANK or MOBILE.",
-  "tasaf_payment.error.queue_unavailable_inline_limit": "The task queue is unavailable, and this area has more accounts than can be processed directly. Retry once the worker is running, or choose a smaller area."
+  "tasaf_payment.error.queue_unavailable_inline_limit": "The task queue is unavailable, and this area has more accounts than can be processed directly. Retry once the worker is running, or choose a smaller area.",
+  "tasaf_payment.error.payroll_not_found": "That payroll no longer exists.",
+  "tasaf_payment.error.payroll_not_approved": "This payroll is not approved for payment yet, so no paylist can be generated from it.",
+  "tasaf_payment.error.unknown_destination": "Unknown payment destination.",
+  "tasaf_payment.error.no_accepted_benefits": "This payroll has no accepted benefits, so there is nothing to pay.",
+  "tasaf_payment.error.paylist_not_pending_approval": "This paylist is not awaiting approval, so it cannot be approved now.",
+  "tasaf_payment.error.paylist_not_approved": "This paylist must be approved before it can be submitted.",
+  "tasaf_payment.error.paylist_not_found": "That paylist no longer exists.",
+  "tasaf_payment.error.approval_failed": "The approval could not be recorded."
 }
