@@ -41,11 +41,12 @@ const useStyles = makeStyles((theme) => ({
   actions: { display: 'flex', gap: theme.spacing(1), padding: theme.spacing(1, 2) },
 }));
 
+// Status chips are monochrome: a status is a state, not an alarm.
 const ITEM_STATUS_COLORS = {
   PENDING:   '#9e9e9e',
-  PROCESSED: '#4caf50',
-  RETURNED:  '#f44336',
-  UNAPPLIED: '#ff9800',
+  PROCESSED: '#9e9e9e',
+  RETURNED:  '#9e9e9e',
+  UNAPPLIED: '#9e9e9e',
 };
 
 function PaylistDetailPage({

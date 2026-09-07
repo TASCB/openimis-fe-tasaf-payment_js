@@ -9,9 +9,10 @@ import { FormattedMessage } from '@openimis/fe-core';
 import reducer from './reducer';
 import messages_en from './translations/en.json';
 import {
-  VerificationPassedTabLabel,
+  VerificationPendingTabLabel,
+  VerificationSuccessTabLabel,
   VerificationFailedTabLabel,
-  VerificationManualTabLabel,
+  
 } from './components/VerificationResultsTabLabels';
 import VerificationResultsPage from './pages/VerificationResultsPage';
 import AccountApprovalPage from './pages/AccountApprovalPage';
@@ -24,9 +25,10 @@ import TasafPaymentsPage from './pages/TasafPaymentsPage';
 import PaymentGenerationStepper from './components/generation/PaymentGenerationStepper';
 import {
   DashboardTabLabel, VerificationTabLabel, PreAuditTabLabel,
-  GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel,
+  GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel, ReportsTabLabel,
   DashboardTabPanel, VerificationTabPanel, PreAuditTabPanel,
-  GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel,
+  GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel, ReportsTabPanel,
+  ChargesTabLabel, ChargesTabPanel,
 } from './components/workspace/WorkspaceTabs';
 
 import {
@@ -66,22 +68,18 @@ const DEFAULT_CONFIG = {
     { key: 'tasafPayment.route.returnFeedback',      ref: ROUTE_RETURN_FEEDBACK },
     { key: 'tasafPayment.route.dashboard',           ref: ROUTE_DASHBOARD },
   ],
-  // Tab label contributions — other modules can add tabs to VerificationResultsPage
-  // by contributing to this key in their own index.js DEFAULT_CONFIG
-  // Verification sub-tabs (passed / failed / manual). Approval is now folded in
-  // as the Manual sub-tab — same PaymentAccount entity, MANUAL verification_status.
   [TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY]: [
-    VerificationPassedTabLabel, VerificationFailedTabLabel, VerificationManualTabLabel,
+    VerificationPendingTabLabel, VerificationSuccessTabLabel, VerificationFailedTabLabel,
   ],
 
   // Consolidated workspace tabs (pipeline order). Other modules can inject tabs here.
   [TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY]: [
     DashboardTabLabel, VerificationTabLabel, PreAuditTabLabel,
-    GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel,
+    GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel, ReportsTabLabel, ChargesTabLabel,
   ],
   [TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY]: [
     DashboardTabPanel, VerificationTabPanel, PreAuditTabPanel,
-    GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel,
+    GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel, ReportsTabPanel, ChargesTabPanel,
   ],
 
   'core.Router': [
@@ -98,9 +96,6 @@ const DEFAULT_CONFIG = {
     { path: ROUTE_RETURN_FEEDBACK,  component: ReturnFeedbackPage },
     { path: ROUTE_DASHBOARD,        component: PaymentDashboardPage },
   ],
-  // invoice.MainMenu is the correct slot for Legal & Finance menu items.
-  // One consolidated entry replaces the previous seven; the workspace shows
-  // each surface as a tab (filtered per-right inside the workspace).
   'invoice.MainMenu': [
     {
       text: <FormattedMessage module="tasafPayment" id="menu.workspace" />,

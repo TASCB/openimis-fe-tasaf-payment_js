@@ -5,6 +5,17 @@ import { bindActionCreators } from 'redux';
 import { Box, Grid } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 
+import HourglassEmptyIcon from '@material-ui/icons/HourglassEmpty';
+import AccessTimeIcon from '@material-ui/icons/AccessTime';
+import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
+import PersonIcon from '@material-ui/icons/PersonOutline';
+import CancelIcon from '@material-ui/icons/HighlightOff';
+import EditIcon from '@material-ui/icons/Edit';
+import CheckIcon from '@material-ui/icons/Check';
+import SendIcon from '@material-ui/icons/Send';
+import LockIcon from '@material-ui/icons/LockOutlined';
+import DescriptionIcon from '@material-ui/icons/DescriptionOutlined';
+
 import {
   Helmet, ProgressOrError, useHistory, useModulesManager, useTranslations,
 } from '@openimis/fe-core';
@@ -15,8 +26,8 @@ import {
 } from '../constants';
 import { fetchDashboardCounts } from '../actions';
 import {
-  DashboardHeader, StatCard, SectionCard, Stepper,
-} from '../components/DashboardKit';
+  DashboardHeader, StatCard, SectionCard, PipelineFlow,
+} from '@openimis/fe-tasaf_common';
 
 const useStyles = makeStyles((theme) => ({ page: theme.page }));
 
@@ -28,10 +39,7 @@ const fmtTZS = (v) => {
   }).format(n);
 };
 
-const withActive = (steps) => {
-  const max = Math.max(0, ...steps.map((s) => Number(s.value) || 0));
-  return steps.map((s) => ({ ...s, active: max > 0 && Number(s.value) === max }));
-};
+const tzs = (v) => `TZS ${fmtTZS(v)}`;
 
 function PaymentDashboardPage({
   fetchDashboardCounts, fetchingDashboard, fetchedDashboard, errorDashboard, dashboardCounts,
@@ -39,7 +47,7 @@ function PaymentDashboardPage({
   const classes = useStyles();
   const history = useHistory();
   const modulesManager = useModulesManager();
-  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
+  const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
   const [lastRefreshed, setLastRefreshed] = useState(null);
 
@@ -68,7 +76,6 @@ function PaymentDashboardPage({
 
   const kpis = [
     {
-      primary: true,
       label: t('dashboard.kpi.accounts'),
       value: loaded ? totalAccounts : '–',
       caption: loaded ? `${acct[VERIFICATION_STATUS.VERIFIED] ?? 0} ${t('dashboard.kpi.verifiedCaption')}` : t('dashboard.kpi.accountsCaption'),
@@ -85,21 +92,22 @@ function PaymentDashboardPage({
     },
   ];
 
-  const verificationSteps = withActive([
-    { key: 'pending', label: t('dashboard.stat.pending'), value: num(acct[VERIFICATION_STATUS.PENDING]), onClick: goVerification },
-    { key: 'muse', label: t('dashboard.stat.pendingMuse'), value: num(acct[VERIFICATION_STATUS.PENDING_MUSE]), onClick: goVerification },
-    { key: 'verified', label: t('dashboard.stat.verified'), value: num(acct[VERIFICATION_STATUS.VERIFIED]), onClick: goVerification },
-    { key: 'manual', label: t('dashboard.stat.manual'), value: num(acct[VERIFICATION_STATUS.MANUAL]), onClick: goVerification },
-    { key: 'failed', label: t('dashboard.stat.failed'), value: num(acct[VERIFICATION_STATUS.FAILED]), onClick: goVerification },
-  ]);
+  const verificationStages = [
+    { key: 'pending', icon: <HourglassEmptyIcon />, label: t('dashboard.stat.pending'), value: acct[VERIFICATION_STATUS.PENDING] ?? 0, onClick: goVerification },
+    { key: 'muse', icon: <AccessTimeIcon />, label: t('dashboard.stat.pendingMuse'), value: acct[VERIFICATION_STATUS.PENDING_MUSE] ?? 0, onClick: goVerification },
+    { key: 'verified', icon: <VerifiedUserIcon />, label: t('dashboard.stat.verified'), value: acct[VERIFICATION_STATUS.VERIFIED] ?? 0, onClick: goVerification },
+    { key: 'manual', icon: <PersonIcon />, label: t('dashboard.stat.manual'), value: acct[VERIFICATION_STATUS.MANUAL] ?? 0, onClick: goVerification },
+    { key: 'failed', icon: <CancelIcon />, label: t('dashboard.stat.failed'), value: acct[VERIFICATION_STATUS.FAILED] ?? 0, onClick: goVerification },
+  ];
 
-  const paylistSteps = withActive([
-    { key: 'draft', label: t('dashboard.stat.paylistDraft'), value: num(pl[PAYLIST_STATUS.DRAFT]), sub: loaded ? money(plAmt[PAYLIST_STATUS.DRAFT]) : null, onClick: goPaylists },
-    { key: 'pending', label: t('dashboard.stat.paylistPending'), value: num(pl[PAYLIST_STATUS.PENDING_APPROVAL]), sub: loaded ? money(plAmt[PAYLIST_STATUS.PENDING_APPROVAL]) : null, onClick: goPaylists },
-    { key: 'approved', label: t('dashboard.stat.paylistApproved'), value: num(pl[PAYLIST_STATUS.APPROVED]), sub: loaded ? money(plAmt[PAYLIST_STATUS.APPROVED]) : null, onClick: goPaylists },
-    { key: 'submitted', label: t('dashboard.stat.paylistSubmitted'), value: num(pl[PAYLIST_STATUS.SUBMITTED]), sub: loaded ? money(plAmt[PAYLIST_STATUS.SUBMITTED]) : null, onClick: goPaylists },
-    { key: 'closed', label: t('dashboard.stat.paylistClosed'), value: num(pl[PAYLIST_STATUS.CLOSED]), sub: loaded ? money(plAmt[PAYLIST_STATUS.CLOSED]) : null, onClick: goPaylists },
-  ]);
+  const paylistStages = [
+    { key: 'draft', icon: <EditIcon />, label: t('dashboard.stat.paylistDraft'), value: pl[PAYLIST_STATUS.DRAFT] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.DRAFT]) : null, onClick: goPaylists },
+    { key: 'pending', icon: <AccessTimeIcon />, label: t('dashboard.stat.paylistPending'), value: pl[PAYLIST_STATUS.PENDING_APPROVAL] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.PENDING_APPROVAL]) : null, onClick: goPaylists },
+    { key: 'approved', icon: <CheckIcon />, label: t('dashboard.stat.paylistApproved'), value: pl[PAYLIST_STATUS.APPROVED] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.APPROVED]) : null, onClick: goPaylists },
+    { key: 'submitted', icon: <SendIcon />, label: t('dashboard.stat.paylistSubmitted'), value: pl[PAYLIST_STATUS.SUBMITTED] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.SUBMITTED]) : null, onClick: goPaylists },
+    { key: 'closed', icon: <LockIcon />, label: t('dashboard.stat.paylistClosed'), value: pl[PAYLIST_STATUS.CLOSED] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.CLOSED]) : null, onClick: goPaylists },
+  ];
+
 
   const formattedTime = lastRefreshed
     ? lastRefreshed.toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -131,14 +139,24 @@ function PaymentDashboardPage({
       </Grid>
 
       <Box mt={3}>
-        <SectionCard title={t('dashboard.pipeline.verification')} actionLabel={t('dashboard.open')} onAction={goVerification}>
-          <Stepper steps={verificationSteps} />
+        <SectionCard
+          title={t('dashboard.pipeline.verification')}
+          icon={<VerifiedUserIcon />}
+          actionLabel={t('dashboard.open')}
+          onAction={goVerification}
+        >
+          <PipelineFlow stages={verificationStages} emptyText={t('dashboard.pipeline.empty')} />
         </SectionCard>
       </Box>
 
       <Box mt={3}>
-        <SectionCard title={t('dashboard.pipeline.paylists')} actionLabel={t('dashboard.open')} onAction={goPaylists}>
-          <Stepper steps={paylistSteps} />
+        <SectionCard
+          title={t('dashboard.pipeline.paylists')}
+          icon={<DescriptionIcon />}
+          actionLabel={t('dashboard.open')}
+          onAction={goPaylists}
+        >
+          <PipelineFlow stages={paylistStages} emptyText={t('dashboard.pipeline.empty')} />
         </SectionCard>
       </Box>
     </div>

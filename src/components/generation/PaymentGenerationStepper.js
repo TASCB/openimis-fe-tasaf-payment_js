@@ -1,14 +1,3 @@
-/**
- * Payment Generation stepper (Generate tab).
- *
- * Replaces the old raw-ID form. A guided 3-step flow grounded in the
- * generatePaylist mutation (payrollId + batchType + paymentCycleId + locationId):
- *   1. Select Payroll   — dropdown of payrolls (read-only fetchPayrolls)
- *   2. Batch & Scope     — BANK / MNO / MIXED, optional location for MIXED
- *   3. Review & Generate — confirm the resolved parameters, then submit
- *
- * Payroll / cycle identifiers are UUIDs (the Payroll & PaymentCycle PKs).
- */
 import React, {
   useState, useEffect, useRef,
 } from 'react';
@@ -37,11 +26,15 @@ import {
   MODULE_NAME,
   BATCH_TYPE,
   BATCH_TYPE_LIST,
+  DESTINATION,
+  DESTINATION_LIST,
+  PAYROLL_STATUS_APPROVED,
 } from '../../constants';
 import { fetchPayrolls, generatePaylist } from '../../actions';
 
 const useStyles = makeStyles((theme) => ({
   root: { padding: theme.spacing(2) },
+  generateNote: { marginTop: theme.spacing(2) },
   stepperBar: { background: 'transparent', padding: theme.spacing(2, 0) },
   stepContent: { marginTop: theme.spacing(2) },
   divider: { margin: theme.spacing(2, 0) },
@@ -73,17 +66,18 @@ function PaymentGenerationStepper({
   const [activeStep, setActiveStep] = useState(0);
   const [payrollUuid, setPayrollUuid] = useState(null);
   const [batchType, setBatchType] = useState(null);
+  const [destination, setDestination] = useState(DESTINATION.MUSE);
   const [locationId, setLocationId] = useState('');
 
-  useEffect(() => { fetchPayrolls(); }, []);
+  useEffect(() => { fetchPayrolls([`status: ${PAYROLL_STATUS_APPROVED}`]); }, []);
 
-  // On successful generation: journalize and reset the wizard.
   useEffect(() => {
     if (prevSubmittingRef.current && !submittingMutation) {
       journalize(mutation);
       setActiveStep(0);
       setPayrollUuid(null);
       setBatchType(null);
+      setDestination(DESTINATION.MUSE);
       setLocationId('');
     }
   }, [submittingMutation]);
@@ -96,11 +90,12 @@ function PaymentGenerationStepper({
     formatMessage('generation.step.payroll'),
     formatMessage('generation.step.scope'),
     formatMessage('generation.step.review'),
+    formatMessage('generation.step.generate'),
   ];
 
   const canLeaveStep = (step) => {
     if (step === 0) return !!payrollUuid;
-    if (step === 1) return !!batchType;
+    if (step === 1) return !!batchType && !!destination;
     return true;
   };
 
@@ -118,6 +113,7 @@ function PaymentGenerationStepper({
       batchType,
       paymentCycleUuid,
       locationId ? parseInt(locationId, 10) : null,
+      destination,
       formatMessage('mutation.generatePaylistLabel'),
     );
   };
@@ -126,7 +122,7 @@ function PaymentGenerationStepper({
     { value: null, label: formatMessage('generation.payroll.placeholder') },
     ...payrolls.map((p) => ({
       value: p.uuid,
-      label: p.paymentCycle?.code ? `${p.name} — ${p.paymentCycle.code} (${p.status})` : `${p.name} (${p.status})`,
+      label: p.paymentCycle?.code ? `${p.name} — ${p.paymentCycle.code}` : p.name,
     })),
   ];
 
@@ -183,6 +179,19 @@ function PaymentGenerationStepper({
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
+                <SelectInput
+                  module={MODULE_NAME}
+                  label="batchGeneration.destination"
+                  required
+                  options={DESTINATION_LIST.map((d) => ({
+                    value: d,
+                    label: formatMessage(`paylist.destination.${d}`),
+                  }))}
+                  value={destination}
+                  onChange={setDestination}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
                 <TextInput
                   module={MODULE_NAME}
                   label="batchGeneration.locationId"
@@ -210,7 +219,21 @@ function PaymentGenerationStepper({
             {reviewRow('generation.payroll', selectedPayroll?.name)}
             {reviewRow('generation.review.cycle', selectedPayroll?.paymentCycle?.code)}
             {reviewRow('batchGeneration.batchType', batchType ? formatMessage(`paylist.batchType.${batchType}`) : null)}
+            {reviewRow('batchGeneration.destination', destination ? formatMessage(`paylist.destination.${destination}`) : null)}
             {isMixedBatch && reviewRow('batchGeneration.locationId', locationId)}
+          </Block>
+        )}
+
+        {activeStep === 3 && (
+          <Block title={formatMessage('generation.step.generate')} titleVariant="h6">
+            <Typography variant="body2" color="textSecondary">
+              {formatMessage('generation.generate.help')}
+            </Typography>
+            <Divider className={classes.divider} />
+            {reviewRow('batchGeneration.destination', destination ? formatMessage(`paylist.destination.${destination}`) : null)}
+            <Typography variant="body2" color="textSecondary" className={classes.generateNote}>
+              {formatMessage('generation.generate.note')}
+            </Typography>
           </Block>
         )}
       </div>

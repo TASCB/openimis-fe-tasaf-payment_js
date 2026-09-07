@@ -24,10 +24,12 @@ import StatusChip from '../components/StatusChip';
 import { defaultPageStyles } from '../utils/styles';
 
 const useStyles = makeStyles((theme) => defaultPageStyles(theme));
+// Status chips are monochrome: a status is a state, not an alarm. Anything needing
+// action is surfaced by the tab it sits in and by the Needs Attention KPI.
 const FEEDBACK_COLORS = {
-  UNAPPLIED: '#ff9800',
-  RETURNED:  '#f44336',
-  PARTIAL:   '#9c27b0',
+  UNAPPLIED: '#9e9e9e',
+  RETURNED:  '#9e9e9e',
+  PARTIAL:   '#9e9e9e',
 };
 
 function ReturnFeedbackPage({

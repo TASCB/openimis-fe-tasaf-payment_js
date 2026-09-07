@@ -26,12 +26,14 @@ import { defaultPageStyles } from '../utils/styles';
 
 const useStyles = makeStyles((theme) => defaultPageStyles(theme));
 
+// Status chips are monochrome: a status is a state, not an alarm. Anything needing
+// action is surfaced by the tab it sits in and by the Needs Attention KPI.
 const STATUS_COLORS = {
   DRAFT:            '#9e9e9e',
-  PENDING_APPROVAL: '#ff9800',
-  APPROVED:         '#2196f3',
-  SUBMITTED:        '#9c27b0',
-  CLOSED:           '#4caf50',
+  PENDING_APPROVAL: '#9e9e9e',
+  APPROVED:         '#9e9e9e',
+  SUBMITTED:        '#9e9e9e',
+  CLOSED:           '#9e9e9e',
 };
 
 function PaylistListPage({

@@ -15,7 +15,10 @@ import { VERIFICATION_STATUS, VERIFICATION_STATUS_BY_CODE } from './constants';
 
 const normalizeVerificationStatus = (status) => {
   if (status === null || status === undefined || status === '') return status;
-  return VERIFICATION_STATUS_BY_CODE[status] ?? status;
+  const code = typeof status === 'string' && /^A_\d+$/.test(status)
+    ? Number(status.slice(2))
+    : status;
+  return VERIFICATION_STATUS_BY_CODE[code] ?? code;
 };
 
 export const ACTION_TYPE = {
@@ -27,9 +30,8 @@ export const ACTION_TYPE = {
   // Verification
   RUN_VERIFICATION:         'TASAF_PAYMENT_MUTATION_RUN_VERIFICATION',
   RUN_BATCH_VERIFICATION:   'TASAF_PAYMENT_MUTATION_RUN_BATCH_VERIFICATION',
+  RUN_BATCH_PRE_AUDIT:      'TASAF_PAYMENT_MUTATION_RUN_BATCH_PRE_AUDIT',
   APPROVE_ACCOUNTS:         'TASAF_PAYMENT_MUTATION_APPROVE_ACCOUNTS',
-  RESUBMIT_FAILED_ACCOUNTS: 'TASAF_PAYMENT_MUTATION_RESUBMIT_FAILED',
-  ROUTE_TO_CORRECTION:      'TASAF_PAYMENT_MUTATION_ROUTE_TO_CORRECTION',
   // Pre-audit
   RUN_PRE_AUDIT:            'TASAF_PAYMENT_MUTATION_RUN_PRE_AUDIT',
   // Paylist
@@ -43,9 +45,19 @@ export const ACTION_TYPE = {
   SEARCH_PAYLISTS:                'TASAF_PAYMENT_PAYLISTS',
   SEARCH_PAYLIST_ITEMS:           'TASAF_PAYMENT_PAYLIST_ITEMS',
   SEARCH_RETURN_FEEDBACK:         'TASAF_PAYMENT_RETURN_FEEDBACK',
+  SEARCH_WITHDRAWAL_CHARGES:      'TASAF_PAYMENT_WITHDRAWAL_CHARGES',
+  FETCH_FSP_COVERAGE:             'TASAF_PAYMENT_FSP_COVERAGE',
+  SEARCH_FSP_MAPPINGS:            'TASAF_PAYMENT_FSP_MAPPINGS',
+  FETCH_UNMAPPED_FSPS:            'TASAF_PAYMENT_UNMAPPED_FSPS',
+  FETCH_KNOWN_FSPS:               'TASAF_PAYMENT_KNOWN_FSPS',
+  FETCH_FSP_BAND_SET:             'TASAF_PAYMENT_FSP_BAND_SET',
   SEARCH_PAYROLLS:                'TASAF_PAYMENT_PAYROLLS',
   GET_PAYLIST_EXPORT:             'TASAF_PAYMENT_PAYLIST_EXPORT',
   // Dashboard
+  SEARCH_EPAYMENT_BENEFICIARY_ITEMS: 'TASAF_PAYMENT_EPAYMENT_BENEFICIARY_ITEMS',
+  SEARCH_EPAYMENT_FSP_ITEMS:      'TASAF_PAYMENT_EPAYMENT_FSP_ITEMS',
+  EXPORT_EPAYMENT_SUMMARY:        'TASAF_PAYMENT_EPAYMENT_EXPORT',
+  FETCH_EPAYMENT_SUMMARY:         'TASAF_PAYMENT_EPAYMENT_SUMMARY',
   FETCH_DASHBOARD_COUNTS:         'TASAF_PAYMENT_DASHBOARD_COUNTS',
 };
 
@@ -59,11 +71,10 @@ export const MUTATION_SERVICE = {
     RUN:              'runVerification',
     RUN_BATCH:        'runBatchVerification',
     APPROVE:          'approvePaymentAccounts',
-    RESUBMIT_FAILED:  'resubmitFailedAccounts',
-    ROUTE_CORRECTION: 'routeToCorrection',
   },
   PRE_AUDIT: {
     RUN: 'runPreAudit',
+    RUN_BATCH: 'runBatchPreAudit',
   },
   PAYLIST: {
     GENERATE: 'generatePaylist',
@@ -127,7 +138,27 @@ const STORE_STATE = {
   errorDashboard: null,
   dashboardCounts: { accounts: {}, paylists: {} },
 
-  // Payrolls (read-only, for the generation stepper picker)
+  // Auditor Reports tab
+  fetchingEpaymentSummary: false,
+  fetchedEpaymentSummary: false,
+  epaymentSummary: null,
+  epaymentSummaryExport: null,
+  fetchingFspItems: false,
+  fetchedFspItems: false,
+  fspItems: [],
+  fspItemsPageInfo: {},
+  fspItemsTotalCount: 0,
+  errorFspItems: null,
+  fetchingBeneficiaryItems: false,
+  fetchedBeneficiaryItems: false,
+  beneficiaryItems: [],
+  beneficiaryItemsPageInfo: {},
+  beneficiaryItemsTotalCount: 0,
+  errorBeneficiaryItems: null,
+  fetchingEpaymentSummaryExport: false,
+  errorEpaymentSummary: null,
+
+  // Generation stepper picker
   fetchingPayrolls: false,
   fetchedPayrolls: false,
   errorPayrolls: null,
@@ -239,6 +270,99 @@ function reducer(state = STORE_STATE, action) {
       return { ...state, fetchingPaylistItems: false, errorPaylistItems: formatServerError(action.payload) };
 
     // ─── Return Feedback ────────────────────────────────────────────────────
+
+
+    case REQUEST(ACTION_TYPE.SEARCH_FSP_MAPPINGS):
+
+
+      return { ...state, fetchingFspMappings: true };
+
+
+    case SUCCESS(ACTION_TYPE.SEARCH_FSP_MAPPINGS):
+
+
+      return {
+
+
+        ...state,
+
+
+        fetchingFspMappings: false,
+
+
+        fetchedFspMappings: true,
+
+
+        fspMappings: parseData(action.payload.data.fspMapping),
+
+
+        fspMappingsPageInfo: pageInfo(action.payload.data.fspMapping),
+
+
+        fspMappingsTotalCount: action.payload.data.fspMapping?.totalCount ?? 0,
+
+
+      };
+
+
+    case ERROR(ACTION_TYPE.SEARCH_FSP_MAPPINGS):
+
+
+      return { ...state, fetchingFspMappings: false, errorFspMappings: formatServerError(action.payload) };
+
+
+    case REQUEST(ACTION_TYPE.FETCH_FSP_BAND_SET):
+      return { ...state, fetchingBandSet: true };
+    case SUCCESS(ACTION_TYPE.FETCH_FSP_BAND_SET):
+      return { ...state, fetchingBandSet: false, fspBandSet: action.payload.data.fspBandSet ?? [] };
+    case ERROR(ACTION_TYPE.FETCH_FSP_BAND_SET):
+      return { ...state, fetchingBandSet: false };
+    case SUCCESS(ACTION_TYPE.FETCH_KNOWN_FSPS):
+      return { ...state, knownFsps: action.payload.data.knownFsps ?? [] };
+    case SUCCESS(ACTION_TYPE.FETCH_UNMAPPED_FSPS):
+
+
+      return { ...state, unmappedFsps: action.payload.data.unmappedFsps ?? [] };
+
+
+    case REQUEST(ACTION_TYPE.SEARCH_WITHDRAWAL_CHARGES):
+
+      return { ...state, fetchingWithdrawalCharges: true, errorWithdrawalCharges: null };
+
+    case SUCCESS(ACTION_TYPE.SEARCH_WITHDRAWAL_CHARGES):
+
+      return {
+
+        ...state,
+
+        fetchingWithdrawalCharges: false,
+
+        fetchedWithdrawalCharges: true,
+
+        withdrawalCharges: parseData(action.payload.data.withdrawalCharge),
+
+        withdrawalChargesPageInfo: pageInfo(action.payload.data.withdrawalCharge),
+
+        withdrawalChargesTotalCount: action.payload.data.withdrawalCharge?.totalCount ?? 0,
+
+      };
+
+    case ERROR(ACTION_TYPE.SEARCH_WITHDRAWAL_CHARGES):
+
+      return { ...state, fetchingWithdrawalCharges: false, errorWithdrawalCharges: formatServerError(action.payload) };
+
+    case REQUEST(ACTION_TYPE.FETCH_FSP_COVERAGE):
+
+      return { ...state, fetchingCoverage: true };
+
+    case SUCCESS(ACTION_TYPE.FETCH_FSP_COVERAGE):
+
+      return { ...state, fetchingCoverage: false, fspCoverage: action.payload.data.fspCoverage ?? [] };
+
+    case ERROR(ACTION_TYPE.FETCH_FSP_COVERAGE):
+
+      return { ...state, fetchingCoverage: false, errorCoverage: formatServerError(action.payload) };
+
     case REQUEST(ACTION_TYPE.SEARCH_RETURN_FEEDBACK):
       return { ...state, fetchingReturnFeedback: true, fetchedReturnFeedback: false, returnFeedback: [], errorReturnFeedback: null };
     case SUCCESS(ACTION_TYPE.SEARCH_RETURN_FEEDBACK):
@@ -253,6 +377,73 @@ function reducer(state = STORE_STATE, action) {
       };
     case ERROR(ACTION_TYPE.SEARCH_RETURN_FEEDBACK):
       return { ...state, fetchingReturnFeedback: false, errorReturnFeedback: formatServerError(action.payload) };
+
+    // ─── Summary of e-Payment by FSP ────────────────────────────────────────
+    case REQUEST(ACTION_TYPE.FETCH_EPAYMENT_SUMMARY):
+      return {
+        ...state, fetchingEpaymentSummary: true, fetchedEpaymentSummary: false, errorEpaymentSummary: null,
+      };
+    case SUCCESS(ACTION_TYPE.FETCH_EPAYMENT_SUMMARY):
+      return {
+        ...state,
+        fetchingEpaymentSummary: false,
+        fetchedEpaymentSummary: true,
+        epaymentSummary: action.payload.data.epaymentSummaryByFsp ?? null,
+        errorEpaymentSummary: formatGraphQLError(action.payload),
+      };
+    case ERROR(ACTION_TYPE.FETCH_EPAYMENT_SUMMARY):
+      return { ...state, fetchingEpaymentSummary: false, errorEpaymentSummary: formatServerError(action.payload) };
+
+    case REQUEST(ACTION_TYPE.SEARCH_EPAYMENT_BENEFICIARY_ITEMS):
+      return {
+        ...state, fetchingBeneficiaryItems: true, fetchedBeneficiaryItems: false,
+        beneficiaryItems: [], beneficiaryItemsPageInfo: {}, beneficiaryItemsTotalCount: 0,
+        errorBeneficiaryItems: null,
+      };
+    case SUCCESS(ACTION_TYPE.SEARCH_EPAYMENT_BENEFICIARY_ITEMS):
+      return {
+        ...state,
+        fetchingBeneficiaryItems: false,
+        fetchedBeneficiaryItems: true,
+        beneficiaryItems: parseData(action.payload.data.epaymentBeneficiaryItems),
+        beneficiaryItemsPageInfo: pageInfo(action.payload.data.epaymentBeneficiaryItems),
+        beneficiaryItemsTotalCount: action.payload.data.epaymentBeneficiaryItems?.totalCount ?? 0,
+        errorBeneficiaryItems: formatGraphQLError(action.payload),
+      };
+    case ERROR(ACTION_TYPE.SEARCH_EPAYMENT_BENEFICIARY_ITEMS):
+      return {
+        ...state, fetchingBeneficiaryItems: false,
+        errorBeneficiaryItems: formatServerError(action.payload),
+      };
+
+    case REQUEST(ACTION_TYPE.SEARCH_EPAYMENT_FSP_ITEMS):
+      return {
+        ...state, fetchingFspItems: true, fetchedFspItems: false, fspItems: [],
+        fspItemsPageInfo: {}, fspItemsTotalCount: 0, errorFspItems: null,
+      };
+    case SUCCESS(ACTION_TYPE.SEARCH_EPAYMENT_FSP_ITEMS):
+      return {
+        ...state,
+        fetchingFspItems: false,
+        fetchedFspItems: true,
+        fspItems: parseData(action.payload.data.epaymentFspItems),
+        fspItemsPageInfo: pageInfo(action.payload.data.epaymentFspItems),
+        fspItemsTotalCount: action.payload.data.epaymentFspItems?.totalCount ?? 0,
+        errorFspItems: formatGraphQLError(action.payload),
+      };
+    case ERROR(ACTION_TYPE.SEARCH_EPAYMENT_FSP_ITEMS):
+      return { ...state, fetchingFspItems: false, errorFspItems: formatServerError(action.payload) };
+
+    case REQUEST(ACTION_TYPE.EXPORT_EPAYMENT_SUMMARY):
+      return { ...state, fetchingEpaymentSummaryExport: true, epaymentSummaryExport: null };
+    case SUCCESS(ACTION_TYPE.EXPORT_EPAYMENT_SUMMARY):
+      return {
+        ...state,
+        fetchingEpaymentSummaryExport: false,
+        epaymentSummaryExport: action.payload.data.epaymentSummaryByFspExport ?? null,
+      };
+    case ERROR(ACTION_TYPE.EXPORT_EPAYMENT_SUMMARY):
+      return { ...state, fetchingEpaymentSummaryExport: false };
 
     // ─── Payrolls (stepper picker) ──────────────────────────────────────────
     case REQUEST(ACTION_TYPE.SEARCH_PAYROLLS):
@@ -340,12 +531,10 @@ function reducer(state = STORE_STATE, action) {
       return dispatchMutationResp(state, MUTATION_SERVICE.VERIFICATION.RUN_BATCH, action);
     case SUCCESS(ACTION_TYPE.APPROVE_ACCOUNTS):
       return dispatchMutationResp(state, MUTATION_SERVICE.VERIFICATION.APPROVE, action);
-    case SUCCESS(ACTION_TYPE.RESUBMIT_FAILED_ACCOUNTS):
-      return dispatchMutationResp(state, MUTATION_SERVICE.VERIFICATION.RESUBMIT_FAILED, action);
-    case SUCCESS(ACTION_TYPE.ROUTE_TO_CORRECTION):
-      return dispatchMutationResp(state, MUTATION_SERVICE.VERIFICATION.ROUTE_CORRECTION, action);
     case SUCCESS(ACTION_TYPE.RUN_PRE_AUDIT):
       return dispatchMutationResp(state, MUTATION_SERVICE.PRE_AUDIT.RUN, action);
+    case SUCCESS(ACTION_TYPE.RUN_BATCH_PRE_AUDIT):
+      return dispatchMutationResp(state, MUTATION_SERVICE.PRE_AUDIT.RUN_BATCH, action);
     case SUCCESS(ACTION_TYPE.GENERATE_PAYLIST):
       return dispatchMutationResp(state, MUTATION_SERVICE.PAYLIST.GENERATE, action);
     case SUCCESS(ACTION_TYPE.APPROVE_PAYLIST):
