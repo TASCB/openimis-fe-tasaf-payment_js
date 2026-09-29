@@ -5,6 +5,7 @@ import { bindActionCreators } from 'redux';
 import { makeStyles } from '@material-ui/styles';
 import SendIcon from '@material-ui/icons/Send';
 import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
+import CodeIcon from '@material-ui/icons/Code';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import CancelIcon from '@material-ui/icons/Cancel';
 
@@ -39,7 +40,9 @@ import {
   runVerification,
   runBatchVerification,
   approvePaymentAccounts,
+  fetchVerificationPreview,
 } from '../actions';
+import VerificationPayloadDialog from '../components/VerificationPayloadDialog';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import StatusBadge from '../components/StatusBadge';
 import { defaultPageStyles } from '../utils/styles';
@@ -47,12 +50,35 @@ import { defaultPageStyles } from '../utils/styles';
 // 6 columns, so the shared equal-width rule applies.
 const useStyles = makeStyles(defaultPageStyles);
 
+// The list's filters as the Searcher sends them ('fspType: "BANK"', 'locationId: 12'),
+// mapped to runBatchVerification's inputs so "Verify all matching" sends that exact list.
+const BATCH_FILTER_KEYS = {
+  fspType: 'fspType',
+  fspName_Icontains: 'fspNameIcontains',
+  accountNumber_Icontains: 'accountNumberIcontains',
+  locationId: 'locationId',
+};
+const PAYLOAD_SAMPLE_ROWS = 20;
+
+function batchFiltersFrom(params) {
+  const out = {};
+  (params || []).forEach((p) => {
+    const m = /^(\w+):\s*"?(.*?)"?$/.exec(String(p).trim());
+    if (m && BATCH_FILTER_KEYS[m[1]] && m[2] !== '') out[BATCH_FILTER_KEYS[m[1]]] = m[2];
+  });
+  return out;
+}
+
 function VerificationResultsPage({
   fetchPaymentAccounts,
   fetchDashboardCounts,
   runVerification,
   runBatchVerification,
   approvePaymentAccounts,
+  fetchVerificationPreview,
+  fetchingVerificationPreview,
+  verificationPreview,
+  errorVerificationPreview,
   fetchingPaymentAccounts,
   fetchedPaymentAccounts,
   errorPaymentAccounts,
@@ -78,7 +104,20 @@ function VerificationResultsPage({
   const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [pendingAction, setPendingAction] = useState(null);
   const [location, setLocation] = useState(null);
+  const [batchFilters, setBatchFilters] = useState({});
+  const [showPayload, setShowPayload] = useState(false);
   const prevSubmittingMutationRef = useRef();
+  // Without a filter "all matching" would mean every pending account in the country.
+  const hasBatchFilter = Object.keys(batchFilters).length > 0;
+  // Human summary of what "Verify all matching" will send, for the confirm and the journal.
+  const describeBatchFilters = () => {
+    const parts = [];
+    if (batchFilters.fspType) parts.push(formatMessage(`paymentAccount.fspType.${batchFilters.fspType}`));
+    if (batchFilters.fspNameIcontains) parts.push(`FSP “${batchFilters.fspNameIcontains}”`);
+    if (batchFilters.accountNumberIcontains) parts.push(`account “${batchFilters.accountNumberIcontains}”`);
+    if (batchFilters.locationId) parts.push(location?.name || `area ${batchFilters.locationId}`);
+    return parts.join(' · ');
+  };
 
   const handleTabChange = (_, tab) => {
     setActiveTab(tab);
@@ -86,6 +125,7 @@ function VerificationResultsPage({
     // The remount below resets the Searcher's filters; clear the picker with them so it
     // never shows an area that is no longer being filtered on.
     setLocation(null);
+    setBatchFilters({});
   };
 
 
@@ -118,11 +158,10 @@ function VerificationResultsPage({
     } else if (type === 'batch') {
       coreConfirm(
         formatMessage('verificationResults.batch.confirm.title'),
-        location
-          ? formatMessageWithValues('verificationResults.batch.confirm.message', {
-            location: location.name,
-          })
-          : formatMessage('batch.needsArea'),
+        formatMessageWithValues('verificationResults.batch.confirm.message', {
+          count: paymentAccountsTotalCount ?? 0,
+          filters: describeBatchFilters(),
+        }),
       );
     } else if (type === 'approve' || type === 'reject') {
       coreConfirm(
@@ -139,12 +178,11 @@ function VerificationResultsPage({
       const uuids = accounts.map((a) => a.uuid);
       if (type === 'send' || type === 'resend') {
         runVerification(uuids, formatMessageWithValues('mutation.runVerificationLabel', { count: uuids.length }));
-      } else if (type === 'batch' && location) {
-        // Dispatches everything still PENDING in this PAA, not just the loaded page --
-        // the backend rebuilds the queryset from the filter and fans out over Celery.
+      } else if (type === 'batch' && hasBatchFilter) {
+        // Every matching account on all pages; the backend rebuilds the query from the filters.
         runBatchVerification(
-          { locationId: location?.id },
-          formatMessageWithValues('mutation.runBatchVerificationLabel', { location: location?.name ?? '' }),
+          batchFilters,
+          formatMessageWithValues('mutation.runBatchVerificationLabel', { filters: describeBatchFilters() }),
         );
       } else if (type === 'approve' || type === 'reject') {
         approvePaymentAccounts(
@@ -231,12 +269,16 @@ function VerificationResultsPage({
       authorized: unsentSelected.length > 0 && canVerify,
     },
     {
-      label: location
-        ? formatMessageWithValues('button.verifyAreaNamed', { location: location.name })
-        : formatMessage('button.verifyArea'),
+      label: formatMessage('button.showPayload'),
+      icon: <CodeIcon />,
+      onClick: () => { fetchVerificationPreview(batchFilters, PAYLOAD_SAMPLE_ROWS); setShowPayload(true); },
+      authorized: canVerify && hasBatchFilter,
+    },
+    {
+      label: formatMessageWithValues('button.verifyAllMatching', { count: paymentAccountsTotalCount ?? 0 }),
       icon: <VerifiedUserIcon />,
       onClick: () => setPendingAction({ type: 'batch', accounts: [] }),
-      authorized: !submittingMutation && canVerify,
+      authorized: !submittingMutation && canVerify && hasBatchFilter,
     },
   ];
 
@@ -270,7 +312,10 @@ function VerificationResultsPage({
             }}
           />
         )}
-        fetch={(params) => fetchPaymentAccounts([...(params || []), statusFilter])}
+        fetch={(params) => {
+          setBatchFilters(batchFiltersFrom(params));
+          return fetchPaymentAccounts([...(params || []), statusFilter]);
+        }}
         items={paymentAccounts}
         itemsPageInfo={paymentAccountsPageInfo}
         fetchingItems={fetchingPaymentAccounts}
@@ -289,6 +334,14 @@ function VerificationResultsPage({
         searcherActions={searcherActions}
         searcherActionsPosition="header-right"
       />
+      <VerificationPayloadDialog
+        open={showPayload}
+        onClose={() => setShowPayload(false)}
+        preview={verificationPreview}
+        fetching={fetchingVerificationPreview}
+        error={errorVerificationPreview}
+        sampleRows={PAYLOAD_SAMPLE_ROWS}
+      />
     </div>
   );
 }
@@ -301,6 +354,9 @@ const mapStateToProps = (state) => ({
   paymentAccountsPageInfo: state.tasafPayment.paymentAccountsPageInfo,
   paymentAccountsTotalCount: state.tasafPayment.paymentAccountsTotalCount,
   dashboardCounts: state.tasafPayment.dashboardCounts,
+  fetchingVerificationPreview: state.tasafPayment.fetchingVerificationPreview,
+  verificationPreview: state.tasafPayment.verificationPreview,
+  errorVerificationPreview: state.tasafPayment.errorVerificationPreview,
   submittingMutation: state.tasafPayment.submittingMutation,
   mutation: state.tasafPayment.mutation,
   confirmed: state.core.confirmed,
@@ -313,6 +369,7 @@ const mapDispatchToProps = (dispatch) => bindActionCreators(
     runVerification,
     runBatchVerification,
     approvePaymentAccounts,
+    fetchVerificationPreview,
     journalize,
     coreConfirm,
     clearConfirm,

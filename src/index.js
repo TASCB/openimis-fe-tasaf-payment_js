@@ -29,6 +29,7 @@ import {
   DashboardTabPanel, VerificationTabPanel, PreAuditTabPanel,
   GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel, ReportsTabPanel,
   ChargesTabLabel, ChargesTabPanel,
+  MuseTabLabel, MuseTabPanel,
 } from './components/workspace/WorkspaceTabs';
 
 import {
@@ -75,11 +76,11 @@ const DEFAULT_CONFIG = {
   // Consolidated workspace tabs (pipeline order). Other modules can inject tabs here.
   [TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY]: [
     DashboardTabLabel, VerificationTabLabel, PreAuditTabLabel,
-    GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel, ReportsTabLabel, ChargesTabLabel,
+    GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel, ReportsTabLabel, ChargesTabLabel, MuseTabLabel,
   ],
   [TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY]: [
     DashboardTabPanel, VerificationTabPanel, PreAuditTabPanel,
-    GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel, ReportsTabPanel, ChargesTabPanel,
+    GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel, ReportsTabPanel, ChargesTabPanel, MuseTabPanel,
   ],
 
   'core.Router': [

@@ -7,6 +7,7 @@ import {
   graphql,
 } from '@openimis/fe-core';
 import { ACTION_TYPE } from './reducer';
+import { ERROR, REQUEST, SUCCESS } from './utils/action-type';
 
 // ─── Projections ─────────────────────────────────────────────────────────────
 
@@ -51,6 +52,8 @@ export const PAYLIST_PROJECTION = () => [
   'approvedAt',
   'submittedAt',
   'museBatchReference',
+  'museStatusDesc',
+  'museStatusAt',
   'itemCount',
   'batchGroup',
   'batchSequence',
@@ -66,7 +69,6 @@ export const PAYLIST_ITEM_PROJECTION = () => [
   'status',
   'museReference',
   'returnReason',
-  'finalStatus',
   'paymentAccount { id uuid accountNumber fspType fspName }',
   'benefitConsumption { id }',
 ];
@@ -93,6 +95,11 @@ export const PAYROLL_PICKER_PROJECTION = () => [
 export const PAYLIST_EXPORT_PROJECTION = () => [
   'id',
   'uuid',
+  'batchType',
+  'destination',
+  'status',
+  'museBatchReference',
+  'museStatusDesc',
   'payroll { id name paymentMethod '
     + 'paymentCycle { code startDate endDate } '
     + 'paymentPoint { id name location { id name parent { id name parent { id name } } } } '
@@ -262,6 +269,71 @@ export function saveFspCharges(fspCode, bands, effectiveFrom, clientMutationLabe
   { clientMutationId: mutation.clientMutationId, clientMutationLabel });
 }
 
+// ─── FSP providers and MUSE settings ─────────────────────────────────────────
+
+export function fetchFspProviders() {
+  return graphql(
+    'query { fspProviders { uuid fspCode bankName fspType bic names hasBands accounts missing pending } }',
+    ACTION_TYPE.FETCH_FSP_PROVIDERS,
+  );
+}
+
+export function fetchMuseSettings() {
+  return graphql(
+    `query {
+      museSettings { institutionCode payerAccount subBudgetClass unappliedSubBudgetClass paymentDesc
+        isStp glAccounts environment dateUpdated }
+      museReadiness { serverEnvironment settingsEnvironment environmentMismatch }
+    }`,
+    ACTION_TYPE.FETCH_MUSE_SETTINGS,
+  );
+}
+
+function mutate(name, args, actionType, clientMutationLabel) {
+  const mutation = formatMutation(name, args, clientMutationLabel);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(actionType), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
+}
+
+export function saveFspProfile(p, clientMutationLabel) {
+  const q = (v) => `"${formatGQLString(v ?? '')}"`;
+  return mutate('saveFspProfile',
+    `fspCode: ${q(p.fspCode)}, bankName: ${q(p.bankName)}, fspType: ${q(p.fspType)}, bic: ${q(p.bic)}`,
+    ACTION_TYPE.SAVE_FSP_PROFILE, clientMutationLabel);
+}
+
+export function saveMuseSettings(s, clientMutationLabel) {
+  const q = (v) => `"${formatGQLString(v ?? '')}"`;
+  const blank = (v) => v === '' || v === null || v === undefined;
+  const args = [
+    `institutionCode: ${q(s.institutionCode)}`,
+    `payerAccount: ${q(s.payerAccount)}`,
+    ...(blank(s.subBudgetClass) ? [] : [`subBudgetClass: ${parseInt(s.subBudgetClass, 10)}`]),
+    ...(blank(s.unappliedSubBudgetClass) ? [] : [`unappliedSubBudgetClass: ${parseInt(s.unappliedSubBudgetClass, 10)}`]),
+    `paymentDesc: ${q(s.paymentDesc)}`,
+    `isStp: ${!!s.isStp}`,
+    `glAccounts: ${q(JSON.stringify(s.glAccounts || []))}`,
+  ].join(', ');
+  return mutate('saveMuseSettings', args, ACTION_TYPE.SAVE_MUSE_SETTINGS, clientMutationLabel);
+}
+
+export function fetchMuseChanges() {
+  return graphql('query { museChangeRequests }', ACTION_TYPE.FETCH_MUSE_CHANGES);
+}
+
+function museChangeMutation(name, changeId, comment, clientMutationLabel) {
+  const args = [`changeId: "${changeId}"`]
+    .concat(comment ? [`comment: "${formatGQLString(comment)}"`] : []).join(', ');
+  return mutate(name, args, ACTION_TYPE.MUSE_CHANGE_DECISION, clientMutationLabel);
+}
+
+export const approveMuseChange = (id, comment, label) => museChangeMutation('approveMuseChange', id, comment, label);
+export const rejectMuseChange = (id, comment, label) => museChangeMutation('rejectMuseChange', id, comment, label);
+export const cancelMuseChange = (id, comment, label) => museChangeMutation('cancelMuseChange', id, comment, label);
+
 export function fetchKnownFsps() {
   return graphql('query { knownFsps { fspCode fspName onAccounts hasBands } }',
     ACTION_TYPE.FETCH_KNOWN_FSPS);
@@ -291,6 +363,12 @@ export function deleteFspMappings(uuids, clientMutationLabel) {
 
 // ─── Payroll query (read-only, generation stepper) ─────────────────────────────
 
+export function fetchGenerationPreview(payrollId, batchType, destination) {
+  const args = [`payrollId: "${payrollId}"`, `batchType: "${batchType}"`]
+    .concat(destination ? [`destination: "${destination}"`] : []).join(', ');
+  return graphql(`{ paylistGenerationPreview(${args}) }`, ACTION_TYPE.GENERATION_PREVIEW);
+}
+
 export function fetchPayrolls(params = []) {
   const payload = formatPageQueryWithCount(
     'payroll',
@@ -319,7 +397,11 @@ export function createPaymentAccount(account, clientMutationLabel) {
     formatPaymentAccountGQL(account),
     clientMutationLabel,
   );
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.CREATE_PAYMENT_ACCOUNT]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.CREATE_PAYMENT_ACCOUNT), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.CREATE_PAYMENT_ACCOUNT, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 export function updatePaymentAccount(account, clientMutationLabel) {
@@ -328,7 +410,11 @@ export function updatePaymentAccount(account, clientMutationLabel) {
     formatPaymentAccountGQL(account),
     clientMutationLabel,
   );
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.UPDATE_PAYMENT_ACCOUNT]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.UPDATE_PAYMENT_ACCOUNT), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.UPDATE_PAYMENT_ACCOUNT, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 export function deletePaymentAccount(account, clientMutationLabel) {
@@ -337,7 +423,11 @@ export function deletePaymentAccount(account, clientMutationLabel) {
     `ids: ["${account.uuid}"]`,
     clientMutationLabel,
   );
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.DELETE_PAYMENT_ACCOUNT]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.DELETE_PAYMENT_ACCOUNT), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.DELETE_PAYMENT_ACCOUNT, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 // ─── Verification mutations ───────────────────────────────────────────────────
@@ -345,18 +435,30 @@ export function deletePaymentAccount(account, clientMutationLabel) {
 export function runVerification(accountUuids, clientMutationLabel) {
   const ids = accountUuids.map((id) => `"${id}"`).join(', ');
   const mutation = formatMutation('runVerification', `accountUuids: [${ids}]`, clientMutationLabel);
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.RUN_VERIFICATION]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.RUN_VERIFICATION), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.RUN_VERIFICATION, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 export function runBatchVerification(filters, clientMutationLabel) {
   const parts = [];
   if (filters.benefitPlanId) parts.push(`benefitPlanId: "${filters.benefitPlanId}"`);
   if (filters.fspType) parts.push(`fspType: "${filters.fspType}"`);
+  if (filters.fspNameIcontains) parts.push(`fspNameIcontains: "${formatGQLString(filters.fspNameIcontains)}"`);
+  if (filters.accountNumberIcontains) {
+    parts.push(`accountNumberIcontains: "${formatGQLString(filters.accountNumberIcontains)}"`);
+  }
   // Location is the legacy integer PK, so unquoted.
   if (filters.locationId) parts.push(`locationId: ${filters.locationId}`);
   if (filters.rerun !== undefined) parts.push(`rerun: ${filters.rerun}`);
   const mutation = formatMutation('runBatchVerification', parts.join(', '), clientMutationLabel);
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.RUN_BATCH_VERIFICATION]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.RUN_BATCH_VERIFICATION), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.RUN_BATCH_VERIFICATION, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 export function approvePaymentAccounts(accountUuids, approved, reviewNotes, clientMutationLabel) {
@@ -366,7 +468,11 @@ export function approvePaymentAccounts(accountUuids, approved, reviewNotes, clie
     `accountUuids: [${ids}], approved: ${approved}${reviewNotes ? `, reviewNotes: "${formatGQLString(reviewNotes)}"` : ''}`,
     clientMutationLabel,
   );
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.APPROVE_ACCOUNTS]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.APPROVE_ACCOUNTS), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.APPROVE_ACCOUNTS, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 // ─── Pre-audit mutations ──────────────────────────────────────────────────────
@@ -379,16 +485,43 @@ export function runBatchPreAudit(filters, clientMutationLabel) {
   if (filters.locationId) parts.push(`locationId: ${filters.locationId}`);
   if (filters.rerun !== undefined) parts.push(`rerun: ${filters.rerun}`);
   const mutation = formatMutation('runBatchPreAudit', parts.join(', '), clientMutationLabel);
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.RUN_BATCH_PRE_AUDIT]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.RUN_BATCH_PRE_AUDIT), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.RUN_BATCH_PRE_AUDIT, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 export function runPreAudit(accountUuids, clientMutationLabel) {
   const ids = accountUuids.map((id) => `"${id}"`).join(', ');
   const mutation = formatMutation('runPreAudit', `accountUuids: [${ids}]`, clientMutationLabel);
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.RUN_PRE_AUDIT]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.RUN_PRE_AUDIT), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.RUN_PRE_AUDIT, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
+
+export function fetchMusePaylistPreview(paylistUuid, sampleRows = 20) {
+  return graphql(
+    `{ paylistMusePreview(paylistUuid: "${paylistUuid}", sampleRows: ${sampleRows}) }`,
+    ACTION_TYPE.MUSE_PAYLIST_PREVIEW,
+  );
+}
+
+// Read-only: the GovESB messages "Verify all matching" would publish for these filters.
+export function fetchVerificationPreview(filters, sampleRows = 20) {
+  const args = [`sampleRows: ${sampleRows}`];
+  if (filters.fspType) args.push(`fspType: "${filters.fspType}"`);
+  if (filters.fspNameIcontains) args.push(`fspNameIcontains: "${formatGQLString(filters.fspNameIcontains)}"`);
+  if (filters.accountNumberIcontains) {
+    args.push(`accountNumberIcontains: "${formatGQLString(filters.accountNumberIcontains)}"`);
+  }
+  if (filters.locationId) args.push(`locationId: ${filters.locationId}`);
+  return graphql(`{ verificationBatchPreview(${args.join(', ')}) }`, ACTION_TYPE.VERIFICATION_PREVIEW);
+}
 
 export function fetchDashboardCounts() {
   // Single backend-aggregated summary: per-status counts for accounts, plus
@@ -409,29 +542,39 @@ export function fetchDashboardCounts() {
 // ─── Paylist mutations ────────────────────────────────────────────────────────
 
 export function generatePaylist(
-  payrollId, batchType, paymentCycleId, locationId, destination, clientMutationLabel,
+  payrollId, batchType, paymentCycleId, destination, clientMutationLabel,
 ) {
-  // payrollId / paymentCycleId are UUIDs and destination is a String, so all quoted;
-  // locationId is an integer PK.
+  // payrollId / paymentCycleId are UUIDs and destination is a String, so all quoted.
   const parts = [
     `payrollId: "${payrollId}"`,
     `batchType: "${batchType}"`,
   ];
   if (paymentCycleId) parts.push(`paymentCycleId: "${paymentCycleId}"`);
-  if (locationId) parts.push(`locationId: ${locationId}`);
   if (destination) parts.push(`destination: "${destination}"`);
   const mutation = formatMutation('generatePaylist', parts.join(', '), clientMutationLabel);
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.GENERATE_PAYLIST]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.GENERATE_PAYLIST), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.GENERATE_PAYLIST, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 export function approvePaylist(paylistUuid, clientMutationLabel) {
   const mutation = formatMutation('approvePaylist', `paylistUuid: "${paylistUuid}"`, clientMutationLabel);
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.APPROVE_PAYLIST]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.APPROVE_PAYLIST), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.APPROVE_PAYLIST, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 export function submitPaylist(paylistUuid, clientMutationLabel) {
   const mutation = formatMutation('submitPaylist', `paylistUuid: "${paylistUuid}"`, clientMutationLabel);
-  return graphql(mutation.payload, [ACTION_TYPE.MUTATION, ACTION_TYPE.SUBMIT_PAYLIST]);
+  return graphql(
+    mutation.payload,
+    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.SUBMIT_PAYLIST), ERROR(ACTION_TYPE.MUTATION)],
+    { actionType: ACTION_TYPE.SUBMIT_PAYLIST, clientMutationId: mutation.clientMutationId, clientMutationLabel },
+  );
 }
 
 // ─── Reports (read-only, auditor tab) ──────────────────────────────────────────

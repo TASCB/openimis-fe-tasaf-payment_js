@@ -172,8 +172,6 @@ function PreAuditPage({
       authorized: canAct,
     },
     {
-      // Area-scoped -- see the note on the verification tab for why this is a labelled
-      // button beside the Area (PAA) filter and not a Fab.
       label: location
         ? formatMessageWithValues('button.preAuditAreaNamed', { location: location.name })
         : formatMessage('button.preAuditArea'),

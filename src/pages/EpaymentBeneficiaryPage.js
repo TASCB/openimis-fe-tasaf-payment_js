@@ -33,7 +33,7 @@ const useStyles = makeStyles((theme) => ({
 // Status chips are monochrome: a status is a state, not an alarm. Anything needing
 // action is surfaced by the tab it sits in and by the Needs Attention KPI.
 const ITEM_STATUS_COLORS = {
-  PROCESSED: '#9e9e9e', RETURNED: '#9e9e9e', UNAPPLIED: '#9e9e9e', PENDING: '#9e9e9e',
+  PROCESSED: '#9e9e9e', UNAPPLIED: '#9e9e9e', PENDING: '#9e9e9e',
 };
 
 const money = (v) => (Number(v) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });

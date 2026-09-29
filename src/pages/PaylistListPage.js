@@ -4,6 +4,7 @@ import { bindActionCreators } from 'redux';
 import { useHistory } from 'react-router-dom';
 
 import { makeStyles } from '@material-ui/styles';
+import { Typography } from '@material-ui/core';
 
 import {
   Helmet,
@@ -29,11 +30,15 @@ const useStyles = makeStyles((theme) => defaultPageStyles(theme));
 // Status chips are monochrome: a status is a state, not an alarm. Anything needing
 // action is surfaced by the tab it sits in and by the Needs Attention KPI.
 const STATUS_COLORS = {
-  DRAFT:            '#9e9e9e',
   PENDING_APPROVAL: '#9e9e9e',
   APPROVED:         '#9e9e9e',
   SUBMITTED:        '#9e9e9e',
+  RECEIVED:         '#9e9e9e',
+  ACCEPTED:         '#9e9e9e',
+  SENT_TO_BANK:     '#9e9e9e',
+  REJECTED:         '#9e9e9e',
   CLOSED:           '#9e9e9e',
+  REJECTED_AT_APPROVAL: '#9e9e9e',
 };
 
 function PaylistListPage({
@@ -68,10 +73,15 @@ function PaylistListPage({
       ? formatMessageWithValues('paylist.batch.label', { seq: row.batchSequence, total: row.batchTotal })
       : '-'),
     (row) => (
-      <StatusChip
-        label={formatMessage(`paylist.status.${row.status}`)}
-        color={STATUS_COLORS[row.status]}
-      />
+      <>
+        <StatusChip
+          label={formatMessage(`paylist.status.${row.status}`)}
+          color={STATUS_COLORS[row.status]}
+        />
+        {row.museStatusDesc && (
+          <Typography variant="caption" color="textSecondary" display="block">{row.museStatusDesc}</Typography>
+        )}
+      </>
     ),
     (row) => row.itemCount ?? '-',
     (row) => (

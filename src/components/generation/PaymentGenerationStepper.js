@@ -5,17 +5,17 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import {
-  Box, Grid, Button, Typography, Divider,
-  Stepper, Step, StepLabel,
+  Box, Grid, Button, Typography, Divider, LinearProgress,
+  Stepper, Step, StepLabel, Table, TableBody, TableCell, TableHead, TableRow,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
+import { alpha } from '@material-ui/core/styles/colorManipulator';
 import PlaylistAddIcon from '@material-ui/icons/PlaylistAdd';
 
 import {
   decodeId,
   Block,
   SelectInput,
-  TextInput,
   ProgressOrError,
   useModulesManager,
   useTranslations,
@@ -24,13 +24,12 @@ import {
 
 import {
   MODULE_NAME,
-  BATCH_TYPE,
   BATCH_TYPE_LIST,
   DESTINATION,
   DESTINATION_LIST,
   PAYROLL_STATUS_APPROVED,
 } from '../../constants';
-import { fetchPayrolls, generatePaylist } from '../../actions';
+import { fetchPayrolls, generatePaylist, fetchGenerationPreview } from '../../actions';
 
 const useStyles = makeStyles((theme) => ({
   root: { padding: theme.spacing(2) },
@@ -46,7 +45,29 @@ const useStyles = makeStyles((theme) => ({
   },
   reviewRow: { padding: theme.spacing(0.5, 0) },
   reviewLabel: { color: theme.palette.text.secondary },
+  sectionTitle: { fontWeight: 600, margin: theme.spacing(2, 0, 1) },
+  included: {
+    padding: theme.spacing(1.5, 2), borderRadius: 10, fontWeight: 600,
+    color: theme.palette.success.dark, backgroundColor: alpha(theme.palette.success.main, 0.08),
+  },
+  nothing: {
+    padding: theme.spacing(1.5, 2), borderRadius: 10, fontWeight: 600,
+    color: theme.palette.error.dark, backgroundColor: alpha(theme.palette.error.main, 0.06),
+  },
+  warning: {
+    padding: theme.spacing(1.25, 2), borderRadius: 10, marginBottom: theme.spacing(1), fontSize: '0.875rem',
+    color: theme.palette.warning.dark, backgroundColor: alpha(theme.palette.warning.main, 0.1),
+  },
+  fspTable: { maxWidth: 520 },
+  reasonRow: { display: 'flex', justifyContent: 'space-between', maxWidth: 520, padding: theme.spacing(0.5, 0) },
+  reasonHint: { color: theme.palette.text.secondary, fontSize: '0.8rem' },
+  infoLine: { color: theme.palette.grey[600], fontSize: '0.8125rem', marginTop: theme.spacing(2) },
 }));
+
+// Households nobody will pay until someone fixes their account, vs. ones simply not in this batch.
+const ATTENTION_REASONS = ['NOT_VERIFIED', 'PRE_AUDIT_NOT_PASSED', 'INVALID_MOBILE_NUMBER', 'NO_ACCOUNT'];
+const INFO_REASONS = ['OTHER_CHANNEL', 'ALREADY_ON_PAYLIST'];
+const money = (v) => `TZS ${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
 function PaymentGenerationStepper({
   payrolls,
@@ -54,20 +75,23 @@ function PaymentGenerationStepper({
   errorPayrolls,
   fetchPayrolls,
   generatePaylist,
+  fetchGenerationPreview,
+  generationPreview,
+  fetchingGenerationPreview,
+  errorGenerationPreview,
   submittingMutation,
   mutation,
   journalize,
 }) {
   const classes = useStyles();
   const modulesManager = useModulesManager();
-  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
+  const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const prevSubmittingRef = useRef();
 
   const [activeStep, setActiveStep] = useState(0);
   const [payrollUuid, setPayrollUuid] = useState(null);
   const [batchType, setBatchType] = useState(null);
   const [destination, setDestination] = useState(DESTINATION.MUSE);
-  const [locationId, setLocationId] = useState('');
 
   useEffect(() => { fetchPayrolls([`status: ${PAYROLL_STATUS_APPROVED}`]); }, []);
 
@@ -78,13 +102,11 @@ function PaymentGenerationStepper({
       setPayrollUuid(null);
       setBatchType(null);
       setDestination(DESTINATION.MUSE);
-      setLocationId('');
     }
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingRef.current = submittingMutation; });
 
   const selectedPayroll = payrolls.find((p) => p.uuid === payrollUuid) || null;
-  const isMixedBatch = batchType === BATCH_TYPE.MIXED;
 
   const steps = [
     formatMessage('generation.step.payroll'),
@@ -93,16 +115,17 @@ function PaymentGenerationStepper({
     formatMessage('generation.step.generate'),
   ];
 
+  useEffect(() => {
+    if (activeStep === 2 && payrollUuid && batchType) fetchGenerationPreview(payrollUuid, batchType, destination);
+  }, [activeStep]);
+
   const canLeaveStep = (step) => {
     if (step === 0) return !!payrollUuid;
     if (step === 1) return !!batchType && !!destination;
+    if (step === 2) return !fetchingGenerationPreview && !!generationPreview?.success && generationPreview.included > 0;
     return true;
   };
 
-  const handleBatchTypeChange = (value) => {
-    setBatchType(value);
-    if (value !== BATCH_TYPE.MIXED) setLocationId('');
-  };
 
   const handleGenerate = () => {
     const paymentCycleUuid = selectedPayroll?.paymentCycle?.id
@@ -112,7 +135,6 @@ function PaymentGenerationStepper({
       payrollUuid,
       batchType,
       paymentCycleUuid,
-      locationId ? parseInt(locationId, 10) : null,
       destination,
       formatMessage('mutation.generatePaylistLabel'),
     );
@@ -175,7 +197,7 @@ function PaymentGenerationStepper({
                     ...BATCH_TYPE_LIST.map((t) => ({ value: t, label: formatMessage(`paylist.batchType.${t}`) })),
                   ]}
                   value={batchType}
-                  onChange={handleBatchTypeChange}
+                  onChange={setBatchType}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -189,21 +211,6 @@ function PaymentGenerationStepper({
                   }))}
                   value={destination}
                   onChange={setDestination}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextInput
-                  module={MODULE_NAME}
-                  label="batchGeneration.locationId"
-                  value={locationId}
-                  onChange={setLocationId}
-                  type="number"
-                  readOnly={!isMixedBatch}
-                  helperText={
-                    isMixedBatch
-                      ? formatMessage('batchGeneration.locationId.helper')
-                      : formatMessage('batchGeneration.locationId.disabledHelper')
-                  }
                 />
               </Grid>
             </Grid>
@@ -220,7 +227,95 @@ function PaymentGenerationStepper({
             {reviewRow('generation.review.cycle', selectedPayroll?.paymentCycle?.code)}
             {reviewRow('batchGeneration.batchType', batchType ? formatMessage(`paylist.batchType.${batchType}`) : null)}
             {reviewRow('batchGeneration.destination', destination ? formatMessage(`paylist.destination.${destination}`) : null)}
-            {isMixedBatch && reviewRow('batchGeneration.locationId', locationId)}
+            <Divider className={classes.divider} />
+            {fetchingGenerationPreview && <LinearProgress />}
+            {!!errorGenerationPreview && (
+              <Typography color="error">{formatMessage(errorGenerationPreview.detail || errorGenerationPreview.message || '')}</Typography>
+            )}
+            {generationPreview && !generationPreview.success && (
+              <div className={classes.nothing}>{formatMessage(generationPreview.error || 'generation.preview.failed')}</div>
+            )}
+            {generationPreview?.success && (
+              <>
+                {generationPreview.included > 0 ? (
+                  <div className={classes.included}>
+                    {formatMessageWithValues('generation.preview.included', {
+                      count: generationPreview.included, amount: money(generationPreview.gross_total),
+                    })}
+                  </div>
+                ) : (
+                  <div className={classes.nothing}>{formatMessage('generation.preview.nothing')}</div>
+                )}
+
+                {(generationPreview.warnings || []).length > 0 && (
+                  <>
+                    <Typography variant="body2" className={classes.sectionTitle}>{formatMessage('generation.preview.warnings')}</Typography>
+                    {generationPreview.warnings.map((w) => (
+                      <div key={`${w.code}-${w.fsp_code}`} className={classes.warning}>
+                        {formatMessageWithValues(
+                          w.code === 'FSP_MISSING_MUSE_DETAILS' && w.awaiting_muse
+                            ? 'generation.preview.warning.AWAITING_MUSE' : `generation.preview.warning.${w.code}`,
+                          { fsp: w.fsp_code, count: w.payments },
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {(generationPreview.per_fsp || []).length > 0 && (
+                  <>
+                    <Typography variant="body2" className={classes.sectionTitle}>{formatMessage('generation.preview.perFsp')}</Typography>
+                    <Table size="small" className={classes.fspTable}>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>{formatMessage('generation.preview.col.fsp')}</TableCell>
+                          <TableCell align="right">{formatMessage('generation.preview.col.payments')}</TableCell>
+                          <TableCell align="right">{formatMessage('generation.preview.col.amount')}</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {generationPreview.per_fsp.map((r) => (
+                          <TableRow key={r.fsp_code}>
+                            <TableCell>{r.fsp_code}</TableCell>
+                            <TableCell align="right">{r.payments}</TableCell>
+                            <TableCell align="right">{money(r.gross)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
+
+                {ATTENTION_REASONS.some((r) => generationPreview.excluded?.[r]) && (
+                  <>
+                    <Typography variant="body2" className={classes.sectionTitle}>
+                      {formatMessageWithValues('generation.preview.attention', {
+                        count: ATTENTION_REASONS.reduce((n, r) => n + (generationPreview.excluded[r] || 0), 0),
+                      })}
+                    </Typography>
+                    {ATTENTION_REASONS.filter((r) => generationPreview.excluded[r]).map((r) => (
+                      <div key={r} className={classes.reasonRow}>
+                        <div>
+                          <Typography variant="body2">{formatMessage(`generation.preview.reason.${r}`)}</Typography>
+                          <Typography className={classes.reasonHint}>{formatMessage(`generation.preview.reason.${r}.hint`)}</Typography>
+                        </div>
+                        <Typography variant="body2">{generationPreview.excluded[r]}</Typography>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {INFO_REASONS.some((r) => generationPreview.excluded?.[r]) && (
+                  <Typography className={classes.infoLine}>
+                    {formatMessage('generation.preview.notInBatch')}
+                    {' '}
+                    {INFO_REASONS.filter((r) => generationPreview.excluded[r])
+                      .map((r) => formatMessageWithValues(`generation.preview.info.${r}`, { count: generationPreview.excluded[r] }))
+                      .join(' · ')}
+                  </Typography>
+                )}
+              </>
+            )}
           </Block>
         )}
 
@@ -276,10 +371,13 @@ const mapStateToProps = (state) => ({
   errorPayrolls: state.tasafPayment.errorPayrolls,
   submittingMutation: state.tasafPayment.submittingMutation,
   mutation: state.tasafPayment.mutation,
+  generationPreview: state.tasafPayment.generationPreview,
+  fetchingGenerationPreview: state.tasafPayment.fetchingGenerationPreview,
+  errorGenerationPreview: state.tasafPayment.errorGenerationPreview,
 });
 
 const mapDispatchToProps = (dispatch) => bindActionCreators(
-  { fetchPayrolls, generatePaylist, journalize }, dispatch,
+  { fetchPayrolls, generatePaylist, fetchGenerationPreview, journalize }, dispatch,
 );
 
 export default connect(mapStateToProps, mapDispatchToProps)(PaymentGenerationStepper);

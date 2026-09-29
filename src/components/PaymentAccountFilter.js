@@ -58,6 +58,9 @@ function PaymentAccountFilter({
   location = null,
 }) {
   const classes = useStyles();
+  const fieldCount = 3 + (showStatusFilter && fixedVerificationStatus === null ? 1 : 0)
+    + (showPreAuditFilter ? 1 : 0);
+  const md = Math.floor(12 / fieldCount);
   const modulesManager = useModulesManager();
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
 
@@ -96,7 +99,7 @@ function PaymentAccountFilter({
 
   return (
     <Grid container className={classes.form} alignItems="center">
-      <Grid item xs={12} sm={6} md={4} className={classes.item}>
+      <Grid item xs={12} sm={6} md={md} className={classes.item}>
         <TextInput
           module={MODULE_NAME}
           label="filter.accountNumber"
@@ -104,7 +107,7 @@ function PaymentAccountFilter({
           onChange={onChangeText('accountNumber_Icontains')}
         />
       </Grid>
-      <Grid item xs={12} sm={6} md={4} className={classes.item}>
+      <Grid item xs={12} sm={6} md={md} className={classes.item}>
         <SelectInput
           module={MODULE_NAME}
           label="filter.fspType"
@@ -115,7 +118,7 @@ function PaymentAccountFilter({
           ])}
         />
       </Grid>
-      <Grid item xs={12} sm={6} md={4} className={classes.item}>
+      <Grid item xs={12} sm={6} md={md} className={classes.item}>
         <TextInput
           module={MODULE_NAME}
           label="filter.fspName"
@@ -124,7 +127,7 @@ function PaymentAccountFilter({
         />
       </Grid>
       {showStatusFilter && fixedVerificationStatus === null && (
-        <Grid item xs={12} sm={6} md={4} className={classes.item}>
+        <Grid item xs={12} sm={6} md={md} className={classes.item}>
           <SelectInput
             module={MODULE_NAME}
             label="filter.verificationStatus"
@@ -141,7 +144,7 @@ function PaymentAccountFilter({
         </Grid>
       )}
       {showPreAuditFilter && (
-        <Grid item xs={12} sm={6} md={4} className={classes.item}>
+        <Grid item xs={12} sm={6} md={md} className={classes.item}>
           <SelectInput
             module={MODULE_NAME}
             label="filter.preAuditStatus"

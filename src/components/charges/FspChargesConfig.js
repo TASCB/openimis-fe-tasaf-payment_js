@@ -22,7 +22,7 @@ const useStyles = makeStyles((theme) => ({
   root: { padding: theme.spacing(2) },
   actions: { marginTop: theme.spacing(2) },
   hint: { color: theme.palette.text.secondary, marginBottom: theme.spacing(1) },
-  narrow: { width: 180 },
+  bands: { '& th:last-child, & td:last-child': { width: 56 } },
   chip: { marginRight: theme.spacing(1), marginBottom: theme.spacing(0.5) },
 }));
 
@@ -175,7 +175,7 @@ function FspChargesConfig() {
 
       {!!fsp && !state?.fetchingBandSet && (
         <>
-          <Table size="small">
+          <Table size="small" className={classes.bands}>
             <TableHead>
               <TableRow>
                 <TableCell>{t('charges.lowerAmount')}</TableCell>
@@ -191,7 +191,7 @@ function FspChargesConfig() {
                     <TableCell key={field}>
                       <TextField
                         type="number"
-                        className={classes.narrow}
+                        fullWidth
                         value={r[field]}
                         disabled={!canManage}
                         onChange={(e) => setCell(idx, field, e.target.value)}

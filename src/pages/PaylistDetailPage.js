@@ -1,16 +1,21 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
-import { Paper, Grid, Button, Box, Typography } from '@material-ui/core';
+import {
+  Paper, Button, IconButton, Tooltip, Typography,
+} from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import SendIcon from '@material-ui/icons/Send';
 import PictureAsPdfIcon from '@material-ui/icons/PictureAsPdf';
+import CodeIcon from '@material-ui/icons/Code';
+import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 
 import {
   Helmet,
   Searcher,
+  useHistory,
   useModulesManager,
   useTranslations,
   coreConfirm,
@@ -29,23 +34,43 @@ import {
   DEFAULT_PAGE_SIZE,
   ROWS_PER_PAGE_OPTIONS,
   PAYLIST_STATUS,
+  WS_TAB_PAYLISTS,
 } from '../constants';
-import { fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistForExport } from '../actions';
+import {
+  fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistForExport, fetchMusePaylistPreview,
+} from '../actions';
 import StatusChip from '../components/StatusChip';
+import MusePayloadDialog from '../components/MusePayloadDialog';
 import { defaultPageStyles } from '../utils/styles';
 
 const useStyles = makeStyles((theme) => ({
   ...defaultPageStyles(theme),
-  paper: theme.paper.paper,
-  header: { padding: theme.spacing(2), borderBottom: `1px solid ${theme.palette.divider}` },
-  actions: { display: 'flex', gap: theme.spacing(1), padding: theme.spacing(1, 2) },
+  paper: { ...theme.paper.paper, margin: 0, marginBottom: theme.spacing(2) },
+  paperHeader: {
+    ...theme.paper.header,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: theme.spacing(1),
+    paddingRight: theme.spacing(1),
+  },
+  paperHeaderAction: theme.paper.action,
+  titleRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing(1) },
+  subtitle: { color: theme.palette.grey[600] },
+  museReply: { color: theme.palette.grey[700], padding: theme.spacing(1, 2) },
+  actions: {
+    display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto',
+  },
 }));
+
+const PAYLIST_STATUS_COLOR = '#9e9e9e';
+const SUBMITTABLE = [PAYLIST_STATUS.APPROVED, PAYLIST_STATUS.REJECTED];
 
 // Status chips are monochrome: a status is a state, not an alarm.
 const ITEM_STATUS_COLORS = {
   PENDING:   '#9e9e9e',
   PROCESSED: '#9e9e9e',
-  RETURNED:  '#9e9e9e',
   UNAPPLIED: '#9e9e9e',
 };
 
@@ -55,6 +80,10 @@ function PaylistDetailPage({
   approvePaylist,
   submitPaylist,
   fetchPaylistForExport,
+  fetchMusePaylistPreview,
+  fetchingMusePreview,
+  musePreview,
+  errorMusePreview,
   fetchingPaylistItems,
   fetchedPaylistItems,
   errorPaylistItems,
@@ -71,6 +100,7 @@ function PaylistDetailPage({
   journalize,
 }) {
   const classes = useStyles();
+  const history = useHistory();
   const modulesManager = useModulesManager();
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
@@ -78,9 +108,13 @@ function PaylistDetailPage({
   const paylistUuid = match?.params?.paylist_uuid;
   const prevSubmittingMutationRef = useRef();
   const pendingActionRef = useRef(null);
+  const [showMusePreview, setShowMusePreview] = useState(false);
 
   useEffect(() => {
-    if (prevSubmittingMutationRef.current && !submittingMutation) journalize(mutation);
+    if (prevSubmittingMutationRef.current && !submittingMutation) {
+      journalize(mutation);
+      if (paylistUuid) fetchPaylistForExport(paylistUuid);
+    }
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
 
@@ -90,6 +124,12 @@ function PaylistDetailPage({
   }, [paylistUuid]);
 
   const exportPayroll = paylistExport?.payroll;
+  const status = paylistExport?.status;
+  const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL;
+  const canSubmit = SUBMITTABLE.includes(status);
+  const back = () => (history.length > 1
+    ? history.goBack()
+    : history.push(`/${modulesManager.getRef('tasafPayment.route.workspace')}?tab=${WS_TAB_PAYLISTS}`));
   const handleExportPdf = () => {
     if (exportPayroll) exportPaylistPdf(buildPaylistPayload(exportPayroll));
   };
@@ -146,64 +186,94 @@ function PaylistDetailPage({
     <div className={classes.page}>
       <Helmet title={formatMessageWithValues('paylist.detail.title', { uuid: paylistUuid })} />
       <Paper className={classes.paper}>
-        <Grid container className={classes.header} justifyContent="space-between" alignItems="center">
-          <Typography variant="h6">
-            {formatMessageWithValues('paylist.detail.title', { uuid: paylistUuid })}
+        <div className={classes.paperHeader}>
+          <div className={classes.titleRow}>
+            <Tooltip title={formatMessage('button.back')}>
+              <IconButton onClick={back}><ChevronLeftIcon /></IconButton>
+            </Tooltip>
+            <Typography variant="h6">
+              {paylistExport
+                ? formatMessageWithValues('paylist.detail.heading', {
+                  batchType: formatMessage(`paylist.batchType.${paylistExport.batchType}`),
+                  destination: formatMessage(`paylist.destination.${paylistExport.destination}`),
+                })
+                : formatMessage('paylist.detail.loading')}
+            </Typography>
+            {!!status && (
+              <StatusChip label={formatMessage(`paylist.status.${status}`)} color={PAYLIST_STATUS_COLOR} />
+            )}
+            {!!paylistExport?.museBatchReference && (
+              <Typography variant="body2" className={classes.subtitle}>{paylistExport.museBatchReference}</Typography>
+            )}
+          </div>
+          <div className={classes.actions}>
+            {rights.includes(RIGHT_PAYLIST_SEARCH) && (
+              <span className={classes.paperHeaderAction}>
+                <Button color="primary" startIcon={<CodeIcon />}
+                  onClick={() => { fetchMusePaylistPreview(paylistUuid, 20); setShowMusePreview(true); }}>
+                  {formatMessage('button.musePreview')}
+                </Button>
+              </span>
+            )}
+            {rights.includes(RIGHT_PAYLIST_SEARCH) && (
+              <span className={classes.paperHeaderAction}>
+                <Button color="primary" startIcon={<PictureAsPdfIcon />}
+                  disabled={fetchingPaylistExport || !exportPayroll} onClick={handleExportPdf}>
+                  {formatMessage('button.exportPaylistPdf')}
+                </Button>
+              </span>
+            )}
+            {rights.includes(RIGHT_APPROVE_PAYLIST) && (
+              <Tooltip title={canApprove ? '' : formatMessage('paylist.detail.approveNotAllowed')}>
+                <span className={classes.paperHeaderAction}>
+                  <Button variant="contained" color="primary" startIcon={<CheckCircleIcon />}
+                    disabled={submittingMutation || !canApprove} onClick={handleApprove}>
+                    {formatMessage('button.approvePaylist')}
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+            {rights.includes(RIGHT_SUBMIT_PAYLIST) && (
+              <Tooltip title={canSubmit ? '' : formatMessage('paylist.detail.submitNotAllowed')}>
+                <span className={classes.paperHeaderAction}>
+                  <Button variant="contained" color="primary" startIcon={<SendIcon />}
+                    disabled={submittingMutation || !canSubmit} onClick={handleSubmit}>
+                    {formatMessage('button.submitPaylist')}
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+        {!!paylistExport?.museStatusDesc && (
+          <Typography variant="body2" className={classes.museReply}>
+            {formatMessageWithValues('paylist.detail.museReply', { text: paylistExport.museStatusDesc })}
           </Typography>
-        </Grid>
-
-        <Box className={classes.actions}>
-          {rights.includes(RIGHT_APPROVE_PAYLIST) && (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<CheckCircleIcon />}
-              disabled={submittingMutation}
-              onClick={handleApprove}
-            >
-              {formatMessage('button.approvePaylist')}
-            </Button>
-          )}
-          {rights.includes(RIGHT_SUBMIT_PAYLIST) && (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<SendIcon />}
-              disabled={submittingMutation}
-              onClick={handleSubmit}
-            >
-              {formatMessage('button.submitPaylist')}
-            </Button>
-          )}
-          {rights.includes(RIGHT_PAYLIST_SEARCH) && (
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<PictureAsPdfIcon />}
-              disabled={fetchingPaylistExport || !exportPayroll}
-              onClick={handleExportPdf}
-            >
-              {formatMessage('button.exportPaylistPdf')}
-            </Button>
-          )}
-        </Box>
-
-        <Searcher
-          module={MODULE_NAME}
-          fetch={(params) => fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`])}
-          items={paylistItems}
-          itemsPageInfo={paylistItemsPageInfo}
-          fetchingItems={fetchingPaylistItems}
-          fetchedItems={fetchedPaylistItems}
-          errorItems={errorPaylistItems}
-          tableTitle={formatMessageWithValues('paylistItem.searcher.results', { totalCount: paylistItemsTotalCount })}
-          headers={headers}
-          itemFormatters={itemFormatters}
-          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-          defaultPageSize={DEFAULT_PAGE_SIZE}
-          rowIdentifier={(row) => row.id}
-        />
+        )}
       </Paper>
+
+      <Searcher
+        module={MODULE_NAME}
+        fetch={(params) => fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`])}
+        items={paylistItems}
+        itemsPageInfo={paylistItemsPageInfo}
+        fetchingItems={fetchingPaylistItems}
+        fetchedItems={fetchedPaylistItems}
+        errorItems={errorPaylistItems}
+        tableTitle={formatMessageWithValues('paylistItem.searcher.results', { totalCount: paylistItemsTotalCount })}
+        headers={headers}
+        itemFormatters={itemFormatters}
+        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+        defaultPageSize={DEFAULT_PAGE_SIZE}
+        rowIdentifier={(row) => row.id}
+      />
+      <MusePayloadDialog
+        open={showMusePreview}
+        onClose={() => setShowMusePreview(false)}
+        preview={musePreview}
+        fetching={fetchingMusePreview}
+        error={errorMusePreview}
+      />
     </div>
   );
 }
@@ -217,6 +287,9 @@ const mapStateToProps = (state) => ({
   paylistItemsTotalCount: state.tasafPayment.paylistItemsTotalCount,
   paylistExport: state.tasafPayment.paylistExport,
   fetchingPaylistExport: state.tasafPayment.fetchingPaylistExport,
+  fetchingMusePreview: state.tasafPayment.fetchingMusePreview,
+  musePreview: state.tasafPayment.musePreview,
+  errorMusePreview: state.tasafPayment.errorMusePreview,
   submittingMutation: state.tasafPayment.submittingMutation,
   mutation: state.tasafPayment.mutation,
   confirmed: state.core.confirmed,
@@ -224,7 +297,7 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
-    fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistForExport,
+    fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistForExport, fetchMusePaylistPreview,
     journalize, coreConfirm, clearConfirm,
   },
   dispatch,

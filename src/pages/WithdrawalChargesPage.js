@@ -2,25 +2,28 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 import {
-  Divider, Grid, Tab, Tabs, Typography,
+  Grid, Tab, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import _debounce from 'lodash/debounce';
 import {
   formatMessage, formatMessageWithValues, journalize, Searcher,
 } from '@openimis/fe-core';
-import { fetchWithdrawalCharges } from '../actions';
+import { fetchFspProviders, fetchWithdrawalCharges } from '../actions';
 import FspChargesConfig from '../components/charges/FspChargesConfig';
+import FspProvidersConfig from '../components/charges/FspProvidersConfig';
 import { MODULE_NAME, DEFAULT_PAGE_SIZE, ROWS_PER_PAGE_OPTIONS } from '../constants';
 
 const useStyles = makeStyles((theme) => ({
-  page: {
-    ...theme.page,
-    '& table': { tableLayout: 'fixed' },
-    '& table th': { whiteSpace: 'nowrap' },
-  },
+  page: theme.page,
   bar: { padding: theme.spacing(1, 2) },
+  tableTitle: theme.table.title,
+  tabs: { display: 'flex', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' },
+  selectedTab: { borderBottom: '4px solid white', minWidth: 'auto' },
+  unselectedTab: { borderBottom: '4px solid transparent', minWidth: 'auto' },
 }));
+
+const SUB_TABS = [['list', 'charges.tab.list'], ['config', 'charges.tab.config'], ['providers', 'charges.tab.providers']];
 
 function WithdrawalChargesPage() {
   const intl = useIntl();
@@ -43,6 +46,7 @@ function WithdrawalChargesPage() {
     if (prevSubmitting.current && !submitting) {
       dispatch(journalize(state?.mutation));
       setReset((k) => k + 1);
+      dispatch(fetchFspProviders());
     }
   }, [submitting]);
   useEffect(() => { prevSubmitting.current = submitting; });
@@ -67,18 +71,21 @@ function WithdrawalChargesPage() {
 
   return (
     <div className={classes.page}>
-      <Tabs
-        value={subTab}
-        onChange={(e, v) => setSubTab(v)}
-        indicatorColor="primary"
-        textColor="primary"
-      >
-        <Tab value="list" label={t('charges.tab.list')} />
-        <Tab value="config" label={t('charges.tab.config')} />
-      </Tabs>
-      <Divider />
+      <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
+        {SUB_TABS.map(([value, label]) => (
+          <Tab
+            key={value}
+            value={value}
+            label={t(label)}
+            selected={subTab === value}
+            className={subTab === value ? classes.selectedTab : classes.unselectedTab}
+            onChange={(e, v) => setSubTab(v)}
+          />
+        ))}
+      </Grid>
 
       {subTab === 'config' && <FspChargesConfig />}
+      {subTab === 'providers' && <FspProvidersConfig />}
 
       {subTab === 'list' && (
         <>

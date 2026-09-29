@@ -22,6 +22,10 @@ export const RIGHT_RETURN_FEEDBACK   = 270401;
 export const RIGHT_WITHDRAWAL_CHARGE_SEARCH = 270701;
 export const RIGHT_WITHDRAWAL_CHARGE_MANAGE = 270702;
 
+export const RIGHT_MUSE_SETTINGS_SEARCH  = 270901;
+export const RIGHT_MUSE_SETTINGS_PROPOSE = 270902;
+export const RIGHT_MUSE_SETTINGS_APPROVE = 270903;
+
 export const RIGHT_REPORTS           = 270801;
 // Entity 25: Dashboard
 export const RIGHT_DASHBOARD         = 270501;
@@ -84,12 +88,11 @@ export const FSP_TYPE = {
 export const FSP_TYPE_LIST = [FSP_TYPE.BANK, FSP_TYPE.MOBILE];
 
 export const BATCH_TYPE = {
-  BANK:  'BANK',
-  MNO:   'MNO',
-  MIXED: 'MIXED',
+  BANK: 'BANK',
+  MNO:  'MNO',
 };
 
-export const BATCH_TYPE_LIST = [BATCH_TYPE.BANK, BATCH_TYPE.MNO, BATCH_TYPE.MIXED];
+export const BATCH_TYPE_LIST = [BATCH_TYPE.BANK, BATCH_TYPE.MNO];
 
 // Mirrors tasaf_payment.models.PaymentDestination.
 export const DESTINATION = {
@@ -103,12 +106,21 @@ export const DESTINATION_LIST = [DESTINATION.MUSE, DESTINATION.GEPG];
 export const PAYROLL_STATUS_APPROVED = 'APPROVE_FOR_PAYMENT';
 
 export const PAYLIST_STATUS = {
-  DRAFT:            'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',
   APPROVED:         'APPROVED',
   SUBMITTED:        'SUBMITTED',
+  RECEIVED:         'RECEIVED',
+  ACCEPTED:         'ACCEPTED',
+  SENT_TO_BANK:     'SENT_TO_BANK',
+  REJECTED:         'REJECTED',
   CLOSED:           'CLOSED',
+  REJECTED_AT_APPROVAL: 'REJECTED_AT_APPROVAL',
 };
+
+// Sent and not finished -- mirrors tasaf_payment.models.PAYLIST_IN_FLIGHT_STATUSES.
+export const PAYLIST_IN_FLIGHT = [
+  PAYLIST_STATUS.SUBMITTED, PAYLIST_STATUS.RECEIVED, PAYLIST_STATUS.ACCEPTED, PAYLIST_STATUS.SENT_TO_BANK,
+];
 
 export const PRE_AUDIT_STATUS = {
   PENDING: 'PENDING',
@@ -126,12 +138,6 @@ export const MUSE_VERIFICATION_RESULT = {
   PASSED: 'PASSED',
   FAILED: 'FAILED',
   MANUAL: 'MANUAL',
-};
-
-export const RETURN_FEEDBACK_TYPE = {
-  UNAPPLIED: 'UNAPPLIED',
-  RETURNED:  'RETURNED',
-  PARTIAL:   'PARTIAL',
 };
 
 // Contribution keys
@@ -154,3 +160,4 @@ export const WS_TAB_PAYLISTS     = 'paylists';
 export const WS_TAB_RETURNS      = 'returns';
 export const WS_TAB_CHARGES      = 'charges';
 export const WS_TAB_REPORTS      = 'reports';
+export const WS_TAB_MUSE         = 'muse';

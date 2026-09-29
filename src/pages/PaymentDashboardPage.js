@@ -10,7 +10,6 @@ import AccessTimeIcon from '@material-ui/icons/AccessTime';
 import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 import PersonIcon from '@material-ui/icons/PersonOutline';
 import CancelIcon from '@material-ui/icons/HighlightOff';
-import EditIcon from '@material-ui/icons/Edit';
 import CheckIcon from '@material-ui/icons/Check';
 import SendIcon from '@material-ui/icons/Send';
 import LockIcon from '@material-ui/icons/LockOutlined';
@@ -22,7 +21,7 @@ import {
 
 import {
   MODULE_NAME, RIGHT_DASHBOARD, RIGHT_PAYLIST_SEARCH, RIGHT_PAYMENT_ACCOUNT_SEARCH,
-  VERIFICATION_STATUS, PAYLIST_STATUS,
+  VERIFICATION_STATUS, PAYLIST_STATUS, PAYLIST_IN_FLIGHT, WS_TAB_VERIFICATION, WS_TAB_PAYLISTS,
 } from '../constants';
 import { fetchDashboardCounts } from '../actions';
 import {
@@ -47,7 +46,7 @@ function PaymentDashboardPage({
   const classes = useStyles();
   const history = useHistory();
   const modulesManager = useModulesManager();
-  const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
+  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
   const [lastRefreshed, setLastRefreshed] = useState(null);
 
@@ -59,14 +58,12 @@ function PaymentDashboardPage({
   const plAmt = dashboardCounts?.paylistAmounts ?? {};
   const totals = dashboardCounts?.totals ?? {};
   const loaded = fetchedDashboard;
-  const num = (v) => (loaded ? (v ?? 0) : '–');
   const money = (v) => (loaded ? fmtTZS(v) : '–');
   const t = (k) => formatMessage(k);
 
-  const goVerification = rights.includes(RIGHT_PAYMENT_ACCOUNT_SEARCH)
-    ? () => history.push(`/${modulesManager.getRef('tasafPayment.route.verificationResults')}`) : null;
-  const goPaylists = rights.includes(RIGHT_PAYLIST_SEARCH)
-    ? () => history.push(`/${modulesManager.getRef('tasafPayment.route.paylists')}`) : null;
+  const goTab = (tab) => () => history.push(`/${modulesManager.getRef('tasafPayment.route.workspace')}?tab=${tab}`);
+  const goVerification = rights.includes(RIGHT_PAYMENT_ACCOUNT_SEARCH) ? goTab(WS_TAB_VERIFICATION) : null;
+  const goPaylists = rights.includes(RIGHT_PAYLIST_SEARCH) ? goTab(WS_TAB_PAYLISTS) : null;
 
   const totalAccounts = useMemo(
     () => (totals.accounts != null ? totals.accounts : Object.values(acct).reduce((s, v) => s + (v ?? 0), 0)),
@@ -100,11 +97,12 @@ function PaymentDashboardPage({
     { key: 'failed', icon: <CancelIcon />, label: t('dashboard.stat.failed'), value: acct[VERIFICATION_STATUS.FAILED] ?? 0, onClick: goVerification },
   ];
 
+  const sum = (map, keys) => keys.reduce((total, k) => total + (Number(map[k]) || 0), 0);
   const paylistStages = [
-    { key: 'draft', icon: <EditIcon />, label: t('dashboard.stat.paylistDraft'), value: pl[PAYLIST_STATUS.DRAFT] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.DRAFT]) : null, onClick: goPaylists },
     { key: 'pending', icon: <AccessTimeIcon />, label: t('dashboard.stat.paylistPending'), value: pl[PAYLIST_STATUS.PENDING_APPROVAL] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.PENDING_APPROVAL]) : null, onClick: goPaylists },
     { key: 'approved', icon: <CheckIcon />, label: t('dashboard.stat.paylistApproved'), value: pl[PAYLIST_STATUS.APPROVED] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.APPROVED]) : null, onClick: goPaylists },
-    { key: 'submitted', icon: <SendIcon />, label: t('dashboard.stat.paylistSubmitted'), value: pl[PAYLIST_STATUS.SUBMITTED] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.SUBMITTED]) : null, onClick: goPaylists },
+    { key: 'submitted', icon: <SendIcon />, label: t('dashboard.stat.paylistSubmitted'), value: sum(pl, PAYLIST_IN_FLIGHT), amount: loaded ? tzs(sum(plAmt, PAYLIST_IN_FLIGHT)) : null, onClick: goPaylists },
+    { key: 'rejected', icon: <CancelIcon />, label: t('dashboard.stat.paylistRejected'), value: pl[PAYLIST_STATUS.REJECTED] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.REJECTED]) : null, onClick: goPaylists },
     { key: 'closed', icon: <LockIcon />, label: t('dashboard.stat.paylistClosed'), value: pl[PAYLIST_STATUS.CLOSED] ?? 0, amount: loaded ? tzs(plAmt[PAYLIST_STATUS.CLOSED]) : null, onClick: goPaylists },
   ];
 

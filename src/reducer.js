@@ -39,6 +39,9 @@ export const ACTION_TYPE = {
   APPROVE_PAYLIST:          'TASAF_PAYMENT_MUTATION_APPROVE_PAYLIST',
   SUBMIT_PAYLIST:           'TASAF_PAYMENT_MUTATION_SUBMIT_PAYLIST',
   // Queries
+  VERIFICATION_PREVIEW:           'TASAF_PAYMENT_VERIFICATION_PREVIEW',
+  MUSE_PAYLIST_PREVIEW:           'TASAF_PAYMENT_MUSE_PAYLIST_PREVIEW',
+  GENERATION_PREVIEW:             'TASAF_PAYMENT_GENERATION_PREVIEW',
   SEARCH_PAYMENT_ACCOUNTS:        'TASAF_PAYMENT_ACCOUNTS',
   GET_PAYMENT_ACCOUNT:            'TASAF_PAYMENT_GET_ACCOUNT',
   SEARCH_MUSE_VERIFICATION_RECORDS: 'TASAF_PAYMENT_MUSE_VERIFICATION_RECORDS',
@@ -50,6 +53,12 @@ export const ACTION_TYPE = {
   SEARCH_FSP_MAPPINGS:            'TASAF_PAYMENT_FSP_MAPPINGS',
   FETCH_UNMAPPED_FSPS:            'TASAF_PAYMENT_UNMAPPED_FSPS',
   FETCH_KNOWN_FSPS:               'TASAF_PAYMENT_KNOWN_FSPS',
+  FETCH_FSP_PROVIDERS:            'TASAF_PAYMENT_FSP_PROVIDERS',
+  FETCH_MUSE_SETTINGS:            'TASAF_PAYMENT_MUSE_SETTINGS',
+  SAVE_FSP_PROFILE:               'TASAF_PAYMENT_SAVE_FSP_PROFILE',
+  SAVE_MUSE_SETTINGS:             'TASAF_PAYMENT_SAVE_MUSE_SETTINGS',
+  FETCH_MUSE_CHANGES:             'TASAF_PAYMENT_MUSE_CHANGES',
+  MUSE_CHANGE_DECISION:           'TASAF_PAYMENT_MUSE_CHANGE_DECISION',
   FETCH_FSP_BAND_SET:             'TASAF_PAYMENT_FSP_BAND_SET',
   SEARCH_PAYROLLS:                'TASAF_PAYMENT_PAYROLLS',
   GET_PAYLIST_EXPORT:             'TASAF_PAYMENT_PAYLIST_EXPORT',
@@ -137,6 +146,21 @@ const STORE_STATE = {
   fetchedDashboard: false,
   errorDashboard: null,
   dashboardCounts: { accounts: {}, paylists: {} },
+  fspProviders: [],
+  fetchingFspProviders: false,
+  museSettings: null,
+  museReadiness: null,
+  museChanges: [],
+  fetchingMuseChanges: false,
+  fetchingVerificationPreview: false,
+  verificationPreview: null,
+  errorVerificationPreview: null,
+  fetchingMusePreview: false,
+  musePreview: null,
+  errorMusePreview: null,
+  fetchingGenerationPreview: false,
+  generationPreview: null,
+  errorGenerationPreview: null,
 
   // Auditor Reports tab
   fetchingEpaymentSummary: false,
@@ -317,6 +341,33 @@ function reducer(state = STORE_STATE, action) {
       return { ...state, fetchingBandSet: false, fspBandSet: action.payload.data.fspBandSet ?? [] };
     case ERROR(ACTION_TYPE.FETCH_FSP_BAND_SET):
       return { ...state, fetchingBandSet: false };
+    case REQUEST(ACTION_TYPE.FETCH_FSP_PROVIDERS):
+      return { ...state, fetchingFspProviders: true };
+    case SUCCESS(ACTION_TYPE.FETCH_FSP_PROVIDERS):
+      return { ...state, fetchingFspProviders: false, fspProviders: action.payload.data?.fspProviders ?? [] };
+    case ERROR(ACTION_TYPE.FETCH_FSP_PROVIDERS):
+      return { ...state, fetchingFspProviders: false };
+    case REQUEST(ACTION_TYPE.FETCH_MUSE_CHANGES):
+      return { ...state, fetchingMuseChanges: true };
+    case SUCCESS(ACTION_TYPE.FETCH_MUSE_CHANGES): {
+      const raw = action.payload.data?.museChangeRequests;
+      let rows = raw;
+      try { rows = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { rows = []; }
+      return { ...state, fetchingMuseChanges: false, museChanges: rows || [] };
+    }
+    case ERROR(ACTION_TYPE.FETCH_MUSE_CHANGES):
+      return { ...state, fetchingMuseChanges: false };
+    case SUCCESS(ACTION_TYPE.FETCH_MUSE_SETTINGS): {
+      const s = action.payload.data?.museSettings ?? null;
+      let gl = s?.glAccounts ?? [];
+      try { gl = typeof gl === 'string' ? JSON.parse(gl) : gl; } catch (e) { gl = []; }
+      return {
+        ...state,
+        museSettings: s ? { ...s, glAccounts: gl || [] } : null,
+        museReadiness: action.payload.data?.museReadiness ?? null,
+      };
+    }
+
     case SUCCESS(ACTION_TYPE.FETCH_KNOWN_FSPS):
       return { ...state, knownFsps: action.payload.data.knownFsps ?? [] };
     case SUCCESS(ACTION_TYPE.FETCH_UNMAPPED_FSPS):
@@ -514,6 +565,61 @@ function reducer(state = STORE_STATE, action) {
     case ERROR(ACTION_TYPE.FETCH_DASHBOARD_COUNTS):
       return { ...state, fetchingDashboard: false, errorDashboard: formatServerError(action.payload) };
 
+    case REQUEST(ACTION_TYPE.VERIFICATION_PREVIEW):
+      return {
+        ...state, fetchingVerificationPreview: true, verificationPreview: null, errorVerificationPreview: null,
+      };
+    case SUCCESS(ACTION_TYPE.VERIFICATION_PREVIEW): {
+      // graphene JSONString arrives as a string.
+      const raw = action.payload?.data?.verificationBatchPreview;
+      let preview = raw;
+      try { preview = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { preview = null; }
+      return {
+        ...state,
+        fetchingVerificationPreview: false,
+        verificationPreview: preview,
+        errorVerificationPreview: formatGraphQLError(action.payload),
+      };
+    }
+    case ERROR(ACTION_TYPE.VERIFICATION_PREVIEW):
+      return {
+        ...state, fetchingVerificationPreview: false, errorVerificationPreview: formatServerError(action.payload),
+      };
+
+    case REQUEST(ACTION_TYPE.GENERATION_PREVIEW):
+      return { ...state, fetchingGenerationPreview: true, generationPreview: null, errorGenerationPreview: null };
+    case SUCCESS(ACTION_TYPE.GENERATION_PREVIEW): {
+      const raw = action.payload?.data?.paylistGenerationPreview;
+      let preview = raw;
+      try { preview = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { preview = null; }
+      return {
+        ...state,
+        fetchingGenerationPreview: false,
+        generationPreview: preview,
+        errorGenerationPreview: formatGraphQLError(action.payload),
+      };
+    }
+    case ERROR(ACTION_TYPE.GENERATION_PREVIEW):
+      return { ...state, fetchingGenerationPreview: false, errorGenerationPreview: formatServerError(action.payload) };
+
+    case REQUEST(ACTION_TYPE.MUSE_PAYLIST_PREVIEW):
+      return {
+        ...state, fetchingMusePreview: true, musePreview: null, errorMusePreview: null,
+      };
+    case SUCCESS(ACTION_TYPE.MUSE_PAYLIST_PREVIEW): {
+      const raw = action.payload?.data?.paylistMusePreview;
+      let preview = raw;
+      try { preview = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { preview = null; }
+      return {
+        ...state,
+        fetchingMusePreview: false,
+        musePreview: preview,
+        errorMusePreview: formatGraphQLError(action.payload),
+      };
+    }
+    case ERROR(ACTION_TYPE.MUSE_PAYLIST_PREVIEW):
+      return { ...state, fetchingMusePreview: false, errorMusePreview: formatServerError(action.payload) };
+
     // ─── Mutations ──────────────────────────────────────────────────────────
     case REQUEST(ACTION_TYPE.MUTATION):
       return dispatchMutationReq(state, action);
@@ -541,6 +647,28 @@ function reducer(state = STORE_STATE, action) {
       return dispatchMutationResp(state, MUTATION_SERVICE.PAYLIST.APPROVE, action);
     case SUCCESS(ACTION_TYPE.SUBMIT_PAYLIST):
       return dispatchMutationResp(state, MUTATION_SERVICE.PAYLIST.SUBMIT, action);
+    // Charges-page saves: clear submittingMutation so the page refreshes and journals.
+    case 'TASAF_PAYMENT_SAVE_FSP_MAPPING_RESP':
+      return dispatchMutationResp(state, 'saveFspMapping', action);
+    case 'TASAF_PAYMENT_DELETE_FSP_MAPPING_RESP':
+      return dispatchMutationResp(state, 'deleteFspMapping', action);
+    case 'TASAF_PAYMENT_SAVE_FSP_CHARGES_RESP':
+      return dispatchMutationResp(state, 'saveFspCharges', action);
+    case 'TASAF_PAYMENT_SAVE_WITHDRAWAL_CHARGE_RESP':
+      return dispatchMutationResp(state, 'saveWithdrawalCharge', action);
+    case 'TASAF_PAYMENT_DELETE_WITHDRAWAL_CHARGE_RESP':
+      return dispatchMutationResp(state, 'deleteWithdrawalCharge', action);
+    case 'TASAF_PAYMENT_IMPORT_WITHDRAWAL_CHARGES_RESP':
+      return dispatchMutationResp(state, 'importWithdrawalCharges', action);
+    case SUCCESS(ACTION_TYPE.SAVE_FSP_PROFILE):
+      return dispatchMutationResp(state, 'saveFspProfile', action);
+    case SUCCESS(ACTION_TYPE.SAVE_MUSE_SETTINGS):
+      return dispatchMutationResp(state, 'saveMuseSettings', action);
+    case SUCCESS(ACTION_TYPE.MUSE_CHANGE_DECISION): {
+      const name = ['approveMuseChange', 'rejectMuseChange', 'cancelMuseChange']
+        .find((n) => action.payload?.data?.[n]);
+      return dispatchMutationResp(state, name || 'approveMuseChange', action);
+    }
 
     default:
       return state;

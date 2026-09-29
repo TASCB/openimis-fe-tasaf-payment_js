@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useHistory, useLocation } from 'react-router-dom';
 import { Paper, Grid } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import {
@@ -21,6 +22,7 @@ import {
   WS_TAB_RETURNS,
   WS_TAB_CHARGES,
   WS_TAB_REPORTS,
+  WS_TAB_MUSE,
   RIGHT_DASHBOARD,
   RIGHT_PAYMENT_ACCOUNT_SEARCH,
   RIGHT_PRE_AUDIT_SEARCH,
@@ -29,15 +31,16 @@ import {
   RIGHT_RETURN_FEEDBACK,
   RIGHT_WITHDRAWAL_CHARGE_SEARCH,
   RIGHT_REPORTS,
+  RIGHT_MUSE_SETTINGS_SEARCH,
 } from '../constants';
 
 const useStyles = makeStyles((theme) => ({
   page: theme.page,
   paper: theme.paper.paper,
   tableTitle: theme.table.title,
-  tabs: { display: 'flex', alignItems: 'center' },
-  selectedTab: { borderBottom: '4px solid white' },
-  unselectedTab: { borderBottom: '4px solid transparent' },
+  tabs: { display: 'flex', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' },
+  selectedTab: { borderBottom: '4px solid white', minWidth: 'auto' },
+  unselectedTab: { borderBottom: '4px solid transparent', minWidth: 'auto' },
 }));
 
 // Tabs in pipeline order, each paired with the right that unlocks it.
@@ -51,6 +54,7 @@ const TAB_ORDER = [
   // Configuration, not a pipeline stage -- last.
   [WS_TAB_CHARGES, RIGHT_WITHDRAWAL_CHARGE_SEARCH],
   [WS_TAB_REPORTS, RIGHT_REPORTS],
+  [WS_TAB_MUSE, RIGHT_MUSE_SETTINGS_SEARCH],
 ];
 
 function TasafPaymentsPage() {
@@ -59,14 +63,27 @@ function TasafPaymentsPage() {
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
 
-  // Land on the first tab the user is actually allowed to see.
+  const history = useHistory();
+  const location = useLocation();
+
+  // The open tab lives in the URL (?tab=paylists), so Back from any drill-in returns to it.
+  // Without one, land on the first tab the user is allowed to see.
+  const allowed = (tab) => TAB_ORDER.some(([t, right]) => t === tab && rights.includes(right));
   const firstAllowedTab = (TAB_ORDER.find(([, right]) => rights.includes(right))
     || [WS_TAB_DASHBOARD])[0];
-  const [activeTab, setActiveTab] = useState(firstAllowedTab);
+  const tabFromUrl = () => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    return allowed(tab) ? tab : firstAllowedTab;
+  };
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
+  useEffect(() => { setActiveTab(tabFromUrl()); }, [location.search]);
 
   const isSelected = (tab) => tab === activeTab;
   const tabStyle = (tab) => (isSelected(tab) ? classes.selectedTab : classes.unselectedTab);
-  const handleChange = (_, tab) => setActiveTab(tab);
+  const handleChange = (_, tab) => {
+    setActiveTab(tab);
+    history.replace({ pathname: location.pathname, search: `?tab=${tab}` });
+  };
 
   return (
     <div className={classes.page}>
