@@ -3,13 +3,9 @@ import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import {
-  Paper, Button, IconButton, Tooltip, Typography,
+  Paper, IconButton, Tooltip, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
-import SendIcon from '@material-ui/icons/Send';
-import PictureAsPdfIcon from '@material-ui/icons/PictureAsPdf';
-import CodeIcon from '@material-ui/icons/Code';
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft';
 
 import {
@@ -41,6 +37,7 @@ import {
 } from '../actions';
 import StatusChip from '../components/StatusChip';
 import MusePayloadDialog from '../components/MusePayloadDialog';
+import { PAYLIST_ITEMS_ACTIONS_KEY, PaylistActionsContext } from '../components/PaylistItemsActions';
 import { defaultPageStyles } from '../utils/styles';
 
 const useStyles = makeStyles((theme) => ({
@@ -55,13 +52,9 @@ const useStyles = makeStyles((theme) => ({
     gap: theme.spacing(1),
     paddingRight: theme.spacing(1),
   },
-  paperHeaderAction: theme.paper.action,
   titleRow: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing(1) },
   subtitle: { color: theme.palette.grey[600] },
   museReply: { color: theme.palette.grey[700], padding: theme.spacing(1, 2) },
-  actions: {
-    display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto',
-  },
 }));
 
 const PAYLIST_STATUS_COLOR = '#9e9e9e';
@@ -158,6 +151,17 @@ function PaylistDetailPage({
     coreConfirm(formatMessage('paylist.submit.confirm.title'), formatMessage('paylist.submit.confirm.message'));
   };
 
+  const actionsContext = {
+    t: formatMessage,
+    canSearch: rights.includes(RIGHT_PAYLIST_SEARCH),
+    canExport: !fetchingPaylistExport && !!exportPayroll,
+    onMusePreview: () => { fetchMusePaylistPreview(paylistUuid, 20); setShowMusePreview(true); },
+    onExport: handleExportPdf,
+    approve: { visible: rights.includes(RIGHT_APPROVE_PAYLIST), allowed: canApprove, onClick: handleApprove },
+    submit: { visible: rights.includes(RIGHT_SUBMIT_PAYLIST), allowed: canSubmit, onClick: handleSubmit },
+    submitting: submittingMutation,
+  };
+
   const headers = () => [
     formatMessage('paylistItem.accountNumber'),
     formatMessage('paylistItem.fspName'),
@@ -206,44 +210,6 @@ function PaylistDetailPage({
               <Typography variant="body2" className={classes.subtitle}>{paylistExport.museBatchReference}</Typography>
             )}
           </div>
-          <div className={classes.actions}>
-            {rights.includes(RIGHT_PAYLIST_SEARCH) && (
-              <span className={classes.paperHeaderAction}>
-                <Button color="primary" startIcon={<CodeIcon />}
-                  onClick={() => { fetchMusePaylistPreview(paylistUuid, 20); setShowMusePreview(true); }}>
-                  {formatMessage('button.musePreview')}
-                </Button>
-              </span>
-            )}
-            {rights.includes(RIGHT_PAYLIST_SEARCH) && (
-              <span className={classes.paperHeaderAction}>
-                <Button color="primary" startIcon={<PictureAsPdfIcon />}
-                  disabled={fetchingPaylistExport || !exportPayroll} onClick={handleExportPdf}>
-                  {formatMessage('button.exportPaylistPdf')}
-                </Button>
-              </span>
-            )}
-            {rights.includes(RIGHT_APPROVE_PAYLIST) && (
-              <Tooltip title={canApprove ? '' : formatMessage('paylist.detail.approveNotAllowed')}>
-                <span className={classes.paperHeaderAction}>
-                  <Button variant="contained" color="primary" startIcon={<CheckCircleIcon />}
-                    disabled={submittingMutation || !canApprove} onClick={handleApprove}>
-                    {formatMessage('button.approvePaylist')}
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
-            {rights.includes(RIGHT_SUBMIT_PAYLIST) && (
-              <Tooltip title={canSubmit ? '' : formatMessage('paylist.detail.submitNotAllowed')}>
-                <span className={classes.paperHeaderAction}>
-                  <Button variant="contained" color="primary" startIcon={<SendIcon />}
-                    disabled={submittingMutation || !canSubmit} onClick={handleSubmit}>
-                    {formatMessage('button.submitPaylist')}
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
-          </div>
         </div>
         {!!paylistExport?.museStatusDesc && (
           <Typography variant="body2" className={classes.museReply}>
@@ -252,21 +218,24 @@ function PaylistDetailPage({
         )}
       </Paper>
 
-      <Searcher
-        module={MODULE_NAME}
-        fetch={(params) => fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`])}
-        items={paylistItems}
-        itemsPageInfo={paylistItemsPageInfo}
-        fetchingItems={fetchingPaylistItems}
-        fetchedItems={fetchedPaylistItems}
-        errorItems={errorPaylistItems}
-        tableTitle={formatMessageWithValues('paylistItem.searcher.results', { totalCount: paylistItemsTotalCount })}
-        headers={headers}
-        itemFormatters={itemFormatters}
-        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-        defaultPageSize={DEFAULT_PAGE_SIZE}
-        rowIdentifier={(row) => row.id}
-      />
+      <PaylistActionsContext.Provider value={actionsContext}>
+        <Searcher
+          module={MODULE_NAME}
+          fetch={(params) => fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`])}
+          items={paylistItems}
+          itemsPageInfo={paylistItemsPageInfo}
+          fetchingItems={fetchingPaylistItems}
+          fetchedItems={fetchedPaylistItems}
+          errorItems={errorPaylistItems}
+          tableTitle={formatMessageWithValues('paylistItem.searcher.results', { totalCount: paylistItemsTotalCount })}
+          headers={headers}
+          itemFormatters={itemFormatters}
+          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+          defaultPageSize={DEFAULT_PAGE_SIZE}
+          rowIdentifier={(row) => row.id}
+          actionsContributionKey={PAYLIST_ITEMS_ACTIONS_KEY}
+        />
+      </PaylistActionsContext.Provider>
       <MusePayloadDialog
         open={showMusePreview}
         onClose={() => setShowMusePreview(false)}

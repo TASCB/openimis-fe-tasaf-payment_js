@@ -23,6 +23,7 @@ import ReturnFeedbackPage from './pages/ReturnFeedbackPage';
 import PaymentDashboardPage from './pages/PaymentDashboardPage';
 import TasafPaymentsPage from './pages/TasafPaymentsPage';
 import PaymentGenerationStepper from './components/generation/PaymentGenerationStepper';
+import PaylistItemsActions, { PAYLIST_ITEMS_ACTIONS_KEY } from './components/PaylistItemsActions';
 import {
   DashboardTabLabel, VerificationTabLabel, PreAuditTabLabel,
   GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel, ReportsTabLabel,
@@ -97,6 +98,7 @@ const DEFAULT_CONFIG = {
     { path: ROUTE_RETURN_FEEDBACK,  component: ReturnFeedbackPage },
     { path: ROUTE_DASHBOARD,        component: PaymentDashboardPage },
   ],
+  [PAYLIST_ITEMS_ACTIONS_KEY]: [PaylistItemsActions],
   'invoice.MainMenu': [
     {
       text: <FormattedMessage module="tasafPayment" id="menu.workspace" />,
