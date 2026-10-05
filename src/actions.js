@@ -201,13 +201,6 @@ export function fetchWithdrawalCharges(params) {
   return graphql(payload, ACTION_TYPE.SEARCH_WITHDRAWAL_CHARGES);
 }
 
-// Configured vs unconfigured ranges per FSP -- drives the coverage panel.
-export function fetchFspCoverage() {
-  const payload = `query { fspCoverage { fspCode bands lowest highest coversFromZero
-    gaps { rangeFrom rangeTo } overlaps { rangeFrom rangeTo } } }`;
-  return graphql(payload, ACTION_TYPE.FETCH_FSP_COVERAGE);
-}
-
 export function saveWithdrawalCharge(charge, clientMutationLabel) {
   const mutation = formatMutation('saveWithdrawalCharge', formatChargeGQL(charge), clientMutationLabel);
   return graphql(mutation.payload, ['TASAF_PAYMENT_MUTATION_REQ',
@@ -273,7 +266,7 @@ export function saveFspCharges(fspCode, bands, effectiveFrom, clientMutationLabe
 
 export function fetchFspProviders() {
   return graphql(
-    'query { fspProviders { uuid fspCode bankName fspType bic names hasBands accounts missing pending } }',
+    'query { fspProviders { uuid fspCode name bandCount bankName fspType bic names hasBands accounts missing pending } }',
     ACTION_TYPE.FETCH_FSP_PROVIDERS,
   );
 }
@@ -296,6 +289,10 @@ function mutate(name, args, actionType, clientMutationLabel) {
     [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(actionType), ERROR(ACTION_TYPE.MUTATION)],
     { actionType, clientMutationId: mutation.clientMutationId, clientMutationLabel },
   );
+}
+
+export function deleteFsp(fspCode, clientMutationLabel) {
+  return mutate('deleteFsp', `fspCode: "${formatGQLString(fspCode)}"`, ACTION_TYPE.DELETE_FSP, clientMutationLabel);
 }
 
 export function saveFspProfile(p, clientMutationLabel) {
@@ -333,16 +330,6 @@ function museChangeMutation(name, changeId, comment, clientMutationLabel) {
 export const approveMuseChange = (id, comment, label) => museChangeMutation('approveMuseChange', id, comment, label);
 export const rejectMuseChange = (id, comment, label) => museChangeMutation('rejectMuseChange', id, comment, label);
 export const cancelMuseChange = (id, comment, label) => museChangeMutation('cancelMuseChange', id, comment, label);
-
-export function fetchKnownFsps() {
-  return graphql('query { knownFsps { fspCode fspName onAccounts hasBands } }',
-    ACTION_TYPE.FETCH_KNOWN_FSPS);
-}
-
-export function fetchUnmappedFsps() {
-  return graphql('query { unmappedFsps { fspName resolvedCode } }',
-    ACTION_TYPE.FETCH_UNMAPPED_FSPS);
-}
 
 export function saveFspMapping(m, clientMutationLabel) {
   const args = [`fspName: "${m.fspName}"`, `fspCode: "${m.fspCode}"`]

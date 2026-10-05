@@ -49,13 +49,11 @@ export const ACTION_TYPE = {
   SEARCH_PAYLIST_ITEMS:           'TASAF_PAYMENT_PAYLIST_ITEMS',
   SEARCH_RETURN_FEEDBACK:         'TASAF_PAYMENT_RETURN_FEEDBACK',
   SEARCH_WITHDRAWAL_CHARGES:      'TASAF_PAYMENT_WITHDRAWAL_CHARGES',
-  FETCH_FSP_COVERAGE:             'TASAF_PAYMENT_FSP_COVERAGE',
   SEARCH_FSP_MAPPINGS:            'TASAF_PAYMENT_FSP_MAPPINGS',
-  FETCH_UNMAPPED_FSPS:            'TASAF_PAYMENT_UNMAPPED_FSPS',
-  FETCH_KNOWN_FSPS:               'TASAF_PAYMENT_KNOWN_FSPS',
   FETCH_FSP_PROVIDERS:            'TASAF_PAYMENT_FSP_PROVIDERS',
   FETCH_MUSE_SETTINGS:            'TASAF_PAYMENT_MUSE_SETTINGS',
   SAVE_FSP_PROFILE:               'TASAF_PAYMENT_SAVE_FSP_PROFILE',
+  DELETE_FSP:                     'TASAF_PAYMENT_DELETE_FSP',
   SAVE_MUSE_SETTINGS:             'TASAF_PAYMENT_SAVE_MUSE_SETTINGS',
   FETCH_MUSE_CHANGES:             'TASAF_PAYMENT_MUSE_CHANGES',
   MUSE_CHANGE_DECISION:           'TASAF_PAYMENT_MUSE_CHANGE_DECISION',
@@ -368,13 +366,6 @@ function reducer(state = STORE_STATE, action) {
       };
     }
 
-    case SUCCESS(ACTION_TYPE.FETCH_KNOWN_FSPS):
-      return { ...state, knownFsps: action.payload.data.knownFsps ?? [] };
-    case SUCCESS(ACTION_TYPE.FETCH_UNMAPPED_FSPS):
-
-
-      return { ...state, unmappedFsps: action.payload.data.unmappedFsps ?? [] };
-
 
     case REQUEST(ACTION_TYPE.SEARCH_WITHDRAWAL_CHARGES):
 
@@ -402,17 +393,6 @@ function reducer(state = STORE_STATE, action) {
 
       return { ...state, fetchingWithdrawalCharges: false, errorWithdrawalCharges: formatServerError(action.payload) };
 
-    case REQUEST(ACTION_TYPE.FETCH_FSP_COVERAGE):
-
-      return { ...state, fetchingCoverage: true };
-
-    case SUCCESS(ACTION_TYPE.FETCH_FSP_COVERAGE):
-
-      return { ...state, fetchingCoverage: false, fspCoverage: action.payload.data.fspCoverage ?? [] };
-
-    case ERROR(ACTION_TYPE.FETCH_FSP_COVERAGE):
-
-      return { ...state, fetchingCoverage: false, errorCoverage: formatServerError(action.payload) };
 
     case REQUEST(ACTION_TYPE.SEARCH_RETURN_FEEDBACK):
       return { ...state, fetchingReturnFeedback: true, fetchedReturnFeedback: false, returnFeedback: [], errorReturnFeedback: null };
@@ -662,6 +642,8 @@ function reducer(state = STORE_STATE, action) {
       return dispatchMutationResp(state, 'importWithdrawalCharges', action);
     case SUCCESS(ACTION_TYPE.SAVE_FSP_PROFILE):
       return dispatchMutationResp(state, 'saveFspProfile', action);
+    case SUCCESS(ACTION_TYPE.DELETE_FSP):
+      return dispatchMutationResp(state, 'deleteFsp', action);
     case SUCCESS(ACTION_TYPE.SAVE_MUSE_SETTINGS):
       return dispatchMutationResp(state, 'saveMuseSettings', action);
     case SUCCESS(ACTION_TYPE.MUSE_CHANGE_DECISION): {
