@@ -69,8 +69,8 @@ export const PAYLIST_ITEM_PROJECTION = () => [
   'status',
   'museReference',
   'returnReason',
-  'paymentAccount { id uuid accountNumber fspType fspName }',
-  'benefitConsumption { id }',
+  'paymentAccount { id uuid accountNumber fspType fspName groupBeneficiary { id group { id code } } }',
+  'benefitConsumption { id code }',
 ];
 
 export const RETURN_FEEDBACK_PROJECTION = () => [

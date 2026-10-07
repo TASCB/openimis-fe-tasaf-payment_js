@@ -37,6 +37,7 @@ import {
 } from '../actions';
 import StatusChip from '../components/StatusChip';
 import MusePayloadDialog from '../components/MusePayloadDialog';
+import PaylistItemFilter from '../components/PaylistItemFilter';
 import { PAYLIST_ITEMS_ACTIONS_KEY, PaylistActionsContext } from '../components/PaylistItemsActions';
 import { defaultPageStyles } from '../utils/styles';
 
@@ -102,6 +103,7 @@ function PaylistDetailPage({
   const prevSubmittingMutationRef = useRef();
   const pendingActionRef = useRef(null);
   const [showMusePreview, setShowMusePreview] = useState(false);
+  const [location, setLocation] = useState(null);
 
   useEffect(() => {
     if (prevSubmittingMutationRef.current && !submittingMutation) {
@@ -163,6 +165,8 @@ function PaylistDetailPage({
   };
 
   const headers = () => [
+    formatMessage('paylistItem.hhid'),
+    formatMessage('paylistItem.benefitCode'),
     formatMessage('paylistItem.accountNumber'),
     formatMessage('paylistItem.fspName'),
     formatMessage('paylistItem.fspType'),
@@ -172,6 +176,8 @@ function PaylistDetailPage({
   ];
 
   const itemFormatters = () => [
+    (row) => row.paymentAccount?.groupBeneficiary?.group?.code ?? '-',
+    (row) => row.benefitConsumption?.code ?? '-',
     (row) => row.paymentAccount?.accountNumber ?? '-',
     (row) => row.paymentAccount?.fspName ?? '-',
     (row) => row.paymentAccount?.fspType
@@ -221,6 +227,9 @@ function PaylistDetailPage({
       <PaylistActionsContext.Provider value={actionsContext}>
         <Searcher
           module={MODULE_NAME}
+          FilterPane={(props) => (
+            <PaylistItemFilter {...props} location={location} onChangeLocation={setLocation} />
+          )}
           fetch={(params) => fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`])}
           items={paylistItems}
           itemsPageInfo={paylistItemsPageInfo}
