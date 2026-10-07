@@ -298,11 +298,12 @@ export function deleteFsp(fspCode, clientMutationLabel) {
 export function saveFspProfile(p, clientMutationLabel) {
   const q = (v) => `"${formatGQLString(v ?? '')}"`;
   return mutate('saveFspProfile',
-    `fspCode: ${q(p.fspCode)}, bankName: ${q(p.bankName)}, fspType: ${q(p.fspType)}, bic: ${q(p.bic)}`,
+    `fspCode: ${q(p.fspCode)}, bankName: ${q(p.bankName)}, fspType: ${q(p.fspType)}, bic: ${q(p.bic)}`
+    + `${p.reason ? `, reason: ${q(p.reason)}` : ''}`,
     ACTION_TYPE.SAVE_FSP_PROFILE, clientMutationLabel);
 }
 
-export function saveMuseSettings(s, clientMutationLabel) {
+export function saveMuseSettings(s, clientMutationLabel, reason = '') {
   const q = (v) => `"${formatGQLString(v ?? '')}"`;
   const blank = (v) => v === '' || v === null || v === undefined;
   const args = [
@@ -313,6 +314,7 @@ export function saveMuseSettings(s, clientMutationLabel) {
     `paymentDesc: ${q(s.paymentDesc)}`,
     `isStp: ${!!s.isStp}`,
     `glAccounts: ${q(JSON.stringify(s.glAccounts || []))}`,
+    ...(reason.trim() ? [`reason: ${q(reason.trim())}`] : []),
   ].join(', ');
   return mutate('saveMuseSettings', args, ACTION_TYPE.SAVE_MUSE_SETTINGS, clientMutationLabel);
 }

@@ -144,6 +144,7 @@ function MuseSettingsPage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [rejecting, setRejecting] = useState(null);
   const [comment, setComment] = useState('');
+  const [reason, setReason] = useState('');
   const submitting = state?.submittingMutation;
   const prevSubmitting = useRef();
 
@@ -152,6 +153,7 @@ function MuseSettingsPage() {
   useEffect(() => {
     if (prevSubmitting.current && !submitting) {
       dispatch(journalize(state?.mutation));
+      setReason('');
       reload();
     }
   }, [submitting]);
@@ -336,13 +338,26 @@ function MuseSettingsPage() {
 
           {canPropose && (
             <div className={classes.footer}>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                variant="outlined"
+                size="small"
+                label={t('museSettings.reason')}
+                placeholder={t('museSettings.reason.placeholder')}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                disabled={!editable}
+                inputProps={{ maxLength: 500 }}
+              />
               <Button
                 variant="contained"
                 color="primary"
                 size="large"
                 startIcon={<SaveOutlinedIcon />}
                 disabled={!valid || !editable || submitting}
-                onClick={() => dispatch(saveMuseSettings(form, t('museSettings.mutation.save')))}
+                onClick={() => dispatch(saveMuseSettings(form, t('museSettings.mutation.save'), reason))}
               >
                 {t('museSettings.save')}
               </Button>
@@ -387,6 +402,11 @@ function MuseSettingsPage() {
                             {show((c.proposed || {})[f])}
                           </div>
                         ))}
+                        {c.reason && (
+                          <Typography variant="caption" display="block" color="textSecondary">
+                            {tv('museChanges.reason', { reason: c.reason })}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         {c.requested_by}

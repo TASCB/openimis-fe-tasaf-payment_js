@@ -543,5 +543,8 @@
   "tasafPayment.fsp.delete": "Delete FSP",
   "tasafPayment.fsp.delete.title": "Delete {code}?",
   "tasafPayment.fsp.delete.message": "Its other names, charge bands and MUSE details will be removed. Only FSPs that no payment account uses can be deleted.",
-  "tasafPayment.fsp.mutation.delete": "Delete FSP {code}"
+  "tasafPayment.fsp.mutation.delete": "Delete FSP {code}",
+  "tasafPayment.museSettings.reason": "Reason for the change",
+  "tasafPayment.museSettings.reason.placeholder": "Why this value? e.g. Sub-budget class from MUSE's letter of 3 October",
+  "tasafPayment.museChanges.reason": "Reason: {reason}"
 }

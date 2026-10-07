@@ -115,6 +115,20 @@ function FspDialog({
             onChange: (e) => setForm({ ...form, bic: e.target.value.toUpperCase() }),
             inputProps: { maxLength: 8, style: { fontFamily: 'monospace', textTransform: 'uppercase' } },
           })}
+          {(adding ? canPropose : detailsEditable) && (
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                label={t('museSettings.reason')}
+                placeholder={t('museSettings.reason.placeholder')}
+                value={form.reason || ''}
+                onChange={set('reason')}
+                inputProps={{ maxLength: 500 }}
+              />
+            </Grid>
+          )}
         </Grid>
         {!adding && provider.pending && (
           <Typography variant="body2" className={classes.hint}>{t('providers.pending')}</Typography>
