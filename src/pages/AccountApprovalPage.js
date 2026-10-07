@@ -81,7 +81,7 @@ function AccountApprovalPage({
     if (pendingAction && confirmed !== null) {
       setPendingAction(null);
     }
-    return () => confirmed !== null && clearConfirm(false);
+    return () => confirmed && clearConfirm(null);
   }, [confirmed]);
 
   useEffect(() => {

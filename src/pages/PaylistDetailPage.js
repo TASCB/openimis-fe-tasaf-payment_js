@@ -140,7 +140,7 @@ function PaylistDetailPage({
       pendingActionRef.current = null;
     }
     if (confirmed !== null) pendingActionRef.current = null;
-    return () => confirmed !== null && clearConfirm(false);
+    return () => confirmed && clearConfirm(null);
   }, [confirmed]);
 
   const handleApprove = () => {

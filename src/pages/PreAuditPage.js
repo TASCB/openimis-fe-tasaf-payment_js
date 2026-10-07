@@ -117,7 +117,7 @@ function PreAuditPage({
       setBatchPending(false);
     }
     if (confirmed !== null) { setPendingAudit(null); setBatchPending(false); }
-    return () => confirmed !== null && clearConfirm(false);
+    return () => confirmed && clearConfirm(null);
   }, [confirmed]);
 
   useEffect(() => {
