@@ -19,7 +19,7 @@ export default function PaylistItemsActions() {
   const ctx = useContext(PaylistActionsContext);
   if (!ctx) return null;
   const {
-    t, canSearch, canExport, onMusePreview, onExport,
+    t, canSearch, canExport, onMusePreview, onExport, onExportItems, exportingItems,
     approve, submit, submitting,
   } = ctx;
 
@@ -44,6 +44,9 @@ export default function PaylistItemsActions() {
       {canSearch && <Button color="primary" onClick={onMusePreview}>{t('button.musePreview')}</Button>}
       {canSearch && (
         <Button color="primary" disabled={!canExport} onClick={onExport}>{t('button.exportPaylistPdf')}</Button>
+      )}
+      {canSearch && (
+        <Button color="primary" disabled={exportingItems} onClick={onExportItems}>{t('button.exportPaylistItems')}</Button>
       )}
       {primary(approve, <CheckCircleIcon />, t('button.approvePaylist'), t('paylist.detail.approveNotAllowed'))}
       {primary(submit, <SendIcon />, t('button.submitPaylist'), t('paylist.detail.submitNotAllowed'))}

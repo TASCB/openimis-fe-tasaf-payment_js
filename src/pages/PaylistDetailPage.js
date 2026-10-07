@@ -17,6 +17,7 @@ import {
   coreConfirm,
   clearConfirm,
   journalize,
+  downloadExport,
 } from '@openimis/fe-core';
 // Reuse the payroll module's PDF helpers — the MUSE dispatch paylist is built
 // from the underlying payroll, but the export lives here on the TASAF surface.
@@ -34,10 +35,14 @@ import {
 } from '../constants';
 import {
   fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport, fetchMusePaylistPreview,
+  fetchPaylistMuseLog, exportPaylistItems,
 } from '../actions';
 import StatusChip from '../components/StatusChip';
 import MusePayloadDialog from '../components/MusePayloadDialog';
 import PaylistItemFilter from '../components/PaylistItemFilter';
+import PaylistSummary from '../components/PaylistSummary';
+import PaylistActionNotice from '../components/PaylistActionNotice';
+import MuseLogPanel from '../components/MuseLogPanel';
 import { PAYLIST_ITEMS_ACTIONS_KEY, PaylistActionsContext } from '../components/PaylistItemsActions';
 import { defaultPageStyles } from '../utils/styles';
 
@@ -59,6 +64,15 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const PAYLIST_STATUS_COLOR = '#9e9e9e';
+const EXPORT_FILTER = /^(hhid|benefitCode|accountNumber|fspName|locationId|status|museReference_Icontains):\s*(.*)$/;
+const toExportArg = (param) => {
+  const match = EXPORT_FILTER.exec(param);
+  if (!match) return null;
+  const [, key, value] = match;
+  if (key === 'status') return `status: "${value.replace(/"/g, '')}"`;
+  if (key === 'museReference_Icontains') return `museReference: ${value}`;
+  return `${key}: ${value}`;
+};
 const SUBMITTABLE = [PAYLIST_STATUS.APPROVED, PAYLIST_STATUS.REJECTED];
 
 // Status chips are monochrome: a status is a state, not an alarm.
@@ -86,6 +100,14 @@ function PaylistDetailPage({
   paylistItemsPageInfo,
   paylistItemsTotalCount,
   paylistHeader,
+  paylistActionResult,
+  paylistMuseLog,
+  fetchingPaylistMuseLog,
+  fetchPaylistMuseLog,
+  paylistItemsExport,
+  fetchingPaylistItemsExport,
+  exportPaylistItems,
+  downloadExport,
   paylistExport,
   fetchingPaylistExport,
   submittingMutation,
@@ -107,18 +129,40 @@ function PaylistDetailPage({
   const [showMusePreview, setShowMusePreview] = useState(false);
   const [location, setLocation] = useState(null);
   const [exportRequested, setExportRequested] = useState(false);
+  const itemParamsRef = useRef([]);
+
+  const fetchItems = (params) => {
+    itemParamsRef.current = params || [];
+    fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`]);
+  };
+  const reload = () => {
+    fetchPaylistHeader(paylistUuid);
+    fetchPaylistMuseLog(paylistUuid);
+  };
 
   useEffect(() => {
     if (prevSubmittingMutationRef.current && !submittingMutation) {
       journalize(mutation);
-      if (paylistUuid) fetchPaylistHeader(paylistUuid);
+      if (paylistUuid) {
+        reload();
+        fetchItems(itemParamsRef.current);
+      }
     }
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
 
   useEffect(() => {
-    if (paylistUuid) fetchPaylistHeader(paylistUuid);
+    if (paylistUuid) reload();
   }, [paylistUuid]);
+
+  useEffect(() => {
+    if (paylistItemsExport) {
+      downloadExport(paylistItemsExport, `${formatMessage('paylistItem.export.filename')}.csv`, 'csv')();
+    }
+  }, [paylistItemsExport]);
+  const handleExportItems = () => {
+    exportPaylistItems(paylistUuid, itemParamsRef.current.map(toExportArg).filter(Boolean));
+  };
 
   const exportPayroll = paylistExport?.uuid === paylistUuid ? paylistExport?.payroll : null;
   useEffect(() => {
@@ -174,6 +218,8 @@ function PaylistDetailPage({
     canExport: !fetchingPaylistExport && !!paylist,
     onMusePreview: () => { fetchMusePaylistPreview(paylistUuid, 20); setShowMusePreview(true); },
     onExport: handleExportPdf,
+    onExportItems: handleExportItems,
+    exportingItems: fetchingPaylistItemsExport,
     approve: { visible: rights.includes(RIGHT_APPROVE_PAYLIST), allowed: canApprove, onClick: handleApprove },
     submit: { visible: rights.includes(RIGHT_SUBMIT_PAYLIST), allowed: canSubmit, onClick: handleSubmit },
     submitting: submittingMutation,
@@ -232,6 +278,15 @@ function PaylistDetailPage({
             )}
           </div>
         </div>
+        <PaylistSummary t={formatMessage} summary={paylist?.summary} />
+        <PaylistActionNotice
+          t={formatMessage}
+          tv={formatMessageWithValues}
+          running={submittingMutation}
+          runningKind={mutation?.kind || 'submitPaylist'}
+          result={paylistActionResult?.kind && mutation?.paylistUuid === paylistUuid ? paylistActionResult : null}
+          lastSubmit={paylist?.lastSubmit}
+        />
         {!!paylist?.museStatusDesc && (
           <Typography variant="body2" className={classes.museReply}>
             {formatMessageWithValues('paylist.detail.museReply', { text: paylist.museStatusDesc })}
@@ -245,7 +300,7 @@ function PaylistDetailPage({
           FilterPane={(props) => (
             <PaylistItemFilter {...props} location={location} onChangeLocation={setLocation} />
           )}
-          fetch={(params) => fetchPaylistItems([...(params || []), `paylistUuid: "${paylistUuid}"`])}
+          fetch={fetchItems}
           items={paylistItems}
           itemsPageInfo={paylistItemsPageInfo}
           fetchingItems={fetchingPaylistItems}
@@ -260,6 +315,14 @@ function PaylistDetailPage({
           actionsContributionKey={PAYLIST_ITEMS_ACTIONS_KEY}
         />
       </PaylistActionsContext.Provider>
+      {paylist?.destination === 'MUSE' && (
+        <MuseLogPanel
+          t={formatMessage}
+          rows={paylistMuseLog}
+          fetching={fetchingPaylistMuseLog}
+          onRefresh={() => fetchPaylistMuseLog(paylistUuid)}
+        />
+      )}
       <MusePayloadDialog
         open={showMusePreview}
         onClose={() => setShowMusePreview(false)}
@@ -279,6 +342,11 @@ const mapStateToProps = (state) => ({
   paylistItemsPageInfo: state.tasafPayment.paylistItemsPageInfo,
   paylistItemsTotalCount: state.tasafPayment.paylistItemsTotalCount,
   paylistHeader: state.tasafPayment.paylistHeader,
+  paylistActionResult: state.tasafPayment.paylistActionResult,
+  paylistMuseLog: state.tasafPayment.paylistMuseLog,
+  fetchingPaylistMuseLog: state.tasafPayment.fetchingPaylistMuseLog,
+  paylistItemsExport: state.tasafPayment.paylistItemsExport,
+  fetchingPaylistItemsExport: state.tasafPayment.fetchingPaylistItemsExport,
   paylistExport: state.tasafPayment.paylistExport,
   fetchingPaylistExport: state.tasafPayment.fetchingPaylistExport,
   fetchingMusePreview: state.tasafPayment.fetchingMusePreview,
@@ -292,7 +360,8 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
     fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport,
-    fetchMusePaylistPreview, journalize, coreConfirm, clearConfirm,
+    fetchMusePaylistPreview, fetchPaylistMuseLog, exportPaylistItems, downloadExport,
+    journalize, coreConfirm, clearConfirm,
   },
   dispatch,
 );

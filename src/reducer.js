@@ -61,6 +61,11 @@ export const ACTION_TYPE = {
   SEARCH_PAYROLLS:                'TASAF_PAYMENT_PAYROLLS',
   GET_PAYLIST_EXPORT:             'TASAF_PAYMENT_PAYLIST_EXPORT',
   GET_PAYLIST_HEADER:             'TASAF_PAYMENT_PAYLIST_HEADER',
+  PAYLIST_ACTION:                 'TASAF_PAYMENT_PAYLIST_ACTION',
+  PAYLIST_ACTION_SEND:            'TASAF_PAYMENT_PAYLIST_ACTION_SEND',
+  PAYLIST_ACTION_LOG:             'TASAF_PAYMENT_PAYLIST_ACTION_LOG',
+  PAYLIST_MUSE_LOG:               'TASAF_PAYMENT_PAYLIST_MUSE_LOG',
+  EXPORT_PAYLIST_ITEMS:           'TASAF_PAYMENT_EXPORT_PAYLIST_ITEMS',
   // Dashboard
   SEARCH_EPAYMENT_BENEFICIARY_ITEMS: 'TASAF_PAYMENT_EPAYMENT_BENEFICIARY_ITEMS',
   SEARCH_EPAYMENT_FSP_ITEMS:      'TASAF_PAYMENT_EPAYMENT_FSP_ITEMS',
@@ -194,6 +199,24 @@ const STORE_STATE = {
   paylistExport: null,
   paylistHeader: null,
   fetchingPaylistHeader: false,
+  paylistActionResult: null,
+  paylistMuseLog: [],
+  fetchingPaylistMuseLog: false,
+  paylistItemsExport: null,
+  fetchingPaylistItemsExport: false,
+};
+
+const parseJson = (value) => {
+  if (typeof value !== 'string') return value ?? null;
+  try { return JSON.parse(value); } catch (e) { return null; }
+};
+
+const mutationLogError = (raw) => {
+  if (!raw) return null;
+  const parsed = parseJson(raw);
+  const first = Array.isArray(parsed) ? parsed[0] : parsed;
+  if (first && typeof first === 'object') return first.detail || first.message || null;
+  return String(raw);
 };
 
 function reducer(state = STORE_STATE, action) {
@@ -498,14 +521,58 @@ function reducer(state = STORE_STATE, action) {
     // ─── Single paylist: header (status, buttons) ───────────────────────────
     case REQUEST(ACTION_TYPE.GET_PAYLIST_HEADER):
       return { ...state, fetchingPaylistHeader: true };
-    case SUCCESS(ACTION_TYPE.GET_PAYLIST_HEADER):
+    case SUCCESS(ACTION_TYPE.GET_PAYLIST_HEADER): {
+      const paylist = parseData(action.payload.data.paylist)?.[0] ?? null;
       return {
         ...state,
         fetchingPaylistHeader: false,
-        paylistHeader: parseData(action.payload.data.paylist)?.[0] ?? null,
+        paylistHeader: paylist && {
+          ...paylist, summary: parseJson(paylist.summary), lastSubmit: parseJson(paylist.lastSubmit),
+        },
       };
+    }
     case ERROR(ACTION_TYPE.GET_PAYLIST_HEADER):
       return { ...state, fetchingPaylistHeader: false };
+
+    // ─── Approve / Submit ───────────────────────────────────────────────────
+    case REQUEST(ACTION_TYPE.PAYLIST_ACTION):
+      return {
+        ...state, submittingMutation: true, mutation: action.meta, paylistActionResult: null,
+      };
+    case SUCCESS(ACTION_TYPE.PAYLIST_ACTION):
+      return {
+        ...state,
+        submittingMutation: false,
+        paylistActionResult: {
+          kind: action.meta.kind,
+          status: action.payload?.status ?? null,
+          error: mutationLogError(action.payload?.error),
+        },
+      };
+    case ERROR(ACTION_TYPE.PAYLIST_ACTION):
+      return {
+        ...state,
+        submittingMutation: false,
+        paylistActionResult: {
+          kind: action.meta.kind, status: 1, error: formatServerError(action.payload)?.message ?? null,
+        },
+      };
+
+    case REQUEST(ACTION_TYPE.PAYLIST_MUSE_LOG):
+      return { ...state, fetchingPaylistMuseLog: true };
+    case SUCCESS(ACTION_TYPE.PAYLIST_MUSE_LOG):
+      return { ...state, fetchingPaylistMuseLog: false, paylistMuseLog: action.payload.data?.paylistMuseLog ?? [] };
+    case ERROR(ACTION_TYPE.PAYLIST_MUSE_LOG):
+      return { ...state, fetchingPaylistMuseLog: false };
+
+    case REQUEST(ACTION_TYPE.EXPORT_PAYLIST_ITEMS):
+      return { ...state, fetchingPaylistItemsExport: true, paylistItemsExport: null };
+    case SUCCESS(ACTION_TYPE.EXPORT_PAYLIST_ITEMS):
+      return {
+        ...state, fetchingPaylistItemsExport: false, paylistItemsExport: action.payload.data?.paylistItemsExport ?? null,
+      };
+    case ERROR(ACTION_TYPE.EXPORT_PAYLIST_ITEMS):
+      return { ...state, fetchingPaylistItemsExport: false };
 
     // ─── Single paylist (+ rich payroll) for PDF export ─────────────────────
     case REQUEST(ACTION_TYPE.GET_PAYLIST_EXPORT):

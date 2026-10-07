@@ -100,9 +100,11 @@ export const PAYLIST_HEADER_PROJECTION = () => [
   'status',
   'museBatchReference',
   'museStatusDesc',
+  'museMsgId',
+  'summary',
+  'lastSubmit',
 ];
 
-// The payroll's benefits are only needed for the PDF, so this loads on Export, not on page open.
 export const PAYLIST_EXPORT_PROJECTION = () => [
   ...PAYLIST_HEADER_PROJECTION(),
   'payroll { id name paymentMethod '
@@ -558,22 +560,53 @@ export function generatePaylist(
   );
 }
 
-export function approvePaylist(paylistUuid, clientMutationLabel) {
-  const mutation = formatMutation('approvePaylist', `paylistUuid: "${paylistUuid}"`, clientMutationLabel);
-  return graphql(
-    mutation.payload,
-    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.APPROVE_PAYLIST), ERROR(ACTION_TYPE.MUTATION)],
-    { actionType: ACTION_TYPE.APPROVE_PAYLIST, clientMutationId: mutation.clientMutationId, clientMutationLabel },
-  );
+const MUTATION_LOG_QUERY = (clientMutationId) => `query { mutationLogs(clientMutationId: "${clientMutationId}") `
+  + '{ edges { node { status error } } } }';
+const MUTATION_RECEIVED = 0;
+const MUTATION_POLL_ATTEMPTS = 60;
+
+const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+async function waitForMutationLog(dispatch, clientMutationId) {
+  for (let attempt = 0; attempt < MUTATION_POLL_ATTEMPTS; attempt += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const response = await dispatch(graphql(MUTATION_LOG_QUERY(clientMutationId), ACTION_TYPE.PAYLIST_ACTION_LOG));
+    const log = response?.payload?.data?.mutationLogs?.edges?.[0]?.node;
+    if (response?.error || (log && log.status !== MUTATION_RECEIVED)) return log || null;
+    // eslint-disable-next-line no-await-in-loop
+    await sleep(Math.min(250 * (attempt + 1), 2000));
+  }
+  return null;
 }
 
-export function submitPaylist(paylistUuid, clientMutationLabel) {
-  const mutation = formatMutation('submitPaylist', `paylistUuid: "${paylistUuid}"`, clientMutationLabel);
-  return graphql(
-    mutation.payload,
-    [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.SUBMIT_PAYLIST), ERROR(ACTION_TYPE.MUTATION)],
-    { actionType: ACTION_TYPE.SUBMIT_PAYLIST, clientMutationId: mutation.clientMutationId, clientMutationLabel },
-  );
+function runPaylistAction(kind, paylistUuid, clientMutationLabel) {
+  const mutation = formatMutation(kind, `paylistUuid: "${paylistUuid}"`, clientMutationLabel);
+  const meta = { kind, paylistUuid, clientMutationId: mutation.clientMutationId, clientMutationLabel };
+  return async (dispatch) => {
+    dispatch({ type: REQUEST(ACTION_TYPE.PAYLIST_ACTION), meta });
+    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.PAYLIST_ACTION_SEND, meta));
+    if (!sent || sent.error) {
+      dispatch({ type: ERROR(ACTION_TYPE.PAYLIST_ACTION), payload: sent?.payload, meta });
+      return;
+    }
+    const log = await waitForMutationLog(dispatch, meta.clientMutationId);
+    dispatch({ type: SUCCESS(ACTION_TYPE.PAYLIST_ACTION), payload: log, meta });
+  };
+}
+
+export const approvePaylist = (paylistUuid, label) => runPaylistAction('approvePaylist', paylistUuid, label);
+export const submitPaylist = (paylistUuid, label) => runPaylistAction('submitPaylist', paylistUuid, label);
+
+export function fetchPaylistMuseLog(paylistUuid) {
+  const payload = `{ paylistMuseLog(paylistUuid: "${paylistUuid}", limit: 200) {
+    createdAt direction transactionType status attemptNumber msgId museReference esbRequestId
+    httpStatusCode itemCount amount benefitCode errorMessage responseBody } }`;
+  return graphql(payload, ACTION_TYPE.PAYLIST_MUSE_LOG);
+}
+
+export function exportPaylistItems(paylistUuid, filterArgs) {
+  const args = [`paylistUuid: "${paylistUuid}"`, ...filterArgs];
+  return graphql(`{ paylistItemsExport(${args.join(', ')}) }`, ACTION_TYPE.EXPORT_PAYLIST_ITEMS);
 }
 
 // ─── Reports (read-only, auditor tab) ──────────────────────────────────────────
