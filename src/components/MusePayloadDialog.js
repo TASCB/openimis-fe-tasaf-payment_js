@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography,
   Table, TableBody, TableCell, TableHead, TableRow,
@@ -7,6 +7,7 @@ import { makeStyles } from '@material-ui/core/styles';
 import { useIntl } from 'react-intl';
 import { useModulesManager, useTranslations } from '@openimis/fe-core';
 import { MODULE_NAME } from '../constants';
+import copyText from '../utils/clipboard';
 
 const useStyles = makeStyles((theme) => ({
   line: { marginBottom: theme.spacing(1) },
@@ -34,6 +35,7 @@ export default function MusePayloadDialog({
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const intl = useIntl();
   const [copied, setCopied] = useState(false);
+  const contentRef = useRef(null);
   const ruleText = (row) => {
     const key = [`rule.${row.rule}.${row.field}`, `rule.${row.rule}`]
       .map((k) => `${MODULE_NAME}.musePreview.${k}`)
@@ -43,18 +45,17 @@ export default function MusePayloadDialog({
   const json = preview ? JSON.stringify(preview.body, null, 2) : '';
 
   const copy = () => {
-    try {
-      navigator.clipboard.writeText(json).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      });
-    } catch (e) { /* clipboard unavailable on an insecure origin */ }
+    copyText(json, contentRef.current).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>{formatMessage('musePreview.title')}</DialogTitle>
-      <DialogContent>
+      <DialogContent ref={contentRef}>
         {fetching && <LinearProgress />}
         {!!error && (
           <Typography color="error">

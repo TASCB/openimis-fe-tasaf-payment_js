@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import { useModulesManager, useTranslations } from '@openimis/fe-core';
 import { MODULE_NAME } from '../constants';
+import copyText from '../utils/clipboard';
 
 const useStyles = makeStyles((theme) => ({
   line: { marginBottom: theme.spacing(1) },
@@ -32,21 +33,21 @@ export default function VerificationPayloadDialog({
   const modulesManager = useModulesManager();
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const [copied, setCopied] = useState(false);
+  const contentRef = useRef(null);
   const json = preview ? JSON.stringify(preview, null, 2) : '';
 
   const copy = () => {
-    try {
-      navigator.clipboard.writeText(json).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      });
-    } catch (e) { /* clipboard unavailable (insecure origin) — the JSON is still selectable */ }
+    copyText(json, contentRef.current).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>{formatMessage('payloadPreview.title')}</DialogTitle>
-      <DialogContent>
+      <DialogContent ref={contentRef}>
         {fetching && <LinearProgress />}
         {!!error && <Typography color="error">{error.detail || error.message || String(error)}</Typography>}
         {preview && (
