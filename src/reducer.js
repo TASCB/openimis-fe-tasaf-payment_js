@@ -60,6 +60,7 @@ export const ACTION_TYPE = {
   FETCH_FSP_BAND_SET:             'TASAF_PAYMENT_FSP_BAND_SET',
   SEARCH_PAYROLLS:                'TASAF_PAYMENT_PAYROLLS',
   GET_PAYLIST_EXPORT:             'TASAF_PAYMENT_PAYLIST_EXPORT',
+  GET_PAYLIST_HEADER:             'TASAF_PAYMENT_PAYLIST_HEADER',
   // Dashboard
   SEARCH_EPAYMENT_BENEFICIARY_ITEMS: 'TASAF_PAYMENT_EPAYMENT_BENEFICIARY_ITEMS',
   SEARCH_EPAYMENT_FSP_ITEMS:      'TASAF_PAYMENT_EPAYMENT_FSP_ITEMS',
@@ -191,6 +192,8 @@ const STORE_STATE = {
   fetchedPaylistExport: false,
   errorPaylistExport: null,
   paylistExport: null,
+  paylistHeader: null,
+  fetchingPaylistHeader: false,
 };
 
 function reducer(state = STORE_STATE, action) {
@@ -491,6 +494,18 @@ function reducer(state = STORE_STATE, action) {
       };
     case ERROR(ACTION_TYPE.SEARCH_PAYROLLS):
       return { ...state, fetchingPayrolls: false, errorPayrolls: formatServerError(action.payload) };
+
+    // ─── Single paylist: header (status, buttons) ───────────────────────────
+    case REQUEST(ACTION_TYPE.GET_PAYLIST_HEADER):
+      return { ...state, fetchingPaylistHeader: true };
+    case SUCCESS(ACTION_TYPE.GET_PAYLIST_HEADER):
+      return {
+        ...state,
+        fetchingPaylistHeader: false,
+        paylistHeader: parseData(action.payload.data.paylist)?.[0] ?? null,
+      };
+    case ERROR(ACTION_TYPE.GET_PAYLIST_HEADER):
+      return { ...state, fetchingPaylistHeader: false };
 
     // ─── Single paylist (+ rich payroll) for PDF export ─────────────────────
     case REQUEST(ACTION_TYPE.GET_PAYLIST_EXPORT):

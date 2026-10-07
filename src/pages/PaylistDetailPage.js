@@ -33,7 +33,7 @@ import {
   WS_TAB_PAYLISTS,
 } from '../constants';
 import {
-  fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistForExport, fetchMusePaylistPreview,
+  fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport, fetchMusePaylistPreview,
 } from '../actions';
 import StatusChip from '../components/StatusChip';
 import MusePayloadDialog from '../components/MusePayloadDialog';
@@ -73,6 +73,7 @@ function PaylistDetailPage({
   fetchPaylistItems,
   approvePaylist,
   submitPaylist,
+  fetchPaylistHeader,
   fetchPaylistForExport,
   fetchMusePaylistPreview,
   fetchingMusePreview,
@@ -84,6 +85,7 @@ function PaylistDetailPage({
   paylistItems,
   paylistItemsPageInfo,
   paylistItemsTotalCount,
+  paylistHeader,
   paylistExport,
   fetchingPaylistExport,
   submittingMutation,
@@ -104,29 +106,42 @@ function PaylistDetailPage({
   const pendingActionRef = useRef(null);
   const [showMusePreview, setShowMusePreview] = useState(false);
   const [location, setLocation] = useState(null);
+  const [exportRequested, setExportRequested] = useState(false);
 
   useEffect(() => {
     if (prevSubmittingMutationRef.current && !submittingMutation) {
       journalize(mutation);
-      if (paylistUuid) fetchPaylistForExport(paylistUuid);
+      if (paylistUuid) fetchPaylistHeader(paylistUuid);
     }
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
 
-  // Load the paylist + its payroll so the PDF export is ready on demand.
   useEffect(() => {
-    if (paylistUuid) fetchPaylistForExport(paylistUuid);
+    if (paylistUuid) fetchPaylistHeader(paylistUuid);
   }, [paylistUuid]);
 
-  const exportPayroll = paylistExport?.payroll;
-  const status = paylistExport?.status;
+  const exportPayroll = paylistExport?.uuid === paylistUuid ? paylistExport?.payroll : null;
+  useEffect(() => {
+    if (exportRequested && exportPayroll) {
+      setExportRequested(false);
+      exportPaylistPdf(buildPaylistPayload(exportPayroll));
+    }
+  }, [exportRequested, exportPayroll]);
+
+  const paylist = paylistHeader?.uuid === paylistUuid ? paylistHeader : null;
+  const status = paylist?.status;
   const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL;
   const canSubmit = SUBMITTABLE.includes(status);
   const back = () => (history.length > 1
     ? history.goBack()
     : history.push(`/${modulesManager.getRef('tasafPayment.route.workspace')}?tab=${WS_TAB_PAYLISTS}`));
   const handleExportPdf = () => {
-    if (exportPayroll) exportPaylistPdf(buildPaylistPayload(exportPayroll));
+    if (exportPayroll) {
+      exportPaylistPdf(buildPaylistPayload(exportPayroll));
+    } else {
+      setExportRequested(true);
+      fetchPaylistForExport(paylistUuid);
+    }
   };
 
   useEffect(() => {
@@ -156,7 +171,7 @@ function PaylistDetailPage({
   const actionsContext = {
     t: formatMessage,
     canSearch: rights.includes(RIGHT_PAYLIST_SEARCH),
-    canExport: !fetchingPaylistExport && !!exportPayroll,
+    canExport: !fetchingPaylistExport && !!paylist,
     onMusePreview: () => { fetchMusePaylistPreview(paylistUuid, 20); setShowMusePreview(true); },
     onExport: handleExportPdf,
     approve: { visible: rights.includes(RIGHT_APPROVE_PAYLIST), allowed: canApprove, onClick: handleApprove },
@@ -202,24 +217,24 @@ function PaylistDetailPage({
               <IconButton onClick={back}><ChevronLeftIcon /></IconButton>
             </Tooltip>
             <Typography variant="h6">
-              {paylistExport
+              {paylist
                 ? formatMessageWithValues('paylist.detail.heading', {
-                  batchType: formatMessage(`paylist.batchType.${paylistExport.batchType}`),
-                  destination: formatMessage(`paylist.destination.${paylistExport.destination}`),
+                  batchType: formatMessage(`paylist.batchType.${paylist.batchType}`),
+                  destination: formatMessage(`paylist.destination.${paylist.destination}`),
                 })
                 : formatMessage('paylist.detail.loading')}
             </Typography>
             {!!status && (
               <StatusChip label={formatMessage(`paylist.status.${status}`)} color={PAYLIST_STATUS_COLOR} />
             )}
-            {!!paylistExport?.museBatchReference && (
-              <Typography variant="body2" className={classes.subtitle}>{paylistExport.museBatchReference}</Typography>
+            {!!paylist?.museBatchReference && (
+              <Typography variant="body2" className={classes.subtitle}>{paylist.museBatchReference}</Typography>
             )}
           </div>
         </div>
-        {!!paylistExport?.museStatusDesc && (
+        {!!paylist?.museStatusDesc && (
           <Typography variant="body2" className={classes.museReply}>
-            {formatMessageWithValues('paylist.detail.museReply', { text: paylistExport.museStatusDesc })}
+            {formatMessageWithValues('paylist.detail.museReply', { text: paylist.museStatusDesc })}
           </Typography>
         )}
       </Paper>
@@ -263,6 +278,7 @@ const mapStateToProps = (state) => ({
   paylistItems: state.tasafPayment.paylistItems,
   paylistItemsPageInfo: state.tasafPayment.paylistItemsPageInfo,
   paylistItemsTotalCount: state.tasafPayment.paylistItemsTotalCount,
+  paylistHeader: state.tasafPayment.paylistHeader,
   paylistExport: state.tasafPayment.paylistExport,
   fetchingPaylistExport: state.tasafPayment.fetchingPaylistExport,
   fetchingMusePreview: state.tasafPayment.fetchingMusePreview,
@@ -275,8 +291,8 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
-    fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistForExport, fetchMusePaylistPreview,
-    journalize, coreConfirm, clearConfirm,
+    fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport,
+    fetchMusePaylistPreview, journalize, coreConfirm, clearConfirm,
   },
   dispatch,
 );

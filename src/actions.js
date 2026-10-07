@@ -92,7 +92,7 @@ export const PAYROLL_PICKER_PROJECTION = () => [
 
 // Paylist + its rich payroll, shaped for payroll/buildPaylistPayload (PDF export).
 // The payroll FK resolves to payroll's PayrollGQLType, so benefitConsumption etc. are available.
-export const PAYLIST_EXPORT_PROJECTION = () => [
+export const PAYLIST_HEADER_PROJECTION = () => [
   'id',
   'uuid',
   'batchType',
@@ -100,6 +100,11 @@ export const PAYLIST_EXPORT_PROJECTION = () => [
   'status',
   'museBatchReference',
   'museStatusDesc',
+];
+
+// The payroll's benefits are only needed for the PDF, so this loads on Export, not on page open.
+export const PAYLIST_EXPORT_PROJECTION = () => [
+  ...PAYLIST_HEADER_PROJECTION(),
   'payroll { id name paymentMethod '
     + 'paymentCycle { code startDate endDate } '
     + 'paymentPoint { id name location { id name parent { id name parent { id name } } } } '
@@ -367,8 +372,13 @@ export function fetchPayrolls(params = []) {
   return graphql(payload, ACTION_TYPE.SEARCH_PAYROLLS);
 }
 
-// Fetch one paylist (with its rich payroll) for the paylist PDF export.
 // uuid === id for HistoryModels, and the `id` exact filter accepts the raw UUID.
+export function fetchPaylistHeader(paylistUuid) {
+  const payload = formatPageQueryWithCount('paylist', [`id: "${paylistUuid}"`], PAYLIST_HEADER_PROJECTION());
+  return graphql(payload, ACTION_TYPE.GET_PAYLIST_HEADER);
+}
+
+// One paylist with its rich payroll, for the paylist PDF export.
 export function fetchPaylistForExport(paylistUuid) {
   const payload = formatPageQueryWithCount(
     'paylist',
