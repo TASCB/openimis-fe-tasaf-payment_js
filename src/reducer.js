@@ -65,6 +65,7 @@ export const ACTION_TYPE = {
   PAYLIST_ACTION_SEND:            'TASAF_PAYMENT_PAYLIST_ACTION_SEND',
   PAYLIST_ACTION_LOG:             'TASAF_PAYMENT_PAYLIST_ACTION_LOG',
   PAYLIST_MUSE_LOG:               'TASAF_PAYMENT_PAYLIST_MUSE_LOG',
+  PAYLIST_FSP_OPTIONS:            'TASAF_PAYMENT_PAYLIST_FSP_OPTIONS',
   EXPORT_PAYLIST_ITEMS:           'TASAF_PAYMENT_EXPORT_PAYLIST_ITEMS',
   // Dashboard
   SEARCH_EPAYMENT_BENEFICIARY_ITEMS: 'TASAF_PAYMENT_EPAYMENT_BENEFICIARY_ITEMS',
@@ -202,6 +203,7 @@ const STORE_STATE = {
   paylistActionResult: null,
   paylistMuseLog: [],
   fetchingPaylistMuseLog: false,
+  paylistFspOptions: [],
   paylistItemsExport: null,
   fetchingPaylistItemsExport: false,
 };
@@ -564,6 +566,11 @@ function reducer(state = STORE_STATE, action) {
       return { ...state, fetchingPaylistMuseLog: false, paylistMuseLog: action.payload.data?.paylistMuseLog ?? [] };
     case ERROR(ACTION_TYPE.PAYLIST_MUSE_LOG):
       return { ...state, fetchingPaylistMuseLog: false };
+
+    case REQUEST(ACTION_TYPE.PAYLIST_FSP_OPTIONS):
+      return { ...state, paylistFspOptions: [] };
+    case SUCCESS(ACTION_TYPE.PAYLIST_FSP_OPTIONS):
+      return { ...state, paylistFspOptions: action.payload.data?.paylistFspOptions ?? [] };
 
     case REQUEST(ACTION_TYPE.EXPORT_PAYLIST_ITEMS):
       return { ...state, fetchingPaylistItemsExport: true, paylistItemsExport: null };

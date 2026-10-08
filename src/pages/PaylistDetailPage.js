@@ -35,7 +35,7 @@ import {
 } from '../constants';
 import {
   fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport, fetchMusePaylistPreview,
-  fetchPaylistMuseLog, exportPaylistItems,
+  fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems,
 } from '../actions';
 import StatusChip from '../components/StatusChip';
 import MusePayloadDialog from '../components/MusePayloadDialog';
@@ -64,13 +64,12 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const PAYLIST_STATUS_COLOR = '#9e9e9e';
-const EXPORT_FILTER = /^(hhid|benefitCode|accountNumber|fspName|locationId|status|museReference_Icontains):\s*(.*)$/;
+const EXPORT_FILTER = /^(hhid|payeeCode|payeeName|benefitCode|accountNumber|fspName|fspCode|locationId|status):\s*(.*)$/;
 const toExportArg = (param) => {
   const match = EXPORT_FILTER.exec(param);
   if (!match) return null;
   const [, key, value] = match;
   if (key === 'status') return `status: "${value.replace(/"/g, '')}"`;
-  if (key === 'museReference_Icontains') return `museReference: ${value}`;
   return `${key}: ${value}`;
 };
 const SUBMITTABLE = [PAYLIST_STATUS.APPROVED, PAYLIST_STATUS.REJECTED];
@@ -104,6 +103,8 @@ function PaylistDetailPage({
   paylistMuseLog,
   fetchingPaylistMuseLog,
   fetchPaylistMuseLog,
+  paylistFspOptions,
+  fetchPaylistFspOptions,
   paylistItemsExport,
   fetchingPaylistItemsExport,
   exportPaylistItems,
@@ -152,7 +153,10 @@ function PaylistDetailPage({
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
 
   useEffect(() => {
-    if (paylistUuid) reload();
+    if (paylistUuid) {
+      reload();
+      fetchPaylistFspOptions(paylistUuid);
+    }
   }, [paylistUuid]);
 
   useEffect(() => {
@@ -227,22 +231,20 @@ function PaylistDetailPage({
 
   const headers = () => [
     formatMessage('paylistItem.hhid'),
+    formatMessage('paylistItem.payeeCode'),
     formatMessage('paylistItem.benefitCode'),
     formatMessage('paylistItem.accountNumber'),
     formatMessage('paylistItem.fspName'),
-    formatMessage('paylistItem.fspType'),
     formatMessage('paylistItem.amount'),
     formatMessage('paylistItem.status'),
-    formatMessage('paylistItem.museReference'),
   ];
 
   const itemFormatters = () => [
     (row) => row.paymentAccount?.groupBeneficiary?.group?.code ?? '-',
+    (row) => (row.payeeCode ? <span style={{ fontFamily: 'monospace' }}>{row.payeeCode}</span> : '-'),
     (row) => row.benefitConsumption?.code ?? '-',
     (row) => row.paymentAccount?.accountNumber ?? '-',
     (row) => row.paymentAccount?.fspName ?? '-',
-    (row) => row.paymentAccount?.fspType
-      ? formatMessage(`paymentAccount.fspType.${row.paymentAccount.fspType}`) : '-',
     (row) => row.amount ?? '-',
     (row) => (
       <StatusChip
@@ -250,7 +252,6 @@ function PaylistDetailPage({
         color={ITEM_STATUS_COLORS[row.status]}
       />
     ),
-    (row) => row.museReference ?? '-',
   ];
 
   return (
@@ -298,7 +299,12 @@ function PaylistDetailPage({
         <Searcher
           module={MODULE_NAME}
           FilterPane={(props) => (
-            <PaylistItemFilter {...props} location={location} onChangeLocation={setLocation} />
+            <PaylistItemFilter
+              {...props}
+              location={location}
+              onChangeLocation={setLocation}
+              fspOptions={paylistFspOptions}
+            />
           )}
           fetch={fetchItems}
           items={paylistItems}
@@ -345,6 +351,7 @@ const mapStateToProps = (state) => ({
   paylistActionResult: state.tasafPayment.paylistActionResult,
   paylistMuseLog: state.tasafPayment.paylistMuseLog,
   fetchingPaylistMuseLog: state.tasafPayment.fetchingPaylistMuseLog,
+  paylistFspOptions: state.tasafPayment.paylistFspOptions,
   paylistItemsExport: state.tasafPayment.paylistItemsExport,
   fetchingPaylistItemsExport: state.tasafPayment.fetchingPaylistItemsExport,
   paylistExport: state.tasafPayment.paylistExport,
@@ -360,7 +367,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
     fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport,
-    fetchMusePaylistPreview, fetchPaylistMuseLog, exportPaylistItems, downloadExport,
+    fetchMusePaylistPreview, fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems, downloadExport,
     journalize, coreConfirm, clearConfirm,
   },
   dispatch,

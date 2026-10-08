@@ -69,6 +69,7 @@ export const PAYLIST_ITEM_PROJECTION = () => [
   'status',
   'museReference',
   'returnReason',
+  'payeeCode',
   'paymentAccount { id uuid accountNumber fspType fspName groupBeneficiary { id group { id code } } }',
   'benefitConsumption { id code }',
 ];
@@ -604,6 +605,13 @@ export function fetchPaylistMuseLog(paylistUuid) {
     createdAt direction transactionType status attemptNumber msgId museReference esbRequestId
     httpStatusCode itemCount amount benefitCode errorMessage responseBody museFeedback } }`;
   return graphql(payload, ACTION_TYPE.PAYLIST_MUSE_LOG);
+}
+
+export function fetchPaylistFspOptions(paylistUuid) {
+  return graphql(
+    `{ paylistFspOptions(paylistUuid: "${paylistUuid}") { fspCode name names accounts } }`,
+    ACTION_TYPE.PAYLIST_FSP_OPTIONS,
+  );
 }
 
 export function exportPaylistItems(paylistUuid, filterArgs) {

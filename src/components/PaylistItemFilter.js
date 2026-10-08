@@ -14,14 +14,14 @@ import { defaultFilterStyles } from '../utils/styles';
 // Text keys are the paylistItem query's own arguments (schema.resolve_paylist_item).
 const TEXT_FILTERS = [
   ['hhid', 'filter.hhid'],
+  ['payeeCode', 'filter.payeeCode'],
+  ['payeeName', 'filter.payeeName'],
   ['benefitCode', 'filter.benefitCode'],
   ['accountNumber', 'filter.accountNumber'],
-  ['fspName', 'filter.fspName'],
-  ['museReference_Icontains', 'filter.museReference'],
 ];
 
 function PaylistItemFilter({
-  classes, filters, onChangeFilters, location, onChangeLocation,
+  classes, filters, onChangeFilters, location, onChangeLocation, fspOptions,
 }) {
   const modulesManager = useModulesManager();
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
@@ -43,6 +43,11 @@ function PaylistItemFilter({
     ...PAYLIST_ITEM_STATUS_LIST.map((s) => ({ value: s, label: formatMessage(`paylistItem.status.${s}`) })),
   ];
 
+  const fspSelectOptions = [
+    { value: null, label: formatMessage('tooltip.any') },
+    ...(fspOptions || []).map((o) => ({ value: o.fspCode, label: `${o.name} (${o.accounts})` })),
+  ];
+
   return (
     <Grid container className={classes.form} alignItems="center">
       {TEXT_FILTERS.map(([key, label]) => (
@@ -50,6 +55,17 @@ function PaylistItemFilter({
           <TextInput module={MODULE_NAME} label={label} value={filterValue(key)} onChange={onChangeText(key)} />
         </Grid>
       ))}
+      <Grid item xs={12} sm={6} md={2} className={classes.item}>
+        <SelectInput
+          module={MODULE_NAME}
+          label="filter.fsp"
+          options={fspSelectOptions}
+          value={filterValue('fspCode') || null}
+          onChange={(val) => onChangeFilters([
+            { id: 'fspCode', value: val, filter: val ? `fspCode: "${val.replace(/"/g, '')}"` : '' },
+          ])}
+        />
+      </Grid>
       <Grid item xs={12} sm={6} md={2} className={classes.item}>
         <SelectInput
           module={MODULE_NAME}
@@ -61,7 +77,7 @@ function PaylistItemFilter({
           ])}
         />
       </Grid>
-      <Grid item xs={12} className={classes.item}>
+      <Grid item xs={12} md={10} className={classes.item}>
         <PaaLocationFilter
           value={location}
           onChange={(loc) => {
