@@ -24,17 +24,50 @@ const useStyles = makeStyles((theme) => ({
     wordBreak: 'break-all',
     background: theme.palette.grey[50],
   },
-  note: { color: theme.palette.error.main },
+  note: { color: theme.palette.error.main, display: 'block', fontSize: 12 },
+  details: { padding: theme.spacing(1, 2), background: theme.palette.grey[50] },
+  detailRow: { display: 'flex', gap: theme.spacing(1), fontSize: 13, padding: theme.spacing(0.25, 0) },
+  detailLabel: { minWidth: 150, color: theme.palette.grey[600] },
 }));
 
-const formatTime = (value) => (value ? new Date(value).toLocaleString() : '-');
+const EAT = 'Africa/Dar_es_Salaam';
+const formatTime = (value) => (value ? new Date(value).toLocaleString(undefined, { timeZone: EAT }) : '-');
+const money = (v) => `TZS ${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+const KNOWN_WHAT = ['OUT.BULK_PAYMENT', 'OUT.ACK', 'IN.RESPONSE', 'IN.ACK', 'IN.PAYMENT_STATUS'];
+const KNOWN_RESULT = ['SUCCESS', 'FAILED', 'RETRYING', 'REJECTED', 'PENDING', 'UNKNOWN', 'NOT_SENT'];
+
+const prettyBody = (body) => {
+  try {
+    return JSON.stringify(JSON.parse(body), null, 2);
+  } catch (e) {
+    return body;
+  }
+};
 
 export default function MuseLogPanel({
   t, rows, fetching, onRefresh,
 }) {
   const classes = useStyles();
   const [open, setOpen] = useState(null);
-  const reference = (row) => (row.direction === 'IN' ? row.museReference || row.benefitCode : row.msgId) || '-';
+
+  const what = (row) => {
+    const key = `${row.direction}.${row.transactionType}`;
+    let text = KNOWN_WHAT.includes(key) ? t(`museLog.what.${key}`) : row.transactionType;
+    if (key === 'OUT.BULK_PAYMENT' && row.attemptNumber > 1) text += ` · ${t('museLog.attempt')} ${row.attemptNumber}`;
+    if (key === 'IN.PAYMENT_STATUS' && row.benefitCode) text += ` · ${row.benefitCode}`;
+    return text;
+  };
+  const result = (row) => (KNOWN_RESULT.includes(row.status)
+    ? t(`museLog.result.${row.direction === 'OUT' ? 'OUT' : 'IN'}.${row.status}`) : row.status);
+
+  const details = (row) => [
+    ['museLog.messageId', row.msgId],
+    ['museLog.museMessageId', row.direction === 'IN' ? row.museReference : null],
+    ['museLog.requestId', row.esbRequestId],
+    ['museLog.http', row.httpStatusCode],
+    ['museLog.items', row.itemCount ? `${row.itemCount} · ${money(row.amount)}` : null],
+    ['museLog.attempt', row.direction === 'OUT' ? row.attemptNumber : null],
+  ].filter(([, value]) => value !== null && value !== undefined && value !== '');
 
   return (
     <Paper className={classes.paper}>
@@ -52,13 +85,9 @@ export default function MuseLogPanel({
           <TableHead>
             <TableRow>
               <TableCell>{t('museLog.time')}</TableCell>
-              <TableCell>{t('museLog.direction')}</TableCell>
-              <TableCell>{t('museLog.type')}</TableCell>
-              <TableCell>{t('museLog.status')}</TableCell>
-              <TableCell>{t('museLog.attempt')}</TableCell>
-              <TableCell>{t('museLog.reference')}</TableCell>
-              <TableCell>{t('museLog.requestId')}</TableCell>
-              <TableCell>{t('museLog.note')}</TableCell>
+              <TableCell>{t('museLog.what')}</TableCell>
+              <TableCell>{t('museLog.feedback')}</TableCell>
+              <TableCell>{t('museLog.result')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -66,19 +95,24 @@ export default function MuseLogPanel({
               <React.Fragment key={`${row.createdAt}-${index}`}>
                 <TableRow hover className={classes.row} onClick={() => setOpen(open === index ? null : index)}>
                   <TableCell>{formatTime(row.createdAt)}</TableCell>
-                  <TableCell>{t(`museLog.direction.${row.direction}`)}</TableCell>
-                  <TableCell>{row.transactionType}</TableCell>
-                  <TableCell>{row.status}</TableCell>
-                  <TableCell>{row.direction === 'OUT' ? row.attemptNumber : '-'}</TableCell>
-                  <TableCell>{reference(row)}</TableCell>
-                  <TableCell>{row.esbRequestId || '-'}</TableCell>
-                  <TableCell className={row.errorMessage ? classes.note : undefined}>
-                    {row.errorMessage || (row.httpStatusCode ? `HTTP ${row.httpStatusCode}` : '-')}
+                  <TableCell>{what(row)}</TableCell>
+                  <TableCell>{row.museFeedback || '-'}</TableCell>
+                  <TableCell>
+                    {result(row)}
+                    {!!row.errorMessage && <span className={classes.note}>{row.errorMessage}</span>}
                   </TableCell>
                 </TableRow>
                 {open === index && (
                   <TableRow>
-                    <TableCell colSpan={8} className={classes.body}>{row.responseBody || t('museLog.noBody')}</TableCell>
+                    <TableCell colSpan={4} className={classes.details}>
+                      {details(row).map(([label, value]) => (
+                        <div className={classes.detailRow} key={label}>
+                          <span className={classes.detailLabel}>{t(label)}</span>
+                          <span>{value}</span>
+                        </div>
+                      ))}
+                      <div className={classes.body}>{row.responseBody ? prettyBody(row.responseBody) : t('museLog.noBody')}</div>
+                    </TableCell>
                   </TableRow>
                 )}
               </React.Fragment>

@@ -602,7 +602,7 @@ export const submitPaylist = (paylistUuid, label) => runPaylistAction('submitPay
 export function fetchPaylistMuseLog(paylistUuid) {
   const payload = `{ paylistMuseLog(paylistUuid: "${paylistUuid}", limit: 200) {
     createdAt direction transactionType status attemptNumber msgId museReference esbRequestId
-    httpStatusCode itemCount amount benefitCode errorMessage responseBody } }`;
+    httpStatusCode itemCount amount benefitCode errorMessage responseBody museFeedback } }`;
   return graphql(payload, ACTION_TYPE.PAYLIST_MUSE_LOG);
 }
 
