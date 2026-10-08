@@ -118,7 +118,6 @@
   "tasafPayment.paylistItem.benefitCode": "Payment Ref",
   "tasafPayment.button.exportPaylistItems": "Export items (CSV)",
   "tasafPayment.paylistItem.export.filename": "paylist-items",
-  "tasafPayment.paylist.summary.payees": "Payees",
   "tasafPayment.paylist.summary.gross": "Gross (to MUSE)",
   "tasafPayment.paylist.summary.net": "Net (to households)",
   "tasafPayment.paylist.summary.charges": "Withdrawal charges",

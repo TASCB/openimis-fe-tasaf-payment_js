@@ -7,7 +7,7 @@ import { makeStyles } from '@material-ui/core/styles';
 import RefreshIcon from '@material-ui/icons/Refresh';
 
 const useStyles = makeStyles((theme) => ({
-  paper: { ...theme.paper.paper, margin: 0, marginBottom: theme.spacing(2) },
+  paper: { ...theme.paper.paper, margin: 0, marginTop: theme.spacing(3), marginBottom: theme.spacing(2) },
   header: {
     ...theme.paper.header,
     display: 'flex',
