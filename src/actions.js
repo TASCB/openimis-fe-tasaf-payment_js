@@ -359,9 +359,10 @@ export function deleteFspMappings(uuids, clientMutationLabel) {
 
 // ─── Payroll query (read-only, generation stepper) ─────────────────────────────
 
-export function fetchGenerationPreview(payrollId, batchType, destination) {
+export function fetchGenerationPreview(payrollId, batchType, destination, fspCode) {
   const args = [`payrollId: "${payrollId}"`, `batchType: "${batchType}"`]
-    .concat(destination ? [`destination: "${destination}"`] : []).join(', ');
+    .concat(destination ? [`destination: "${destination}"`] : [])
+    .concat(fspCode ? [`fspCode: "${fspCode}"`] : []).join(', ');
   return graphql(`{ paylistGenerationPreview(${args}) }`, ACTION_TYPE.GENERATION_PREVIEW);
 }
 
@@ -543,7 +544,7 @@ export function fetchDashboardCounts() {
 // ─── Paylist mutations ────────────────────────────────────────────────────────
 
 export function generatePaylist(
-  payrollId, batchType, paymentCycleId, destination, clientMutationLabel,
+  payrollId, batchType, paymentCycleId, destination, clientMutationLabel, fspCode,
 ) {
   // payrollId / paymentCycleId are UUIDs and destination is a String, so all quoted.
   const parts = [
@@ -552,6 +553,7 @@ export function generatePaylist(
   ];
   if (paymentCycleId) parts.push(`paymentCycleId: "${paymentCycleId}"`);
   if (destination) parts.push(`destination: "${destination}"`);
+  if (fspCode) parts.push(`fspCode: "${fspCode}"`);
   const mutation = formatMutation('generatePaylist', parts.join(', '), clientMutationLabel);
   return graphql(
     mutation.payload,

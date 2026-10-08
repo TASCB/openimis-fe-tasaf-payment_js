@@ -66,7 +66,7 @@ const useStyles = makeStyles((theme) => ({
 
 // Households nobody will pay until someone fixes their account, vs. ones simply not in this batch.
 const ATTENTION_REASONS = ['NOT_VERIFIED', 'PRE_AUDIT_NOT_PASSED', 'INVALID_MOBILE_NUMBER', 'NO_ACCOUNT'];
-const INFO_REASONS = ['OTHER_CHANNEL', 'ALREADY_ON_PAYLIST'];
+const INFO_REASONS = ['OTHER_FSP', 'OTHER_CHANNEL', 'ALREADY_ON_PAYLIST'];
 const money = (v) => `TZS ${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
 function PaymentGenerationStepper({
@@ -92,6 +92,8 @@ function PaymentGenerationStepper({
   const [payrollUuid, setPayrollUuid] = useState(null);
   const [batchType, setBatchType] = useState(null);
   const [destination, setDestination] = useState(DESTINATION.MUSE);
+  const [fspCode, setFspCode] = useState(null);
+  const [fspCodes, setFspCodes] = useState([]);
 
   useEffect(() => { fetchPayrolls([`status: ${PAYROLL_STATUS_APPROVED}`]); }, []);
 
@@ -102,6 +104,7 @@ function PaymentGenerationStepper({
       setPayrollUuid(null);
       setBatchType(null);
       setDestination(DESTINATION.MUSE);
+      setFspCode(null);
     }
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingRef.current = submittingMutation; });
@@ -116,8 +119,21 @@ function PaymentGenerationStepper({
   ];
 
   useEffect(() => {
-    if (activeStep === 2 && payrollUuid && batchType) fetchGenerationPreview(payrollUuid, batchType, destination);
-  }, [activeStep]);
+    if (activeStep === 1 && payrollUuid && batchType) fetchGenerationPreview(payrollUuid, batchType, destination);
+    if (activeStep === 2 && payrollUuid && batchType) {
+      fetchGenerationPreview(payrollUuid, batchType, destination, fspCode);
+    }
+  }, [activeStep, batchType, destination]);
+
+  useEffect(() => {
+    if (activeStep === 1) setFspCodes(generationPreview?.fsp_codes || []);
+  }, [generationPreview]);
+
+  const changeBatchType = (value) => {
+    setBatchType(value);
+    setFspCode(null);
+    setFspCodes([]);
+  };
 
   const canLeaveStep = (step) => {
     if (step === 0) return !!payrollUuid;
@@ -137,6 +153,7 @@ function PaymentGenerationStepper({
       paymentCycleUuid,
       destination,
       formatMessage('mutation.generatePaylistLabel'),
+      fspCode,
     );
   };
 
@@ -197,7 +214,7 @@ function PaymentGenerationStepper({
                     ...BATCH_TYPE_LIST.map((t) => ({ value: t, label: formatMessage(`paylist.batchType.${t}`) })),
                   ]}
                   value={batchType}
-                  onChange={setBatchType}
+                  onChange={changeBatchType}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -213,6 +230,21 @@ function PaymentGenerationStepper({
                   onChange={setDestination}
                 />
               </Grid>
+              {!!batchType && (
+                <Grid item xs={12} sm={6}>
+                  <SelectInput
+                    module={MODULE_NAME}
+                    label="generation.fsp"
+                    options={[
+                      { value: null, label: formatMessage('generation.fsp.all') },
+                      ...fspCodes.map((c) => ({ value: c, label: c })),
+                    ]}
+                    value={fspCode}
+                    onChange={setFspCode}
+                    disabled={fetchingGenerationPreview}
+                  />
+                </Grid>
+              )}
             </Grid>
           </Block>
         )}
@@ -227,6 +259,7 @@ function PaymentGenerationStepper({
             {reviewRow('generation.review.cycle', selectedPayroll?.paymentCycle?.code)}
             {reviewRow('batchGeneration.batchType', batchType ? formatMessage(`paylist.batchType.${batchType}`) : null)}
             {reviewRow('batchGeneration.destination', destination ? formatMessage(`paylist.destination.${destination}`) : null)}
+            {reviewRow('generation.fsp', fspCode || formatMessage('generation.fsp.all'))}
             <Divider className={classes.divider} />
             {fetchingGenerationPreview && <LinearProgress />}
             {!!errorGenerationPreview && (
@@ -326,6 +359,7 @@ function PaymentGenerationStepper({
             </Typography>
             <Divider className={classes.divider} />
             {reviewRow('batchGeneration.destination', destination ? formatMessage(`paylist.destination.${destination}`) : null)}
+            {reviewRow('generation.fsp', fspCode || formatMessage('generation.fsp.all'))}
             <Typography variant="body2" color="textSecondary" className={classes.generateNote}>
               {formatMessage('generation.generate.note')}
             </Typography>
