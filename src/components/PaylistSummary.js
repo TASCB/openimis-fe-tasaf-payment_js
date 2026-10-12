@@ -9,6 +9,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const STATUSES = ['PROCESSED', 'UNAPPLIED'];
+const OPTIONAL_STATUSES = ['WITHDRAWN'];
 const number = (value) => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 function Card({
@@ -34,7 +35,7 @@ export default function PaylistSummary({ t, summary }) {
       <Card classes={classes} title={t('paylist.summary.gross')} value={`TZS ${number(summary.amount)}`} />
       <Card classes={classes} title={t('paylist.summary.net')} value={`TZS ${number(summary.net_amount)}`} />
       <Card classes={classes} title={t('paylist.summary.charges')} value={`TZS ${number(summary.charge_amount)}`} />
-      {STATUSES.map((status) => (
+      {[...STATUSES, ...OPTIONAL_STATUSES.filter((s) => byStatus[s]?.count)].map((status) => (
         <Card
           key={status}
           classes={classes}

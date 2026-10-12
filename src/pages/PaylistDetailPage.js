@@ -43,6 +43,7 @@ import PaylistItemFilter from '../components/PaylistItemFilter';
 import PaylistSummary from '../components/PaylistSummary';
 import PaylistActionNotice from '../components/PaylistActionNotice';
 import MuseLogPanel from '../components/MuseLogPanel';
+import MuseRejectionPanel from '../components/MuseRejectionPanel';
 import { PAYLIST_ITEMS_ACTIONS_KEY, PaylistActionsContext } from '../components/PaylistItemsActions';
 import { defaultPageStyles } from '../utils/styles';
 
@@ -79,6 +80,7 @@ const ITEM_STATUS_COLORS = {
   PENDING:   '#9e9e9e',
   PROCESSED: '#9e9e9e',
   UNAPPLIED: '#9e9e9e',
+  WITHDRAWN: '#9e9e9e',
 };
 
 function PaylistDetailPage({
@@ -179,7 +181,8 @@ function PaylistDetailPage({
   const paylist = paylistHeader?.uuid === paylistUuid ? paylistHeader : null;
   const status = paylist?.status;
   const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL;
-  const canSubmit = SUBMITTABLE.includes(status);
+  const isResend = status === PAYLIST_STATUS.REJECTED;
+  const canSubmit = SUBMITTABLE.includes(status) && !(isResend && paylist?.pendingCount === 0);
   const back = () => (history.length > 1
     ? history.goBack()
     : history.push(`/${modulesManager.getRef('tasafPayment.route.workspace')}?tab=${WS_TAB_PAYLISTS}`));
@@ -213,8 +216,20 @@ function PaylistDetailPage({
 
   const handleSubmit = () => {
     pendingActionRef.current = 'submit';
-    coreConfirm(formatMessage('paylist.submit.confirm.title'), formatMessage('paylist.submit.confirm.message'));
+    if (isResend) {
+      coreConfirm(
+        formatMessage('paylist.resend.confirm.title'),
+        formatMessageWithValues('paylist.resend.confirm.message', {
+          count: paylist?.pendingCount ?? 0, withdrawn: paylist?.withdrawnCount ?? 0,
+        }),
+      );
+    } else {
+      coreConfirm(formatMessage('paylist.submit.confirm.title'), formatMessage('paylist.submit.confirm.message'));
+    }
   };
+  const openAccountCorrection = (accountUuid) => history.push(
+    `/${modulesManager.getRef('caseManagement.route.accountCorrection')}/${accountUuid}`,
+  );
 
   const actionsContext = {
     t: formatMessage,
@@ -225,7 +240,12 @@ function PaylistDetailPage({
     onExportItems: handleExportItems,
     exportingItems: fetchingPaylistItemsExport,
     approve: { visible: rights.includes(RIGHT_APPROVE_PAYLIST), allowed: canApprove, onClick: handleApprove },
-    submit: { visible: rights.includes(RIGHT_SUBMIT_PAYLIST), allowed: canSubmit, onClick: handleSubmit },
+    submit: {
+      visible: rights.includes(RIGHT_SUBMIT_PAYLIST),
+      allowed: canSubmit,
+      onClick: handleSubmit,
+      label: isResend ? formatMessageWithValues('button.resendPaylist', { count: paylist?.pendingCount ?? 0 }) : null,
+    },
     submitting: submittingMutation,
   };
 
@@ -293,6 +313,13 @@ function PaylistDetailPage({
             {formatMessageWithValues('paylist.detail.museReply', { text: paylist.museStatusDesc })}
           </Typography>
         )}
+        <MuseRejectionPanel
+          t={formatMessage}
+          tv={formatMessageWithValues}
+          rejections={paylist?.museRejections}
+          hold={paylist?.withdrawnHold}
+          onOpenAccount={openAccountCorrection}
+        />
       </Paper>
 
       <PaylistActionsContext.Provider value={actionsContext}>

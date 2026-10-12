@@ -104,6 +104,10 @@ export const PAYLIST_HEADER_PROJECTION = () => [
   'museMsgId',
   'summary',
   'lastSubmit',
+  'pendingCount',
+  'withdrawnCount',
+  'withdrawnHold',
+  'museRejections',
 ];
 
 export const PAYLIST_EXPORT_PROJECTION = () => [

@@ -529,7 +529,11 @@ function reducer(state = STORE_STATE, action) {
         ...state,
         fetchingPaylistHeader: false,
         paylistHeader: paylist && {
-          ...paylist, summary: parseJson(paylist.summary), lastSubmit: parseJson(paylist.lastSubmit),
+          ...paylist,
+          summary: parseJson(paylist.summary),
+          lastSubmit: parseJson(paylist.lastSubmit),
+          museRejections: parseJson(paylist.museRejections) || [],
+          withdrawnHold: parseJson(paylist.withdrawnHold),
         },
       };
     }

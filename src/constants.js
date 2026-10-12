@@ -93,7 +93,7 @@ export const BATCH_TYPE = {
 };
 
 export const BATCH_TYPE_LIST = [BATCH_TYPE.BANK, BATCH_TYPE.MNO];
-export const PAYLIST_ITEM_STATUS_LIST = ['PENDING', 'PROCESSED', 'UNAPPLIED'];
+export const PAYLIST_ITEM_STATUS_LIST = ['PENDING', 'PROCESSED', 'UNAPPLIED', 'WITHDRAWN'];
 
 // Mirrors tasaf_payment.models.PaymentDestination.
 export const DESTINATION = {

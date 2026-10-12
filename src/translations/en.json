@@ -605,5 +605,22 @@
   "tasafPayment.fsp.mutation.delete": "Delete FSP {code}",
   "tasafPayment.museSettings.reason": "Reason for the change",
   "tasafPayment.museSettings.reason.placeholder": "Why this value? e.g. Sub-budget class from MUSE's letter of 3 October",
-  "tasafPayment.museChanges.reason": "Reason: {reason}"
+  "tasafPayment.museChanges.reason": "Reason: {reason}",
+  "tasafPayment.paylistItem.status.WITHDRAWN": "Withdrawn",
+  "tasafPayment.button.resendPaylist": "Resend to MUSE ({count} payees)",
+  "tasafPayment.paylist.resend.confirm.title": "Resend to MUSE",
+  "tasafPayment.paylist.resend.confirm.message": "Resend this paylist to MUSE with {count} payee(s)? The {withdrawn} payee(s) taken out after MUSE rejected the batch are not sent; once Case Management has corrected them they are paid on a new paylist.",
+  "tasafPayment.museRejection.title": "MUSE rejected the batch (attempt {attempt})",
+  "tasafPayment.museRejection.summary": "{withdrawn} payee(s) taken out and sent to Case Management, {kept} kept for the resend, {review} need review.",
+  "tasafPayment.museRejection.account": "Account",
+  "tasafPayment.museRejection.reason": "MUSE's reason",
+  "tasafPayment.museRejection.outcome": "What happened",
+  "tasafPayment.museRejection.correct": "Correct payment details",
+  "tasafPayment.museRejection.action.WITHDRAWN": "Taken out, sent to Case Management",
+  "tasafPayment.museRejection.action.KEPT": "Kept for the resend",
+  "tasafPayment.museRejection.action.NEEDS_REVIEW": "Needs review, not taken out",
+  "tasafPayment.museRejection.unparsed": "MUSE also said: \"{text}\". Nothing was taken out for this; check it before resending.",
+  "tasafPayment.museRejection.older": "Attempt {attempt}: {withdrawn} taken out, {kept} kept, {review} needed review.",
+  "tasafPayment.museRejection.hold": "{count} withdrawn payee(s) can still be paid in this cycle: correct them in Case Management, then generate a new paylist from this payroll by {deadline}. Until then the payroll is not reconciled.",
+  "tasafPayment.museRejection.lapsed": "{count} withdrawn payee(s) were not paid by the cut-off ({deadline}) and are left unpaid; the payroll went on to reconciliation."
 }
