@@ -31,6 +31,7 @@ import {
   ROWS_PER_PAGE_OPTIONS,
   VERIFICATION_STATUS,
   TAB_PENDING,
+  TAB_REVIEW,
   TAB_SUCCESS,
   TAB_FAILED,
 } from '../constants';
@@ -41,8 +42,11 @@ import {
   runBatchVerification,
   approvePaymentAccounts,
   fetchVerificationPreview,
+  reviewPaymentAccount,
 } from '../actions';
 import VerificationPayloadDialog from '../components/VerificationPayloadDialog';
+import VerificationReviewDialog from '../components/VerificationReviewDialog';
+import { matchReasonText } from '../utils/verification';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import StatusBadge from '../components/StatusBadge';
 import { defaultPageStyles } from '../utils/styles';
@@ -59,6 +63,7 @@ const BATCH_FILTER_KEYS = {
   locationId: 'locationId',
 };
 const PAYLOAD_SAMPLE_ROWS = 20;
+const MUTATION_SUCCESS = 2;
 
 function batchFiltersFrom(params) {
   const out = {};
@@ -76,6 +81,7 @@ function VerificationResultsPage({
   runBatchVerification,
   approvePaymentAccounts,
   fetchVerificationPreview,
+  reviewPaymentAccount,
   fetchingVerificationPreview,
   verificationPreview,
   errorVerificationPreview,
@@ -106,6 +112,8 @@ function VerificationResultsPage({
   const [location, setLocation] = useState(null);
   const [batchFilters, setBatchFilters] = useState({});
   const [showPayload, setShowPayload] = useState(false);
+  const [reviewed, setReviewed] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const prevSubmittingMutationRef = useRef();
   // Without a filter "all matching" would mean every pending account in the country.
   const hasBatchFilter = Object.keys(batchFilters).length > 0;
@@ -130,11 +138,14 @@ function VerificationResultsPage({
 
 
   const isPending = activeTab === TAB_PENDING;
+  const isReview = activeTab === TAB_REVIEW;
   const isSuccess = activeTab === TAB_SUCCESS;
   let statusFilter;
   if (isPending) statusFilter = 'verificationStatusIn: [PENDING, PENDING_MUSE]';
+  else if (isReview) statusFilter = `verificationStatus: ${VERIFICATION_STATUS.MANUAL}`;
   else if (isSuccess) statusFilter = `verificationStatus: ${VERIFICATION_STATUS.VERIFIED}`;
-  else statusFilter = 'verificationStatusIn: [FAILED, MANUAL]';
+  else statusFilter = `verificationStatus: ${VERIFICATION_STATUS.FAILED}`;
+  const showsNames = isReview || activeTab === TAB_FAILED;
 
   const passedCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.VERIFIED] ?? 0;
   const failedCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.FAILED] ?? 0;
@@ -144,7 +155,7 @@ function VerificationResultsPage({
 
   useEffect(() => {
     fetchDashboardCounts();
-  }, [fetchDashboardCounts]);
+  }, [fetchDashboardCounts, refreshKey]);
 
   useEffect(() => {
     if (!pendingAction) return;
@@ -203,6 +214,24 @@ function VerificationResultsPage({
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
 
+  const latest = (row) => row.verificationAttempts?.[0] || {};
+  const nameHeaders = () => [
+    formatMessage('paymentAccount.accountNumber'),
+    formatMessage('paymentAccount.fspName'),
+    formatMessage('review.expectedName'),
+    formatMessage('review.returnedName'),
+    formatMessage('review.score'),
+    formatMessage('review.reason'),
+  ];
+  const nameFormatters = () => [
+    (row) => row.accountNumber,
+    (row) => row.fspName,
+    (row) => latest(row).expectedName || '-',
+    (row) => latest(row).returnedName || '-',
+    (row) => (latest(row).matchScore != null ? `${latest(row).matchScore}%` : '-'),
+    (row) => matchReasonText(latest(row), formatMessage, formatMessageWithValues) || row.lastFailureReason || '-',
+  ];
+
   const headers = () => [
     formatMessage('paymentAccount.accountNumber'),
     formatMessage('paymentAccount.accountName'),
@@ -228,6 +257,16 @@ function VerificationResultsPage({
     historyPush(modulesManager, history, ROUTE_REF_ACCOUNT_CORRECTION, [row.uuid], newTab);
   };
 
+  const canReview = rights.includes(RIGHT_APPROVE_ACCOUNTS);
+  const decideReview = async (account, approved, notes) => {
+    const label = formatMessage(approved ? 'mutation.approveLabel' : 'mutation.rejectLabel');
+    const log = await reviewPaymentAccount(account.uuid, approved, notes, label);
+    if (log?.status !== MUTATION_SUCCESS) return log?.error ? String(log.error) : formatMessage('review.failed');
+    setReviewed(null);
+    setRefreshKey((k) => k + 1);
+    return null;
+  };
+
   const canAct = !submittingMutation;
   const withStatus = (status) => (canAct
     ? selectedAccounts.filter((a) => a.verificationStatus === status)
@@ -239,7 +278,7 @@ function VerificationResultsPage({
   const unsentSelected = withStatus(VERIFICATION_STATUS.PENDING);
   // Success accounts are done — re-verifying them is wrong, and they qualify for payment
   // automatically through paylist generation, so the Success tab offers no send action.
-    const failedActions = [
+  const reviewActions = [
     {
       // A borderline name match an officer can clear without a field visit.
       label: formatMessage('button.confirmMatch'),
@@ -253,6 +292,8 @@ function VerificationResultsPage({
       onClick: () => setPendingAction({ type: 'reject', accounts: manualSelected }),
       authorized: manualSelected.length > 0 && rights.includes(RIGHT_APPROVE_ACCOUNTS),
     },
+  ];
+  const failedActions = [
     {
       label: formatMessage('button.sendToMuse'),
       icon: <SendIcon />,
@@ -284,6 +325,7 @@ function VerificationResultsPage({
 
   let searcherActions;
   if (isPending) searcherActions = pendingActions;
+  else if (isReview) searcherActions = reviewActions;
   else if (isSuccess) searcherActions = [];
   else searcherActions = failedActions;
 
@@ -291,7 +333,7 @@ function VerificationResultsPage({
     <div className={classes.page}>
       <Helmet title={formatMessage('verificationResults.page.title')} />
       <Searcher
-        key={activeTab}
+        key={`${activeTab}-${refreshKey}`}
         module={MODULE_NAME}
         FilterPane={(props) => (
           <PaymentAccountFilter
@@ -322,17 +364,24 @@ function VerificationResultsPage({
         fetchedItems={fetchedPaymentAccounts}
         errorItems={errorPaymentAccounts}
         tableTitle={formatMessageWithValues('searcher.results', { totalCount: paymentAccountsTotalCount })}
-        headers={headers}
-        itemFormatters={itemFormatters}
+        headers={showsNames ? nameHeaders : headers}
+        itemFormatters={showsNames ? nameFormatters : itemFormatters}
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         defaultPageSize={DEFAULT_PAGE_SIZE}
         rowIdentifier={(row) => row.id}
-        onDoubleClick={!isSuccess && canOpenCorrection ? openCorrection : undefined}
+        onDoubleClick={isReview ? (row) => setReviewed(row)
+          : (activeTab === TAB_FAILED && canOpenCorrection ? openCorrection : undefined)}
         withSelection="multiple"
         onChangeSelection={setSelectedAccounts}
         enableActionButtons
         searcherActions={searcherActions}
         searcherActionsPosition="header-right"
+      />
+      <VerificationReviewDialog
+        account={reviewed}
+        onClose={() => setReviewed(null)}
+        onDecide={decideReview}
+        canDecide={canReview}
       />
       <VerificationPayloadDialog
         open={showPayload}
@@ -370,6 +419,7 @@ const mapDispatchToProps = (dispatch) => bindActionCreators(
     runBatchVerification,
     approvePaymentAccounts,
     fetchVerificationPreview,
+    reviewPaymentAccount,
     journalize,
     coreConfirm,
     clearConfirm,

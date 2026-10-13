@@ -10,12 +10,12 @@ import reducer from './reducer';
 import messages_en from './translations/en.json';
 import {
   VerificationPendingTabLabel,
+  VerificationReviewTabLabel,
   VerificationSuccessTabLabel,
   VerificationFailedTabLabel,
   
 } from './components/VerificationResultsTabLabels';
 import VerificationResultsPage from './pages/VerificationResultsPage';
-import AccountApprovalPage from './pages/AccountApprovalPage';
 import PreAuditPage from './pages/PreAuditPage';
 import PaylistListPage from './pages/PaylistListPage';
 import PaylistDetailPage from './pages/PaylistDetailPage';
@@ -48,7 +48,6 @@ import {
 
 const ROUTE_WORKSPACE        = 'tasafPayment/workspace';
 const ROUTE_VERIFICATION     = 'tasafPayment/verificationResults';
-const ROUTE_APPROVAL         = 'tasafPayment/approval';
 const ROUTE_PRE_AUDIT        = 'tasafPayment/preAudit';
 const ROUTE_PAYLISTS         = 'tasafPayment/paylists';
 const ROUTE_PAYLIST_DETAIL   = 'tasafPayment/paylist/:paylist_uuid';
@@ -62,7 +61,6 @@ const DEFAULT_CONFIG = {
   refs: [
     { key: 'tasafPayment.route.workspace',           ref: ROUTE_WORKSPACE },
     { key: 'tasafPayment.route.verificationResults', ref: ROUTE_VERIFICATION },
-    { key: 'tasafPayment.route.approval',            ref: ROUTE_APPROVAL },
     { key: 'tasafPayment.route.preAudit',            ref: ROUTE_PRE_AUDIT },
     { key: 'tasafPayment.route.paylists',            ref: ROUTE_PAYLISTS },
     { key: 'tasafPayment.route.paylistDetail',       ref: ROUTE_PAYLIST_DETAIL },
@@ -71,7 +69,7 @@ const DEFAULT_CONFIG = {
     { key: 'tasafPayment.route.dashboard',           ref: ROUTE_DASHBOARD },
   ],
   [TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY]: [
-    VerificationPendingTabLabel, VerificationSuccessTabLabel, VerificationFailedTabLabel,
+    VerificationPendingTabLabel, VerificationReviewTabLabel, VerificationFailedTabLabel, VerificationSuccessTabLabel,
   ],
 
   // Consolidated workspace tabs (pipeline order). Other modules can inject tabs here.
@@ -89,7 +87,6 @@ const DEFAULT_CONFIG = {
     { path: ROUTE_WORKSPACE,        component: TasafPaymentsPage },
     // Standalone routes kept for deep-linking; paylist detail still needs its own URL.
     { path: ROUTE_VERIFICATION,     component: VerificationResultsPage },
-    { path: ROUTE_APPROVAL,         component: AccountApprovalPage },
     { path: ROUTE_PRE_AUDIT,        component: PreAuditPage },
     { path: ROUTE_PAYLISTS,         component: PaylistListPage },
     { path: ROUTE_PAYLIST_DETAIL,   component: PaylistDetailPage },

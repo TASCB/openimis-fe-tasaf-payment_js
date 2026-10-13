@@ -146,6 +146,7 @@ export const TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY = 'tasafPayment.TabPanel.
 export const TASAF_PAYMENT_TABS_PANEL_CONTRIBUTION_KEY = 'tasafPayment.TabPanel.panel';
 
 export const TAB_PENDING = 'pending';
+export const TAB_REVIEW = 'review';
 export const TAB_SUCCESS = 'success';
 export const TAB_FAILED = 'failed';
 
@@ -154,7 +155,6 @@ export const TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY = 'tasafPayment.Workspa
 
 export const WS_TAB_DASHBOARD    = 'dashboard';
 export const WS_TAB_VERIFICATION = 'verification';
-export const WS_TAB_APPROVAL     = 'approval';
 export const WS_TAB_PRE_AUDIT    = 'preAudit';
 export const WS_TAB_GENERATE     = 'generate';
 export const WS_TAB_PAYLISTS     = 'paylists';

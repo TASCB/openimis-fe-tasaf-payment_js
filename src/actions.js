@@ -29,6 +29,7 @@ export const PAYMENT_ACCOUNT_PROJECTION = () => [
   'dateCreated',
   'dateUpdated',
   'groupBeneficiary { id uuid group { id uuid } }',
+  'verificationAttempts { result failureReason receivedAt expectedName returnedName matchScore matchReason matchMember }',
 ];
 
 export const MUSE_VERIFICATION_RECORD_PROJECTION = () => [
@@ -598,6 +599,20 @@ function runPaylistAction(kind, paylistUuid, clientMutationLabel) {
     }
     const log = await waitForMutationLog(dispatch, meta.clientMutationId);
     dispatch({ type: SUCCESS(ACTION_TYPE.PAYLIST_ACTION), payload: log, meta });
+  };
+}
+
+export function reviewPaymentAccount(accountUuid, approved, reviewNotes, clientMutationLabel) {
+  const notes = reviewNotes ? `, reviewNotes: "${formatGQLString(reviewNotes)}"` : '';
+  const mutation = formatMutation(
+    'approvePaymentAccounts',
+    `accountUuids: ["${accountUuid}"], approved: ${approved}${notes}`,
+    clientMutationLabel,
+  );
+  return async (dispatch) => {
+    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.REVIEW_ACCOUNT));
+    if (!sent || sent.error) return { status: null, error: sent?.payload?.message || 'error' };
+    return waitForMutationLog(dispatch, mutation.clientMutationId);
   };
 }
 
