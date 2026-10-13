@@ -19,7 +19,7 @@ import VerificationResultsPage from './pages/VerificationResultsPage';
 import PreAuditPage from './pages/PreAuditPage';
 import PaylistListPage from './pages/PaylistListPage';
 import PaylistDetailPage from './pages/PaylistDetailPage';
-import ReturnFeedbackPage from './pages/ReturnFeedbackPage';
+import UnappliedPaymentsPage from './pages/UnappliedPaymentsPage';
 import PaymentDashboardPage from './pages/PaymentDashboardPage';
 import TasafPaymentsPage from './pages/TasafPaymentsPage';
 import PaymentGenerationStepper from './components/generation/PaymentGenerationStepper';
@@ -92,7 +92,7 @@ const DEFAULT_CONFIG = {
     { path: ROUTE_PAYLIST_DETAIL,   component: PaylistDetailPage },
     // Generation now uses the guided stepper (old form component retained but unrouted).
     { path: ROUTE_BATCH_GENERATION, component: PaymentGenerationStepper },
-    { path: ROUTE_RETURN_FEEDBACK,  component: ReturnFeedbackPage },
+    { path: ROUTE_RETURN_FEEDBACK,  component: UnappliedPaymentsPage },
     { path: ROUTE_DASHBOARD,        component: PaymentDashboardPage },
   ],
   [PAYLIST_ITEMS_ACTIONS_KEY]: [PaylistItemsActions],

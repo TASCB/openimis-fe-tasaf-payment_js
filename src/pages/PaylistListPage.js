@@ -67,6 +67,10 @@ function PaylistListPage({
     formatMessage('paylist.museBatchReference'),
   ];
 
+  const sorts = () => [
+    ['batchType', true], null, ['status', true], null, ['generatedAt', false], ['museBatchReference', true],
+  ];
+
   const itemFormatters = () => [
     (row) => formatMessage(`paylist.batchType.${row.batchType}`),
     (row) => (row.batchTotal && row.batchTotal > 1
@@ -111,7 +115,8 @@ function PaylistListPage({
         itemFormatters={itemFormatters}
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         defaultPageSize={DEFAULT_PAGE_SIZE}
-        defaultOrderBy="-dateCreated"
+        defaultOrderBy="-generatedAt"
+        sorts={sorts}
         rowIdentifier={(row) => row.id}
         onDoubleClick={(row) => history.push(`/tasafPayment/paylist/${row.uuid}`)}
       />

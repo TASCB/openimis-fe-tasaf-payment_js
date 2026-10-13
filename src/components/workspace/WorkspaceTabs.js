@@ -29,7 +29,7 @@ import VerificationResultsPage from '../../pages/VerificationResultsPage';
 import PreAuditPage from '../../pages/PreAuditPage';
 import PaylistListPage from '../../pages/PaylistListPage';
 import WithdrawalChargesPage from '../../pages/WithdrawalChargesPage';
-import ReturnFeedbackPage from '../../pages/ReturnFeedbackPage';
+import UnappliedPaymentsPage from '../../pages/UnappliedPaymentsPage';
 import EpaymentSummaryPage from '../../pages/EpaymentSummaryPage';
 import MuseSettingsPage from '../../pages/MuseSettingsPage';
 import PaymentGenerationStepper from '../generation/PaymentGenerationStepper';
@@ -84,7 +84,7 @@ export const VerificationTabPanel = makeTabPanel(WS_TAB_VERIFICATION, RIGHT_PAYM
 export const PreAuditTabPanel     = makeTabPanel(WS_TAB_PRE_AUDIT,    RIGHT_PRE_AUDIT_SEARCH,       PreAuditPage);
 export const GenerateTabPanel     = makeTabPanel(WS_TAB_GENERATE,     RIGHT_GENERATE_PAYLIST,       PaymentGenerationStepper);
 export const PaylistsTabPanel     = makeTabPanel(WS_TAB_PAYLISTS,     RIGHT_PAYLIST_SEARCH,         PaylistListPage);
-export const ReturnsTabPanel      = makeTabPanel(WS_TAB_RETURNS,      RIGHT_RETURN_FEEDBACK,        ReturnFeedbackPage);
+export const ReturnsTabPanel      = makeTabPanel(WS_TAB_RETURNS,      RIGHT_RETURN_FEEDBACK,        UnappliedPaymentsPage);
 export const ChargesTabPanel      = makeTabPanel(WS_TAB_CHARGES,      RIGHT_WITHDRAWAL_CHARGE_SEARCH, WithdrawalChargesPage);
 export const ReportsTabPanel      = makeTabPanel(WS_TAB_REPORTS,      RIGHT_REPORTS,                EpaymentSummaryPage);
 export const MuseTabPanel         = makeTabPanel(WS_TAB_MUSE,         RIGHT_MUSE_SETTINGS_SEARCH,   MuseSettingsPage);

@@ -48,6 +48,7 @@ export const ACTION_TYPE = {
   SEARCH_MUSE_VERIFICATION_RECORDS: 'TASAF_PAYMENT_MUSE_VERIFICATION_RECORDS',
   SEARCH_PAYLISTS:                'TASAF_PAYMENT_PAYLISTS',
   SEARCH_PAYLIST_ITEMS:           'TASAF_PAYMENT_PAYLIST_ITEMS',
+  SEARCH_UNAPPLIED_ITEMS:         'TASAF_PAYMENT_UNAPPLIED_ITEMS',
   SEARCH_RETURN_FEEDBACK:         'TASAF_PAYMENT_RETURN_FEEDBACK',
   SEARCH_WITHDRAWAL_CHARGES:      'TASAF_PAYMENT_WITHDRAWAL_CHARGES',
   SEARCH_FSP_MAPPINGS:            'TASAF_PAYMENT_FSP_MAPPINGS',
@@ -138,6 +139,12 @@ const STORE_STATE = {
   paylistItems: [],
   paylistItemsPageInfo: {},
   paylistItemsTotalCount: 0,
+  fetchingUnappliedItems: false,
+  fetchedUnappliedItems: false,
+  errorUnappliedItems: null,
+  unappliedItems: [],
+  unappliedItemsPageInfo: {},
+  unappliedItemsTotalCount: 0,
 
   // Return feedback
   fetchingReturnFeedback: false,
@@ -319,6 +326,21 @@ function reducer(state = STORE_STATE, action) {
       };
     case ERROR(ACTION_TYPE.SEARCH_PAYLIST_ITEMS):
       return { ...state, fetchingPaylistItems: false, errorPaylistItems: formatServerError(action.payload) };
+
+    case REQUEST(ACTION_TYPE.SEARCH_UNAPPLIED_ITEMS):
+      return { ...state, fetchingUnappliedItems: true, fetchedUnappliedItems: false, unappliedItems: [], errorUnappliedItems: null };
+    case SUCCESS(ACTION_TYPE.SEARCH_UNAPPLIED_ITEMS):
+      return {
+        ...state,
+        fetchingUnappliedItems: false,
+        fetchedUnappliedItems: true,
+        unappliedItems: parseData(action.payload.data.paylistItem)?.map((i) => ({ ...i, id: decodeId(i.id) })),
+        unappliedItemsPageInfo: pageInfo(action.payload.data.paylistItem),
+        unappliedItemsTotalCount: action.payload.data.paylistItem?.totalCount ?? 0,
+        errorUnappliedItems: formatGraphQLError(action.payload),
+      };
+    case ERROR(ACTION_TYPE.SEARCH_UNAPPLIED_ITEMS):
+      return { ...state, fetchingUnappliedItems: false, errorUnappliedItems: formatServerError(action.payload) };
 
     // ─── Return Feedback ────────────────────────────────────────────────────
 

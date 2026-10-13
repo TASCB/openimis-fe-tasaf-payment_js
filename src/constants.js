@@ -47,6 +47,11 @@ export const DIALOG_MAX_WIDTH = 'md';
 export const DEFAULT_PAGE_SIZE = 10;
 export const ROWS_PER_PAGE_OPTIONS = [10, 20, 50, 100];
 export const DEFAULT_DEBOUNCE_TIME = 500;
+
+export const RETURN_RESOLUTIONS = ['IN_CORRECTION', 'READY', 'REPAYING', 'REPAID', 'LAPSED', 'FINAL'];
+export const RETURN_RESOLUTION_COLORS = {
+  IN_CORRECTION: '#b45309', READY: '#0d9488', REPAYING: '#2563eb', REPAID: '#15803d', LAPSED: '#b91c1c', FINAL: '#6b7280',
+};
 export const CONTAINS_LOOKUP = 'Icontains';
 export const EMPTY_STRING = '';
 

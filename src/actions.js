@@ -71,8 +71,14 @@ export const PAYLIST_ITEM_PROJECTION = () => [
   'museReference',
   'returnReason',
   'payeeCode',
-  'paymentAccount { id uuid accountNumber fspType fspName groupBeneficiary { id group { id code } } }',
+  'paymentAccount { id uuid accountNumber accountName fspType fspName verificationStatus groupBeneficiary { id group { id code } } }',
   'benefitConsumption { id code }',
+  'resolution',
+  'repayment',
+  'followUp',
+  'returnReasonCode',
+  'returnedAt',
+  'paylist { id uuid museBatchReference status batchType }',
 ];
 
 export const RETURN_FEEDBACK_PROJECTION = () => [
@@ -189,6 +195,11 @@ export function fetchPaylistItems(params) {
     PAYLIST_ITEM_PROJECTION(),
   );
   return graphql(payload, ACTION_TYPE.SEARCH_PAYLIST_ITEMS);
+}
+
+export function fetchUnappliedItems(params) {
+  const payload = formatPageQueryWithCount('paylistItem', params, PAYLIST_ITEM_PROJECTION());
+  return graphql(payload, ACTION_TYPE.SEARCH_UNAPPLIED_ITEMS);
 }
 
 // ─── Return feedback queries ──────────────────────────────────────────────────

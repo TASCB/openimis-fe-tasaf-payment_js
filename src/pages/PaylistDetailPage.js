@@ -32,12 +32,14 @@ import {
   ROWS_PER_PAGE_OPTIONS,
   PAYLIST_STATUS,
   WS_TAB_PAYLISTS,
+  RETURN_RESOLUTION_COLORS,
 } from '../constants';
 import {
   fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport, fetchMusePaylistPreview,
   fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems,
 } from '../actions';
 import StatusChip from '../components/StatusChip';
+import ReturnedPaymentDialog from '../components/ReturnedPaymentDialog';
 import MusePayloadDialog from '../components/MusePayloadDialog';
 import PaylistItemFilter from '../components/PaylistItemFilter';
 import PaylistSummary from '../components/PaylistSummary';
@@ -132,6 +134,7 @@ function PaylistDetailPage({
   const [showMusePreview, setShowMusePreview] = useState(false);
   const [location, setLocation] = useState(null);
   const [exportRequested, setExportRequested] = useState(false);
+  const [returnedItem, setReturnedItem] = useState(null);
   const itemParamsRef = useRef([]);
 
   const fetchItems = (params) => {
@@ -257,6 +260,7 @@ function PaylistDetailPage({
     formatMessage('paylistItem.fspName'),
     formatMessage('paylistItem.amount'),
     formatMessage('paylistItem.status'),
+    formatMessage('paylistItem.progress'),
   ];
 
   const itemFormatters = () => [
@@ -272,6 +276,11 @@ function PaylistDetailPage({
         color={ITEM_STATUS_COLORS[row.status]}
       />
     ),
+    (row) => (row.resolution ? (
+      <span role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => setReturnedItem(row)} onKeyDown={() => setReturnedItem(row)}>
+        <StatusChip label={formatMessage(`returned.resolution.${row.resolution}`)} color={RETURN_RESOLUTION_COLORS[row.resolution]} />
+      </span>
+    ) : ''),
   ];
 
   return (
@@ -346,7 +355,9 @@ function PaylistDetailPage({
           defaultPageSize={DEFAULT_PAGE_SIZE}
           rowIdentifier={(row) => row.id}
           actionsContributionKey={PAYLIST_ITEMS_ACTIONS_KEY}
+          onDoubleClick={(row) => row.resolution && setReturnedItem(row)}
         />
+        <ReturnedPaymentDialog item={returnedItem} onClose={() => setReturnedItem(null)} />
       </PaylistActionsContext.Provider>
       {paylist?.destination === 'MUSE' && (
         <MuseLogPanel
