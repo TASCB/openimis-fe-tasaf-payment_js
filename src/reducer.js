@@ -59,6 +59,12 @@ export const ACTION_TYPE = {
   SAVE_MUSE_SETTINGS:             'TASAF_PAYMENT_SAVE_MUSE_SETTINGS',
   FETCH_MUSE_CHANGES:             'TASAF_PAYMENT_MUSE_CHANGES',
   MUSE_CHANGE_DECISION:           'TASAF_PAYMENT_MUSE_CHANGE_DECISION',
+  FETCH_GEPG_SETTINGS:            'TASAF_PAYMENT_GEPG_SETTINGS',
+  FETCH_GEPG_CHANGES:             'TASAF_PAYMENT_GEPG_CHANGES',
+  SAVE_GEPG_SETTINGS:             'TASAF_PAYMENT_SAVE_GEPG_SETTINGS',
+  FETCH_GEPG_REQUESTS:            'TASAF_PAYMENT_GEPG_REQUESTS',
+  FETCH_GEPG_ITEMS:               'TASAF_PAYMENT_GEPG_ITEMS',
+  RESEND_GEPG_VERIFICATION:       'TASAF_PAYMENT_RESEND_GEPG_VERIFICATION',
   FETCH_FSP_BAND_SET:             'TASAF_PAYMENT_FSP_BAND_SET',
   SEARCH_PAYROLLS:                'TASAF_PAYMENT_PAYROLLS',
   GET_PAYLIST_EXPORT:             'TASAF_PAYMENT_PAYLIST_EXPORT',
@@ -164,6 +170,13 @@ const STORE_STATE = {
   museSettings: null,
   museReadiness: null,
   museChanges: [],
+  gepgSettings: null,
+  gepgReadiness: null,
+  gepgChanges: [],
+  gepgRequests: [],
+  fetchingGepgRequests: false,
+  gepgItems: [],
+  fetchingGepgItems: false,
   fetchingMuseChanges: false,
   fetchingVerificationPreview: false,
   verificationPreview: null,
@@ -406,6 +419,28 @@ function reducer(state = STORE_STATE, action) {
     }
     case ERROR(ACTION_TYPE.FETCH_MUSE_CHANGES):
       return { ...state, fetchingMuseChanges: false };
+    case SUCCESS(ACTION_TYPE.FETCH_GEPG_SETTINGS):
+      return {
+        ...state,
+        gepgSettings: action.payload.data?.gepgSettings ?? null,
+        gepgReadiness: action.payload.data?.gepgReadiness ?? null,
+      };
+    case SUCCESS(ACTION_TYPE.FETCH_GEPG_CHANGES):
+      return { ...state, gepgChanges: parseJson(action.payload.data?.museChangeRequests) || [] };
+    case REQUEST(ACTION_TYPE.FETCH_GEPG_REQUESTS):
+      return { ...state, fetchingGepgRequests: true };
+    case SUCCESS(ACTION_TYPE.FETCH_GEPG_REQUESTS):
+      return {
+        ...state, fetchingGepgRequests: false, gepgRequests: parseJson(action.payload.data?.gepgVerificationRequests) || [],
+      };
+    case ERROR(ACTION_TYPE.FETCH_GEPG_REQUESTS):
+      return { ...state, fetchingGepgRequests: false };
+    case REQUEST(ACTION_TYPE.FETCH_GEPG_ITEMS):
+      return { ...state, fetchingGepgItems: true, gepgItems: [] };
+    case SUCCESS(ACTION_TYPE.FETCH_GEPG_ITEMS):
+      return { ...state, fetchingGepgItems: false, gepgItems: parseJson(action.payload.data?.gepgVerificationItems) || [] };
+    case ERROR(ACTION_TYPE.FETCH_GEPG_ITEMS):
+      return { ...state, fetchingGepgItems: false };
     case SUCCESS(ACTION_TYPE.FETCH_MUSE_SETTINGS): {
       const s = action.payload.data?.museSettings ?? null;
       let gl = s?.glAccounts ?? [];
@@ -767,6 +802,10 @@ function reducer(state = STORE_STATE, action) {
         .find((n) => action.payload?.data?.[n]);
       return dispatchMutationResp(state, name || 'approveMuseChange', action);
     }
+    case SUCCESS(ACTION_TYPE.SAVE_GEPG_SETTINGS):
+      return dispatchMutationResp(state, 'saveGepgSettings', action);
+    case SUCCESS(ACTION_TYPE.RESEND_GEPG_VERIFICATION):
+      return dispatchMutationResp(state, 'resendGepgVerification', action);
 
     default:
       return state;

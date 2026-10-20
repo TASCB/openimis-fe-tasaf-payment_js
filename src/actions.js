@@ -344,7 +344,46 @@ export function saveMuseSettings(s, clientMutationLabel, reason = '') {
 }
 
 export function fetchMuseChanges() {
-  return graphql('query { museChangeRequests }', ACTION_TYPE.FETCH_MUSE_CHANGES);
+  return graphql('query { museChangeRequests(kinds: ["SETTINGS", "FSP_PROFILE"]) }', ACTION_TYPE.FETCH_MUSE_CHANGES);
+}
+
+export function fetchGepgSettings() {
+  return graphql(
+    `query {
+      gepgSettings { spCode spSysId environment dateUpdated }
+      gepgReadiness { ready settingsMissing providersMissing serverEnvironment settingsEnvironment
+        environmentMismatch govesbEnabled apiCodeSet topic }
+    }`,
+    ACTION_TYPE.FETCH_GEPG_SETTINGS,
+  );
+}
+
+export function fetchGepgChanges() {
+  return graphql('query { museChangeRequests(kinds: ["GEPG_SETTINGS"]) }', ACTION_TYPE.FETCH_GEPG_CHANGES);
+}
+
+export function saveGepgSettings(s, clientMutationLabel, reason = '') {
+  const q = (v) => `"${formatGQLString(v ?? '')}"`;
+  const args = [`spCode: ${q(s.spCode)}`, `spSysId: ${q(s.spSysId)}`]
+    .concat(reason.trim() ? [`reason: ${q(reason.trim())}`] : []).join(', ');
+  return mutate('saveGepgSettings', args, ACTION_TYPE.SAVE_GEPG_SETTINGS, clientMutationLabel);
+}
+
+export function fetchGepgRequests(status) {
+  const args = status ? `(status: "${status}", limit: 100)` : '(limit: 100)';
+  return graphql(`query { gepgVerificationRequests${args} }`, ACTION_TYPE.FETCH_GEPG_REQUESTS);
+}
+
+export function fetchGepgItems(accVerifId) {
+  return graphql(
+    `query { gepgVerificationItems(accVerifId: "${formatGQLString(accVerifId)}") }`,
+    ACTION_TYPE.FETCH_GEPG_ITEMS,
+  );
+}
+
+export function resendGepgVerification(accVerifId, clientMutationLabel) {
+  return mutate('resendGepgVerification', `accVerifId: "${formatGQLString(accVerifId)}"`,
+    ACTION_TYPE.RESEND_GEPG_VERIFICATION, clientMutationLabel);
 }
 
 function museChangeMutation(name, changeId, comment, clientMutationLabel) {

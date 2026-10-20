@@ -31,7 +31,7 @@ import PaylistListPage from '../../pages/PaylistListPage';
 import WithdrawalChargesPage from '../../pages/WithdrawalChargesPage';
 import UnappliedPaymentsPage from '../../pages/UnappliedPaymentsPage';
 import EpaymentSummaryPage from '../../pages/EpaymentSummaryPage';
-import MuseSettingsPage from '../../pages/MuseSettingsPage';
+import IntegrationsPage from '../../pages/IntegrationsPage';
 import PaymentGenerationStepper from '../generation/PaymentGenerationStepper';
 
 const hasRight = (rights, right) => !right || (rights ?? []).includes(right);
@@ -77,7 +77,7 @@ export const PaylistsTabLabel     = makeTabLabel(WS_TAB_PAYLISTS,     'workspace
 export const ReturnsTabLabel      = makeTabLabel(WS_TAB_RETURNS,      'workspace.tab.returns',      RIGHT_RETURN_FEEDBACK);
 export const ChargesTabLabel      = makeTabLabel(WS_TAB_CHARGES,      'workspace.tab.charges',      RIGHT_WITHDRAWAL_CHARGE_SEARCH);
 export const ReportsTabLabel      = makeTabLabel(WS_TAB_REPORTS,      'workspace.tab.reports',      RIGHT_REPORTS);
-export const MuseTabLabel         = makeTabLabel(WS_TAB_MUSE,         'workspace.tab.muse',         RIGHT_MUSE_SETTINGS_SEARCH);
+export const MuseTabLabel         = makeTabLabel(WS_TAB_MUSE,         'workspace.tab.integrations', RIGHT_MUSE_SETTINGS_SEARCH);
 
 export const DashboardTabPanel    = makeTabPanel(WS_TAB_DASHBOARD,    RIGHT_DASHBOARD,              PaymentDashboardPage);
 export const VerificationTabPanel = makeTabPanel(WS_TAB_VERIFICATION, RIGHT_PAYMENT_ACCOUNT_SEARCH, VerificationResultsPage);
@@ -87,4 +87,4 @@ export const PaylistsTabPanel     = makeTabPanel(WS_TAB_PAYLISTS,     RIGHT_PAYL
 export const ReturnsTabPanel      = makeTabPanel(WS_TAB_RETURNS,      RIGHT_RETURN_FEEDBACK,        UnappliedPaymentsPage);
 export const ChargesTabPanel      = makeTabPanel(WS_TAB_CHARGES,      RIGHT_WITHDRAWAL_CHARGE_SEARCH, WithdrawalChargesPage);
 export const ReportsTabPanel      = makeTabPanel(WS_TAB_REPORTS,      RIGHT_REPORTS,                EpaymentSummaryPage);
-export const MuseTabPanel         = makeTabPanel(WS_TAB_MUSE,         RIGHT_MUSE_SETTINGS_SEARCH,   MuseSettingsPage);
+export const MuseTabPanel         = makeTabPanel(WS_TAB_MUSE,         RIGHT_MUSE_SETTINGS_SEARCH,   IntegrationsPage);
