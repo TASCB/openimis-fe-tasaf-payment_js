@@ -21,7 +21,8 @@ import {
 } from '@openimis/fe-core';
 // Reuse the payroll module's PDF helpers — the MUSE dispatch paylist is built
 // from the underlying payroll, but the export lives here on the TASAF surface.
-import { exportPaylistPdf, buildPaylistPayload } from '@openimis/fe-payroll';
+import { exportPaylistPdf } from '@openimis/fe-payroll';
+import buildPaylistPdfPayload from '../utils/paylistPdf';
 
 import {
   MODULE_NAME,
@@ -173,13 +174,13 @@ function PaylistDetailPage({
     exportPaylistItems(paylistUuid, itemParamsRef.current.map(toExportArg).filter(Boolean));
   };
 
-  const exportPayroll = paylistExport?.uuid === paylistUuid ? paylistExport?.payroll : null;
+  const exportData = paylistExport?.uuid === paylistUuid ? paylistExport : null;
   useEffect(() => {
-    if (exportRequested && exportPayroll) {
+    if (exportRequested && exportData) {
       setExportRequested(false);
-      exportPaylistPdf(buildPaylistPayload(exportPayroll));
+      exportPaylistPdf(buildPaylistPdfPayload(exportData));
     }
-  }, [exportRequested, exportPayroll]);
+  }, [exportRequested, exportData]);
 
   const paylist = paylistHeader?.uuid === paylistUuid ? paylistHeader : null;
   const status = paylist?.status;
@@ -190,8 +191,8 @@ function PaylistDetailPage({
     ? history.goBack()
     : history.push(`/${modulesManager.getRef('tasafPayment.route.workspace')}?tab=${WS_TAB_PAYLISTS}`));
   const handleExportPdf = () => {
-    if (exportPayroll) {
-      exportPaylistPdf(buildPaylistPayload(exportPayroll));
+    if (exportData) {
+      exportPaylistPdf(buildPaylistPdfPayload(exportData));
     } else {
       setExportRequested(true);
       fetchPaylistForExport(paylistUuid);

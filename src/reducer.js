@@ -653,7 +653,11 @@ function reducer(state = STORE_STATE, action) {
         ...state,
         fetchingPaylistExport: false,
         fetchedPaylistExport: true,
-        paylistExport: parseData(action.payload.data.paylist)?.[0] ?? null,
+        paylistExport: {
+          ...parseData(action.payload.data.paylist)?.[0],
+          pdfRows: JSON.parse(action.payload.data.paylistPdfRows || '[]'),
+          pdfBreakdown: JSON.parse(action.payload.data.paylistPdfBreakdown || 'null'),
+        },
         errorPaylistExport: formatGraphQLError(action.payload),
       };
     case ERROR(ACTION_TYPE.GET_PAYLIST_EXPORT):

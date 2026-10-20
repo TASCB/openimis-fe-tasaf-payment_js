@@ -98,8 +98,6 @@ export const PAYROLL_PICKER_PROJECTION = () => [
   'paymentCycle { id code }',
 ];
 
-// Paylist + its rich payroll, shaped for payroll/buildPaylistPayload (PDF export).
-// The payroll FK resolves to payroll's PayrollGQLType, so benefitConsumption etc. are available.
 export const PAYLIST_HEADER_PROJECTION = () => [
   'id',
   'uuid',
@@ -121,10 +119,7 @@ export const PAYLIST_EXPORT_PROJECTION = () => [
   ...PAYLIST_HEADER_PROJECTION(),
   'payroll { id name paymentMethod '
     + 'paymentCycle { code startDate endDate } '
-    + 'paymentPoint { id name location { id name parent { id name parent { id name } } } } '
-    + 'benefitConsumption { id status code amount jsonExt '
-    + 'individual { firstName lastName } '
-    + 'benefitAttachment { bill { id code amountTotal } } } }',
+    + 'paymentPoint { id name location { id name parent { id name parent { id name } } } } }',
 ];
 
 // ─── GQL string builder ───────────────────────────────────────────────────────
@@ -444,7 +439,8 @@ export function fetchPaylistForExport(paylistUuid) {
     [`id: "${paylistUuid}"`],
     PAYLIST_EXPORT_PROJECTION(),
   );
-  return graphql(payload, ACTION_TYPE.GET_PAYLIST_EXPORT);
+  const withRows = `${payload.slice(0, payload.lastIndexOf('}'))} paylistPdfRows(paylistUuid: "${paylistUuid}") paylistPdfBreakdown(paylistUuid: "${paylistUuid}") }`;
+  return graphql(withRows, ACTION_TYPE.GET_PAYLIST_EXPORT);
 }
 
 // ─── PaymentAccount mutations ─────────────────────────────────────────────────
