@@ -58,7 +58,7 @@ export const FIELD_KEYS = {
   institution_code: 'institutionCode', payer_account: 'payerAccount', sub_budget_class: 'subBudgetClass',
   unapplied_sub_budget_class: 'unappliedSubBudgetClass', payment_desc: 'paymentDesc', is_stp: 'isStp',
   gl_accounts: 'glAccounts', bank_name: 'bankName', fsp_type: 'fspType', bic: 'bic',
-  sp_code: 'spCode', sp_sys_id: 'spSysId',
+  sp_code: 'spCode', sp_sys_id: 'spSysId', service_code: 'serviceCode',
 };
 
 const show = (v) => {

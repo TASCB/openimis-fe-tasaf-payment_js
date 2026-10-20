@@ -20,7 +20,7 @@ import {
   ChangeRequests, Notice, Section, useSettingsStyles,
 } from '../components/settings/SettingsKit';
 
-const EMPTY = { spCode: '', spSysId: '' };
+const EMPTY = { spCode: '', spSysId: '', serviceCode: '' };
 const RESENDABLE = ['FAILED', 'REFUSED', 'REJECTED', 'EXPIRED'];
 const when = (v) => (v ? v.slice(0, 16).replace('T', ' ') : '—');
 
@@ -38,7 +38,7 @@ function GepgSettingsPage() {
 
   const [form, setForm] = useState(EMPTY);
   const [reason, setReason] = useState('');
-  const [open, setOpen] = useState({ provider: true, changes: true, requests: true });
+  const [open, setOpen] = useState({ provider: true, connection: true, changes: true, requests: true });
   const [viewing, setViewing] = useState(null);
   const submitting = state?.submittingMutation;
   const prevSubmitting = useRef();
@@ -60,7 +60,9 @@ function GepgSettingsPage() {
 
   useEffect(() => {
     const s = state?.gepgSettings;
-    setForm(s ? { spCode: s.spCode || '', spSysId: s.spSysId || '' } : EMPTY);
+    setForm(s ? {
+      spCode: s.spCode || '', spSysId: s.spSysId || '', serviceCode: s.serviceCode || '',
+    } : EMPTY);
   }, [state?.gepgSettings]);
 
   const readiness = state?.gepgReadiness;
@@ -68,27 +70,32 @@ function GepgSettingsPage() {
   const requests = state?.gepgRequests || [];
   const pending = changes.find((c) => c.status === 'PENDING');
   const editable = canPropose && !pending;
-  const valid = /^[A-Za-z0-9]{0,5}$/.test(form.spCode) && /^[A-Za-z0-9]{0,10}$/.test(form.spSysId);
+  const validField = {
+    spCode: /^[A-Za-z0-9]{0,5}$/.test(form.spCode),
+    spSysId: /^[A-Za-z0-9]{0,10}$/.test(form.spSysId),
+    serviceCode: /^[A-Za-z0-9_-]{0,50}$/.test(form.serviceCode.trim()),
+  };
+  const valid = Object.values(validField).every(Boolean);
 
   const view = (r) => {
     setViewing(r);
     dispatch(fetchGepgItems(r.acc_verif_id));
   };
 
-  const field = (k, max) => (
+  const field = (k, max, { required = true, upper = true } = {}) => (
     <div>
       <div className={classes.label}>
         {t(`gepg.${k}`)}
-        <span className={classes.required}>*</span>
+        {required && <span className={classes.required}>*</span>}
       </div>
       <TextField
         fullWidth
         variant="outlined"
         size="small"
         value={form[k]}
-        onChange={(e) => setForm({ ...form, [k]: e.target.value.toUpperCase() })}
+        onChange={(e) => setForm({ ...form, [k]: upper ? e.target.value.toUpperCase() : e.target.value })}
         disabled={!editable}
-        error={!valid}
+        error={!validField[k]}
         placeholder={t(`gepg.${k}.placeholder`)}
         inputProps={{ maxLength: max, style: { fontFamily: 'monospace' } }}
       />
@@ -137,6 +144,16 @@ function GepgSettingsPage() {
       >
         {field('spCode', 5)}
         {field('spSysId', 10)}
+      </Section>
+
+      <Section
+        classes={classes}
+        title={t('gepg.section.connection')}
+        open={open.connection}
+        onToggle={() => setOpen({ ...open, connection: !open.connection })}
+      >
+        <Typography variant="body2" className={classes.subtitle}>{t('gepg.connection.help')}</Typography>
+        {field('serviceCode', 50, { required: false, upper: false })}
       </Section>
 
       {canPropose && (

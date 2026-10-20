@@ -345,9 +345,9 @@ export function fetchMuseChanges() {
 export function fetchGepgSettings() {
   return graphql(
     `query {
-      gepgSettings { spCode spSysId environment dateUpdated }
+      gepgSettings { spCode spSysId serviceCode environment dateUpdated }
       gepgReadiness { ready settingsMissing providersMissing serverEnvironment settingsEnvironment
-        environmentMismatch govesbEnabled apiCodeSet topic }
+        environmentMismatch govesbEnabled apiCodeSet topic serviceCodeSet }
     }`,
     ACTION_TYPE.FETCH_GEPG_SETTINGS,
   );
@@ -359,7 +359,8 @@ export function fetchGepgChanges() {
 
 export function saveGepgSettings(s, clientMutationLabel, reason = '') {
   const q = (v) => `"${formatGQLString(v ?? '')}"`;
-  const args = [`spCode: ${q(s.spCode)}`, `spSysId: ${q(s.spSysId)}`]
+  const args = [`spCode: ${q(s.spCode)}`, `spSysId: ${q(s.spSysId)}`,
+    `serviceCode: ${q((s.serviceCode || '').trim())}`]
     .concat(reason.trim() ? [`reason: ${q(reason.trim())}`] : []).join(', ');
   return mutate('saveGepgSettings', args, ACTION_TYPE.SAVE_GEPG_SETTINGS, clientMutationLabel);
 }
