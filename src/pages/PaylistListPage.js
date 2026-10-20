@@ -36,6 +36,8 @@ const STATUS_COLORS = {
   RECEIVED:         '#9e9e9e',
   ACCEPTED:         '#9e9e9e',
   SENT_TO_BANK:     '#9e9e9e',
+  ACCEPTED_BY_BANK: '#9e9e9e',
+  PROCESSED_BY_BANK: '#9e9e9e',
   REJECTED:         '#9e9e9e',
   CLOSED:           '#9e9e9e',
   REJECTED_AT_APPROVAL: '#9e9e9e',
