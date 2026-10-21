@@ -68,6 +68,10 @@ function MuseSettingsPage() {
   const changes = state?.museChanges || [];
   const pendingSettings = changes.find((c) => c.kind === 'SETTINGS' && c.status === 'PENDING');
   const readiness = state?.museReadiness;
+  const sbcOptions = (() => {
+    const raw = readiness?.subBudgetClasses;
+    try { return (typeof raw === 'string' ? JSON.parse(raw) : raw) || []; } catch (e) { return []; }
+  })();
   const editable = canPropose && !pendingSettings;
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -97,6 +101,37 @@ function MuseSettingsPage() {
       />
     </div>
   );
+
+  const sbcField = (k, { required }) => {
+    if (!sbcOptions.length) return field(k, { required, type: 'number' });
+    const value = form[k] === null || form[k] === undefined ? '' : String(form[k]);
+    const listed = sbcOptions.some((o) => String(o.code) === value);
+    return (
+      <div>
+        <div className={classes.label}>
+          {t(`museSettings.${k}`)}
+          {required && <span className={classes.required}>*</span>}
+        </div>
+        <TextField
+          select
+          fullWidth
+          variant="outlined"
+          size="small"
+          value={value}
+          onChange={set(k)}
+          disabled={!editable}
+          error={!!value && !listed}
+          helperText={value && !listed ? t('museSettings.sbcNotListed') : null}
+        >
+          {!required && <MenuItem value="">{t('museSettings.sbcNone')}</MenuItem>}
+          {value && !listed && <MenuItem value={value}>{value}</MenuItem>}
+          {sbcOptions.map((o) => (
+            <MenuItem key={o.code} value={String(o.code)}>{`${o.code} — ${o.description}`}</MenuItem>
+          ))}
+        </TextField>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -158,8 +193,8 @@ function MuseSettingsPage() {
             </TextField>
           </div>
         </div>
-        {field('subBudgetClass', { required: true, type: 'number' })}
-        {field('unappliedSubBudgetClass', { type: 'number' })}
+        {sbcField('subBudgetClass', { required: true })}
+        {sbcField('unappliedSubBudgetClass', {})}
         <FormControlLabel
           className={classes.full}
           control={(

@@ -297,7 +297,7 @@ export function fetchMuseSettings() {
     `query {
       museSettings { institutionCode payerAccount subBudgetClass unappliedSubBudgetClass paymentDesc
         isStp glAccounts environment dateUpdated }
-      museReadiness { serverEnvironment settingsEnvironment environmentMismatch }
+      museReadiness { serverEnvironment settingsEnvironment environmentMismatch subBudgetClasses }
     }`,
     ACTION_TYPE.FETCH_MUSE_SETTINGS,
   );

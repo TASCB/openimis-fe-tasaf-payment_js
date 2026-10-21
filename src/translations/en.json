@@ -493,6 +493,8 @@
   "tasafPayment.museSettings.payerAccount": "Payer account",
   "tasafPayment.museSettings.subBudgetClass": "Sub-budget class",
   "tasafPayment.museSettings.unappliedSubBudgetClass": "Sub-budget class (unapplied)",
+  "tasafPayment.museSettings.sbcNone": "Not set",
+  "tasafPayment.museSettings.sbcNotListed": "This code is not in the sub-budget class list; choose one from the list",
   "tasafPayment.museSettings.currencyCode": "Currency",
   "tasafPayment.museSettings.isStp": "Straight-through processing (isStp)",
   "tasafPayment.museSettings.paymentDesc": "Payment description",
