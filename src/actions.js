@@ -383,6 +383,11 @@ export function fetchGepgItems(accVerifId, { offset = 0, limit = 100, search = '
   );
 }
 
+export function releaseGepgVerification(accVerifId, clientMutationLabel) {
+  return mutate('releaseGepgVerification', `accVerifId: "${formatGQLString(accVerifId)}"`,
+    ACTION_TYPE.RELEASE_GEPG_VERIFICATION, clientMutationLabel);
+}
+
 export function resendGepgVerification(accVerifId, clientMutationLabel) {
   return mutate('resendGepgVerification', `accVerifId: "${formatGQLString(accVerifId)}"`,
     ACTION_TYPE.RESEND_GEPG_VERIFICATION, clientMutationLabel);

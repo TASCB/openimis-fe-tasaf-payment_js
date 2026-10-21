@@ -7,10 +7,11 @@ import {
 } from '@material-ui/core';
 import { formatMessage, formatMessageWithValues } from '@openimis/fe-core';
 
-import { fetchGepgItems, resendGepgVerification } from '../actions';
+import { fetchGepgItems, releaseGepgVerification, resendGepgVerification } from '../actions';
 import { MODULE_NAME, RIGHT_RUN_VERIFICATION } from '../constants';
 
 const RESENDABLE = ['FAILED', 'REFUSED', 'REJECTED', 'EXPIRED'];
+const RELEASABLE = ['SENDING', 'SENT', 'ACCEPTED'];
 const DECISIONS = ['', 'VERIFIED', 'MANUAL', 'FAILED', 'NONE'];
 const PAGE_SIZES = [50, 100, 500];
 const when = (v) => (v ? v.slice(0, 16).replace('T', ' ') : '—');
@@ -26,6 +27,7 @@ function GepgRequestsTable({ requests, emptyClassName }) {
   const submitting = state?.submittingMutation;
   const [viewing, setViewing] = useState(null);
   const [sending, setSending] = useState(null);
+  const [releasing, setReleasing] = useState(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(100);
   const [search, setSearch] = useState('');
@@ -121,12 +123,46 @@ function GepgRequestsTable({ requests, emptyClassName }) {
                       {t(sending === r.acc_verif_id ? 'gepg.requests.sending' : 'gepg.requests.resend')}
                     </Button>
                   )}
+                  {canResend && RELEASABLE.includes(r.status) && (
+                    <Button
+                      size="small"
+                      disabled={submitting}
+                      startIcon={sending === r.acc_verif_id ? <CircularProgress size={14} /> : null}
+                      onClick={() => setReleasing(r)}
+                    >
+                      {t('gepg.requests.release')}
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       )}
+      <Dialog open={!!releasing} onClose={() => setReleasing(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>{releasing && tv('gepg.release.title', { id: releasing.acc_verif_id })}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" paragraph>
+            {releasing && tv('gepg.release.body', { count: releasing.item_count, fsp: releasing.fsp_code })}
+          </Typography>
+          <Typography variant="body2" color="textSecondary">{t('gepg.release.late')}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReleasing(null)}>{t('gepg.release.cancel')}</Button>
+          <Button
+            color="primary"
+            variant="contained"
+            onClick={() => {
+              setSending(releasing.acc_verif_id);
+              dispatch(releaseGepgVerification(releasing.acc_verif_id,
+                tv('gepg.mutation.release', { id: releasing.acc_verif_id })));
+              setReleasing(null);
+            }}
+          >
+            {t('gepg.requests.release')}
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={!!viewing} onClose={() => setViewing(null)} maxWidth="lg" fullWidth>
         <DialogTitle>
           {viewing && tv('gepg.items.title', { id: viewing.acc_verif_id })}

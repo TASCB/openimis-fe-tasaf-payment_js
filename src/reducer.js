@@ -65,6 +65,7 @@ export const ACTION_TYPE = {
   FETCH_GEPG_REQUESTS:            'TASAF_PAYMENT_GEPG_REQUESTS',
   FETCH_GEPG_ITEMS:               'TASAF_PAYMENT_GEPG_ITEMS',
   RESEND_GEPG_VERIFICATION:       'TASAF_PAYMENT_RESEND_GEPG_VERIFICATION',
+  RELEASE_GEPG_VERIFICATION:      'TASAF_PAYMENT_RELEASE_GEPG_VERIFICATION',
   FETCH_FSP_BAND_SET:             'TASAF_PAYMENT_FSP_BAND_SET',
   SEARCH_PAYROLLS:                'TASAF_PAYMENT_PAYROLLS',
   GET_PAYLIST_EXPORT:             'TASAF_PAYMENT_PAYLIST_EXPORT',
@@ -810,6 +811,8 @@ function reducer(state = STORE_STATE, action) {
       return dispatchMutationResp(state, 'saveGepgSettings', action);
     case SUCCESS(ACTION_TYPE.RESEND_GEPG_VERIFICATION):
       return dispatchMutationResp(state, 'resendGepgVerification', action);
+    case SUCCESS(ACTION_TYPE.RELEASE_GEPG_VERIFICATION):
+      return dispatchMutationResp(state, 'releaseGepgVerification', action);
 
     default:
       return state;
