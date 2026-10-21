@@ -2,7 +2,7 @@ import React from 'react';
 import { Tab } from '@material-ui/core';
 import { useTranslations } from '@openimis/fe-core';
 import {
-  MODULE_NAME, TAB_PENDING, TAB_REVIEW, TAB_SUCCESS, TAB_FAILED,
+  MODULE_NAME, TAB_PENDING, TAB_REVIEW, TAB_SUCCESS, TAB_FAILED, TAB_GEPG,
 } from '../constants';
 
 export function VerificationPendingTabLabel({
@@ -81,3 +81,22 @@ export function VerificationFailedTabLabel({
   );
 }
 
+
+export function VerificationGepgTabLabel({
+  onChange,
+  tabStyle,
+  isSelected,
+  modulesManager,
+  gepgCount,
+}) {
+  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
+  return (
+    <Tab
+      onChange={onChange}
+      className={tabStyle(TAB_GEPG)}
+      selected={isSelected(TAB_GEPG)}
+      value={TAB_GEPG}
+      label={`${gepgCount ?? 0} ${formatMessage('verificationResults.tab.gepg')}`}
+    />
+  );
+}

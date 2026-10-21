@@ -157,6 +157,7 @@ export const TAB_PENDING = 'pending';
 export const TAB_REVIEW = 'review';
 export const TAB_SUCCESS = 'success';
 export const TAB_FAILED = 'failed';
+export const TAB_GEPG = 'gepg';
 
 export const TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY = 'tasafPayment.WorkspaceTabPanel.label';
 export const TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY = 'tasafPayment.WorkspaceTabPanel.panel';

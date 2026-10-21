@@ -3,6 +3,8 @@ import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import { makeStyles } from '@material-ui/styles';
+import { IconButton, Paper } from '@material-ui/core';
+import RefreshIcon from '@material-ui/icons/Refresh';
 import SendIcon from '@material-ui/icons/Send';
 import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 import CodeIcon from '@material-ui/icons/Code';
@@ -35,6 +37,7 @@ import {
   TAB_REVIEW,
   TAB_SUCCESS,
   TAB_FAILED,
+  TAB_GEPG,
 } from '../constants';
 import {
   fetchPaymentAccounts,
@@ -44,16 +47,25 @@ import {
   approvePaymentAccounts,
   fetchVerificationPreview,
   reviewPaymentAccount,
+  fetchGepgRequests,
 } from '../actions';
 import VerificationPayloadDialog from '../components/VerificationPayloadDialog';
 import VerificationReviewDialog from '../components/VerificationReviewDialog';
 import { matchReasonText } from '../utils/verification';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import StatusBadge from '../components/StatusBadge';
+import VerificationTabs from '../components/VerificationTabs';
+import GepgRequestsTable from '../components/GepgRequestsTable';
 import { defaultPageStyles } from '../utils/styles';
 
 // 6 columns, so the shared equal-width rule applies.
-const useStyles = makeStyles(defaultPageStyles);
+const useStyles = makeStyles((theme) => ({
+  ...defaultPageStyles(theme),
+  paper: theme.paper.paper,
+  gepg: { '& table': { tableLayout: 'auto' } },
+  gepgBar: { display: 'flex', justifyContent: 'flex-end', padding: theme.spacing(1, 1, 0) },
+  empty: { padding: theme.spacing(2) },
+}));
 
 // The list's filters as the Searcher sends them ('fspType: "BANK"', 'locationId: 12'),
 // mapped to runBatchVerification's inputs so "Verify all matching" sends that exact list.
@@ -83,6 +95,8 @@ function VerificationResultsPage({
   approvePaymentAccounts,
   fetchVerificationPreview,
   reviewPaymentAccount,
+  fetchGepgRequests,
+  gepgRequests,
   fetchingVerificationPreview,
   verificationPreview,
   errorVerificationPreview,
@@ -156,6 +170,7 @@ function VerificationResultsPage({
 
   useEffect(() => {
     fetchDashboardCounts();
+    fetchGepgRequests();
   }, [fetchDashboardCounts, refreshKey]);
 
   useEffect(() => {
@@ -218,7 +233,10 @@ function VerificationResultsPage({
   }, [confirmed]);
 
   useEffect(() => {
-    if (prevSubmittingMutationRef.current && !submittingMutation) journalize(mutation);
+    if (prevSubmittingMutationRef.current && !submittingMutation) {
+      journalize(mutation);
+      fetchGepgRequests();
+    }
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
 
@@ -371,6 +389,35 @@ function VerificationResultsPage({
   if (showsNames) { tableHeaders = nameHeaders; tableFormatters = nameFormatters; }
   else if (isSuccess) { tableHeaders = successHeaders; tableFormatters = successFormatters; }
 
+  const verificationTabs = {
+    activeTab,
+    onChange: handleTabChange,
+    passedValue: TAB_SUCCESS,
+    failedValue: TAB_FAILED,
+    passedCount,
+    failedCount,
+    manualCount,
+    pendingCount,
+    gepgCount: (gepgRequests || []).length,
+  };
+
+  if (activeTab === TAB_GEPG) {
+    return (
+      <div className={classes.page}>
+        <Helmet title={formatMessage('verificationResults.page.title')} />
+        <Paper className={`${classes.paper} ${classes.gepg}`}>
+          <VerificationTabs tabs={verificationTabs} />
+          <div className={classes.gepgBar}>
+            <IconButton size="small" onClick={() => fetchGepgRequests()} title={formatMessage('gepg.requests.refresh')}>
+              <RefreshIcon fontSize="small" />
+            </IconButton>
+          </div>
+          <GepgRequestsTable requests={gepgRequests || []} emptyClassName={classes.empty} />
+        </Paper>
+      </div>
+    );
+  }
+
   return (
     <div className={classes.page}>
       <Helmet title={formatMessage('verificationResults.page.title')} />
@@ -384,16 +431,7 @@ function VerificationResultsPage({
             showLocationFilter
             location={location}
             onChangeLocation={setLocation}
-            verificationTabs={{
-              activeTab,
-              onChange: handleTabChange,
-              passedValue: TAB_SUCCESS,
-              failedValue: TAB_FAILED,
-              passedCount,
-              failedCount,
-              manualCount,
-              pendingCount,
-            }}
+            verificationTabs={verificationTabs}
           />
         )}
         fetch={(params) => {
@@ -445,6 +483,7 @@ const mapStateToProps = (state) => ({
   paymentAccountsPageInfo: state.tasafPayment.paymentAccountsPageInfo,
   paymentAccountsTotalCount: state.tasafPayment.paymentAccountsTotalCount,
   dashboardCounts: state.tasafPayment.dashboardCounts,
+  gepgRequests: state.tasafPayment.gepgRequests,
   fetchingVerificationPreview: state.tasafPayment.fetchingVerificationPreview,
   verificationPreview: state.tasafPayment.verificationPreview,
   errorVerificationPreview: state.tasafPayment.errorVerificationPreview,
@@ -462,6 +501,7 @@ const mapDispatchToProps = (dispatch) => bindActionCreators(
     approvePaymentAccounts,
     fetchVerificationPreview,
     reviewPaymentAccount,
+    fetchGepgRequests,
     journalize,
     coreConfirm,
     clearConfirm,

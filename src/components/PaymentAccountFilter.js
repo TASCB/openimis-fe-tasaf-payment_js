@@ -5,7 +5,6 @@ import { Grid } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 
 import {
-  Contributions,
   useModulesManager,
   useTranslations,
   TextInput,
@@ -13,10 +12,10 @@ import {
 } from '@openimis/fe-core';
 
 import PaaLocationFilter from './PaaLocationFilter';
+import VerificationTabs from './VerificationTabs';
 import {
   MODULE_NAME,
   FSP_TYPE_LIST,
-  TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY,
   VERIFICATION_STATUS_LIST,
   PRE_AUDIT_STATUS,
   DEFAULT_DEBOUNCE_TIME,
@@ -29,20 +28,6 @@ const useStyles = makeStyles((theme) => ({
   },
   item: {
     padding: theme.spacing(1),
-  },
-  tabsItem: {
-    padding: theme.spacing(2, 1, 0),
-  },
-  tableTitle: theme.table.title,
-  tabs: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  selectedTab: {
-    borderBottom: '4px solid white',
-  },
-  unselectedTab: {
-    borderBottom: '4px solid transparent',
   },
 }));
 
@@ -169,24 +154,7 @@ function PaymentAccountFilter({
           />
         </Grid>
       )}
-      {!!verificationTabs && (
-        <Grid item xs={12} className={classes.tabsItem}>
-          <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
-            <Contributions
-              contributionKey={TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY}
-              value={verificationTabs.activeTab}
-              onChange={verificationTabs.onChange}
-              isSelected={(tab) => tab === verificationTabs.activeTab}
-              tabStyle={(tab) => (tab === verificationTabs.activeTab ? classes.selectedTab : classes.unselectedTab)}
-              modulesManager={modulesManager}
-              passedCount={verificationTabs.passedCount}
-              failedCount={verificationTabs.failedCount}
-              manualCount={verificationTabs.manualCount}
-              pendingCount={verificationTabs.pendingCount}
-            />
-          </Grid>
-        </Grid>
-      )}
+      {!!verificationTabs && <VerificationTabs tabs={verificationTabs} />}
     </Grid>
   );
 }

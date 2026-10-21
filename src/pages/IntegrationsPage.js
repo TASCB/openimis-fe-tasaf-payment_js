@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useIntl } from 'react-intl';
+import { useLocation } from 'react-router-dom';
 import { Grid, Paper, Tab } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import { formatMessage } from '@openimis/fe-core';
@@ -23,7 +24,10 @@ const useStyles = makeStyles((theme) => ({
 function IntegrationsPage() {
   const intl = useIntl();
   const classes = useStyles();
-  const [tab, setTab] = useState(TAB_MUSE);
+  const location = useLocation();
+  const [tab, setTab] = useState(
+    () => (new URLSearchParams(location.search).get('integration') === TAB_GEPG ? TAB_GEPG : TAB_MUSE),
+  );
   const tabStyle = (value) => (value === tab ? classes.selectedTab : classes.unselectedTab);
   const label = (value) => formatMessage(intl, MODULE_NAME, `integrations.tab.${value}`);
 

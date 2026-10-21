@@ -2,27 +2,25 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 import {
-  Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, IconButton,
-  Paper, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
+  Button, Divider, IconButton, Paper, TextField, Typography,
 } from '@material-ui/core';
 import RefreshIcon from '@material-ui/icons/Refresh';
 import SaveOutlinedIcon from '@material-ui/icons/SaveOutlined';
 import { formatMessage, formatMessageWithValues, journalize } from '@openimis/fe-core';
 
 import {
-  fetchGepgSettings, fetchGepgChanges, saveGepgSettings, fetchGepgRequests, fetchGepgItems,
-  resendGepgVerification, approveMuseChange, rejectMuseChange, cancelMuseChange,
+  fetchGepgSettings, fetchGepgChanges, saveGepgSettings, fetchGepgRequests,
+  approveMuseChange, rejectMuseChange, cancelMuseChange,
 } from '../actions';
 import {
-  MODULE_NAME, RIGHT_MUSE_SETTINGS_PROPOSE, RIGHT_MUSE_SETTINGS_APPROVE, RIGHT_RUN_VERIFICATION,
+  MODULE_NAME, RIGHT_MUSE_SETTINGS_PROPOSE, RIGHT_MUSE_SETTINGS_APPROVE,
 } from '../constants';
 import {
   ChangeRequests, Notice, Section, useSettingsStyles,
 } from '../components/settings/SettingsKit';
+import GepgRequestsTable from '../components/GepgRequestsTable';
 
 const EMPTY = { spCode: '', spSysId: '', serviceCode: '' };
-const RESENDABLE = ['FAILED', 'REFUSED', 'REJECTED', 'EXPIRED'];
-const when = (v) => (v ? v.slice(0, 16).replace('T', ' ') : '—');
 
 function GepgSettingsPage() {
   const intl = useIntl();
@@ -34,12 +32,10 @@ function GepgSettingsPage() {
   const rights = useSelector((s) => s.core?.user?.i_user?.rights ?? []);
   const canPropose = rights.includes(RIGHT_MUSE_SETTINGS_PROPOSE);
   const canApprove = rights.includes(RIGHT_MUSE_SETTINGS_APPROVE);
-  const canResend = rights.includes(RIGHT_RUN_VERIFICATION);
 
   const [form, setForm] = useState(EMPTY);
   const [reason, setReason] = useState('');
   const [open, setOpen] = useState({ provider: true, connection: true, changes: true, requests: true });
-  const [viewing, setViewing] = useState(null);
   const submitting = state?.submittingMutation;
   const prevSubmitting = useRef();
 
@@ -76,11 +72,6 @@ function GepgSettingsPage() {
     serviceCode: /^[A-Za-z0-9_-]{0,50}$/.test(form.serviceCode.trim()),
   };
   const valid = Object.values(validField).every(Boolean);
-
-  const view = (r) => {
-    setViewing(r);
-    dispatch(fetchGepgItems(r.acc_verif_id));
-  };
 
   const field = (k, max, { required = true, upper = true } = {}) => (
     <div>
@@ -213,111 +204,9 @@ function GepgSettingsPage() {
           </IconButton>
         )}
       >
-        {requests.length === 0 ? (
-          <Typography className={classes.empty}>{t('gepg.requests.none')}</Typography>
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('gepg.requests.col.id')}</TableCell>
-                <TableCell>{t('gepg.requests.col.fsp')}</TableCell>
-                <TableCell align="right">{t('gepg.requests.col.accounts')}</TableCell>
-                <TableCell>{t('gepg.requests.col.results')}</TableCell>
-                <TableCell>{t('gepg.requests.col.status')}</TableCell>
-                <TableCell>{t('gepg.requests.col.sent')}</TableCell>
-                <TableCell>{t('gepg.requests.col.answered')}</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {requests.map((r) => (
-                <TableRow key={r.acc_verif_id}>
-                  <TableCell style={{ fontFamily: 'monospace' }}>{r.acc_verif_id}</TableCell>
-                  <TableCell>
-                    {r.fsp_code}
-                    <Typography variant="caption" display="block" color="textSecondary">{r.bic}</Typography>
-                  </TableCell>
-                  <TableCell align="right">{r.item_count}</TableCell>
-                  <TableCell>
-                    {r.answered
-                      ? tv('gepg.requests.results', { verified: r.verified, manual: r.manual, failed: r.failed })
-                      : '—'}
-                  </TableCell>
-                  <TableCell>
-                    {t(`gepg.status.${r.status}`)}
-                    {r.status_desc && (
-                      <Typography variant="caption" display="block" color="textSecondary">
-                        {r.status_code ? `${r.status_code} ` : ''}
-                        {r.status_desc}
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {when(r.sent_at)}
-                    <Typography variant="caption" display="block" color="textSecondary">{r.requested_by}</Typography>
-                  </TableCell>
-                  <TableCell>{when(r.answered_at)}</TableCell>
-                  <TableCell align="right" style={{ whiteSpace: 'nowrap' }}>
-                    <Button size="small" onClick={() => view(r)}>{t('gepg.requests.view')}</Button>
-                    {canResend && RESENDABLE.includes(r.status) && (
-                      <Button
-                        size="small"
-                        color="primary"
-                        disabled={submitting}
-                        onClick={() => dispatch(resendGepgVerification(r.acc_verif_id, t('gepg.mutation.resend')))}
-                      >
-                        {t('gepg.requests.resend')}
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        <GepgRequestsTable requests={requests} emptyClassName={classes.empty} />
       </Section>
 
-      <Dialog open={!!viewing} onClose={() => setViewing(null)} maxWidth="lg" fullWidth>
-        <DialogTitle>{viewing && tv('gepg.items.title', { id: viewing.acc_verif_id })}</DialogTitle>
-        <DialogContent>
-          {state?.fetchingGepgItems ? <CircularProgress size={24} /> : (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('gepg.items.col.item')}</TableCell>
-                  <TableCell>{t('gepg.items.col.hhid')}</TableCell>
-                  <TableCell>{t('gepg.items.col.account')}</TableCell>
-                  <TableCell>{t('gepg.items.col.expected')}</TableCell>
-                  <TableCell>{t('gepg.items.col.returned')}</TableCell>
-                  <TableCell>{t('gepg.items.col.code')}</TableCell>
-                  <TableCell>{t('gepg.items.col.decision')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {(state?.gepgItems || []).map((i) => (
-                  <TableRow key={i.item_id}>
-                    <TableCell>{i.item_id}</TableCell>
-                    <TableCell>{i.hhid || '—'}</TableCell>
-                    <TableCell style={{ fontFamily: 'monospace' }}>{i.acc_num}</TableCell>
-                    <TableCell>{i.expected_name || '—'}</TableCell>
-                    <TableCell>{i.acc_name || '—'}</TableCell>
-                    <TableCell>
-                      {i.acc_sts_code || '—'}
-                      {i.acc_sts_desc && (
-                        <Typography variant="caption" display="block" color="textSecondary">{i.acc_sts_desc}</Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>{i.decision || t(`gepg.itemStatus.${i.status}`)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button color="primary" onClick={() => setViewing(null)}>{t('payloadPreview.close')}</Button>
-        </DialogActions>
-      </Dialog>
     </div>
   );
 }
