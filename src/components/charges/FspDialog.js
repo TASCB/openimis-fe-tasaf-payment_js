@@ -8,12 +8,13 @@ import { makeStyles } from '@material-ui/core/styles';
 import AddIcon from '@material-ui/icons/Add';
 import { formatMessage, formatMessageWithValues } from '@openimis/fe-core';
 import {
-  deleteFsp, deleteFspMappings, saveFspMapping, saveFspProfile,
+  deleteFsp, deleteFspMappings, saveFspMapping, saveFspProfile, splitPrefixes,
 } from '../../actions';
 import { DIALOG_MAX_WIDTH, MODULE_NAME } from '../../constants';
 import FspBandEditor from './FspBandEditor';
 
 const BIC_RE = /^[A-Z]{4}TZT[ZX0]$/;
+const PREFIX_RE = /^0?[67]\d{1,2}$/;
 
 const useStyles = makeStyles((theme) => ({
   section: { margin: theme.spacing(2, 0, 1), fontWeight: 600, color: theme.palette.primary.main },
@@ -25,7 +26,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const blankFsp = {
-  fspCode: '', name: '', fspType: '', bankName: '', bic: '',
+  fspCode: '', name: '', fspType: '', bankName: '', bic: '', mobilePrefixes: '',
 };
 
 // provider === null opens the dialog to add an FSP.
@@ -45,6 +46,7 @@ function FspDialog({
     fspType: provider.fspType || '',
     bankName: provider.bankName || '',
     bic: provider.bic || '',
+    mobilePrefixes: (provider.mobilePrefixes || []).join(', '),
   }));
   const [otherName, setOtherName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -54,7 +56,9 @@ function FspDialog({
   const code = form.fspCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
   const bic = (form.bic || '').toUpperCase();
   const bicError = !!bic && !BIC_RE.test(bic);
-  const detailsComplete = form.bankName.trim() && ['BANK', 'MOBILE'].includes(form.fspType) && BIC_RE.test(bic);
+  const badPrefixes = splitPrefixes(form.mobilePrefixes).filter((p) => !PREFIX_RE.test(p.replace(/^255/, '')));
+  const detailsComplete = form.bankName.trim() && ['BANK', 'MOBILE'].includes(form.fspType) && BIC_RE.test(bic)
+    && !badPrefixes.length;
   const detailsEditable = canPropose && !provider?.pending;
   const otherNames = (state?.fspMappings ?? [])
     .filter((m) => m.fspCode === code && m.fspName !== form.name);
@@ -114,6 +118,14 @@ function FspDialog({
             helperText: bicError ? t('providers.bic.invalid') : t('fsp.bic.help'),
             onChange: (e) => setForm({ ...form, bic: e.target.value.toUpperCase() }),
             inputProps: { maxLength: 8, style: { fontFamily: 'monospace', textTransform: 'uppercase' } },
+          })}
+          {form.fspType === 'MOBILE' && field('mobilePrefixes', 'fsp.mobilePrefixes', {
+            disabled: !adding && !detailsEditable,
+            error: !!badPrefixes.length,
+            helperText: badPrefixes.length
+              ? tv('fsp.mobilePrefixes.invalid', { prefixes: badPrefixes.join(', ') })
+              : t(provider?.prefixesFromConfig ? 'fsp.mobilePrefixes.fromConfig' : 'fsp.mobilePrefixes.help'),
+            inputProps: { maxLength: 200, style: { fontFamily: 'monospace' } },
           })}
           {(adding ? canPropose : detailsEditable) && (
             <Grid item xs={12}>

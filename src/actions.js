@@ -287,7 +287,7 @@ export function saveFspCharges(fspCode, bands, effectiveFrom, clientMutationLabe
 
 export function fetchFspProviders() {
   return graphql(
-    'query { fspProviders { uuid fspCode name bandCount bankName fspType bic names hasBands accounts missing pending } }',
+    'query { fspProviders { uuid fspCode name bandCount bankName fspType bic mobilePrefixes prefixesFromConfig names hasBands accounts missing pending } }',
     ACTION_TYPE.FETCH_FSP_PROVIDERS,
   );
 }
@@ -316,10 +316,14 @@ export function deleteFsp(fspCode, clientMutationLabel) {
   return mutate('deleteFsp', `fspCode: "${formatGQLString(fspCode)}"`, ACTION_TYPE.DELETE_FSP, clientMutationLabel);
 }
 
+export const splitPrefixes = (value) => String(value || '').split(/[\s,;]+/).filter(Boolean);
+
 export function saveFspProfile(p, clientMutationLabel) {
   const q = (v) => `"${formatGQLString(v ?? '')}"`;
   return mutate('saveFspProfile',
     `fspCode: ${q(p.fspCode)}, bankName: ${q(p.bankName)}, fspType: ${q(p.fspType)}, bic: ${q(p.bic)}`
+    + `${p.fspType === 'MOBILE' && p.mobilePrefixes !== undefined
+      ? `, mobilePrefixes: [${splitPrefixes(p.mobilePrefixes).map(q).join(', ')}]` : ''}`
     + `${p.reason ? `, reason: ${q(p.reason)}` : ''}`,
     ACTION_TYPE.SAVE_FSP_PROFILE, clientMutationLabel);
 }

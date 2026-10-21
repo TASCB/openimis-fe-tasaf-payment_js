@@ -73,6 +73,14 @@ export default function VerificationPayloadDialog({
                 maxRows: preview.max_rows_per_message,
               })}
             </Typography>
+            {!!preview.withdrawn && (
+              <Typography variant="body2" className={`${classes.line} ${classes.disabled}`}>
+                {formatMessageWithValues('payloadPreview.withdrawn', { count: preview.withdrawn })}
+                {(preview.withdrawn_sample || []).map((reason) => (
+                  <span key={reason} style={{ display: 'block' }}>{`• ${reason}`}</span>
+                ))}
+              </Typography>
+            )}
             {(preview.messages || []).length === 0
               ? <Typography variant="body2">{formatMessage('payloadPreview.none')}</Typography>
               : <div className={classes.json}>{json}</div>}
