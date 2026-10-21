@@ -175,7 +175,7 @@ const STORE_STATE = {
   gepgChanges: [],
   gepgRequests: [],
   fetchingGepgRequests: false,
-  gepgItems: [],
+  gepgItems: { total: 0, rows: [] },
   fetchingGepgItems: false,
   fetchingMuseChanges: false,
   fetchingVerificationPreview: false,
@@ -436,9 +436,9 @@ function reducer(state = STORE_STATE, action) {
     case ERROR(ACTION_TYPE.FETCH_GEPG_REQUESTS):
       return { ...state, fetchingGepgRequests: false };
     case REQUEST(ACTION_TYPE.FETCH_GEPG_ITEMS):
-      return { ...state, fetchingGepgItems: true, gepgItems: [] };
+      return { ...state, fetchingGepgItems: true };
     case SUCCESS(ACTION_TYPE.FETCH_GEPG_ITEMS):
-      return { ...state, fetchingGepgItems: false, gepgItems: parseJson(action.payload.data?.gepgVerificationItems) || [] };
+      return { ...state, fetchingGepgItems: false, gepgItems: parseJson(action.payload.data?.gepgVerificationItems) || { total: 0, rows: [] } };
     case ERROR(ACTION_TYPE.FETCH_GEPG_ITEMS):
       return { ...state, fetchingGepgItems: false };
     case SUCCESS(ACTION_TYPE.FETCH_MUSE_SETTINGS): {

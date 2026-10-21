@@ -372,9 +372,9 @@ export function fetchGepgRequests(status) {
   return graphql(`query { gepgVerificationRequests${args} }`, ACTION_TYPE.FETCH_GEPG_REQUESTS);
 }
 
-export function fetchGepgItems(accVerifId) {
+export function fetchGepgItems(accVerifId, { offset = 0, limit = 100, search = '', decision = '' } = {}) {
   return graphql(
-    `query { gepgVerificationItems(accVerifId: "${formatGQLString(accVerifId)}") }`,
+    `query { gepgVerificationItems(accVerifId: "${formatGQLString(accVerifId)}", offset: ${offset}, limit: ${limit}, search: "${formatGQLString(search)}", decision: "${formatGQLString(decision)}") }`,
     ACTION_TYPE.FETCH_GEPG_ITEMS,
   );
 }

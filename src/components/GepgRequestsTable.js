@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 import {
-  Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-  Table, TableBody, TableCell, TableHead, TableRow, Typography,
+  Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem,
+  Table, TableBody, TableCell, TableHead, TablePagination, TableRow, TextField, Typography,
 } from '@material-ui/core';
 import { formatMessage, formatMessageWithValues } from '@openimis/fe-core';
 
@@ -11,6 +11,8 @@ import { fetchGepgItems, resendGepgVerification } from '../actions';
 import { MODULE_NAME, RIGHT_RUN_VERIFICATION } from '../constants';
 
 const RESENDABLE = ['FAILED', 'REFUSED', 'REJECTED', 'EXPIRED'];
+const DECISIONS = ['', 'VERIFIED', 'MANUAL', 'FAILED', 'NONE'];
+const PAGE_SIZES = [50, 100, 500];
 const when = (v) => (v ? v.slice(0, 16).replace('T', ' ') : '—');
 
 function GepgRequestsTable({ requests, emptyClassName }) {
@@ -23,11 +25,31 @@ function GepgRequestsTable({ requests, emptyClassName }) {
   const canResend = rights.includes(RIGHT_RUN_VERIFICATION);
   const submitting = state?.submittingMutation;
   const [viewing, setViewing] = useState(null);
+  const [sending, setSending] = useState(null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(100);
+  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  const [decision, setDecision] = useState('');
+  useEffect(() => { if (!submitting) setSending(null); }, [submitting]);
+  useEffect(() => {
+    const timer = setTimeout(() => { setQuery(search.trim()); setPage(0); }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+  useEffect(() => {
+    if (viewing) {
+      dispatch(fetchGepgItems(viewing.acc_verif_id, { offset: page * pageSize, limit: pageSize, search: query, decision }));
+    }
+  }, [viewing, page, pageSize, query, decision]);
   const classes = { empty: emptyClassName };
+  const items = state?.gepgItems || { total: 0, rows: [] };
 
   const view = (r) => {
+    setPage(0);
+    setSearch('');
+    setQuery('');
+    setDecision('');
     setViewing(r);
-    dispatch(fetchGepgItems(r.acc_verif_id));
   };
 
   return (
@@ -90,9 +112,13 @@ function GepgRequestsTable({ requests, emptyClassName }) {
                       size="small"
                       color="primary"
                       disabled={submitting}
-                      onClick={() => dispatch(resendGepgVerification(r.acc_verif_id, t('gepg.mutation.resend')))}
+                      startIcon={sending === r.acc_verif_id ? <CircularProgress size={14} /> : null}
+                      onClick={() => {
+                        setSending(r.acc_verif_id);
+                        dispatch(resendGepgVerification(r.acc_verif_id, t('gepg.mutation.resend')));
+                      }}
                     >
-                      {t('gepg.requests.resend')}
+                      {t(sending === r.acc_verif_id ? 'gepg.requests.sending' : 'gepg.requests.resend')}
                     </Button>
                   )}
                 </TableCell>
@@ -111,7 +137,37 @@ function GepgRequestsTable({ requests, emptyClassName }) {
           )}
         </DialogTitle>
         <DialogContent>
-          {state?.fetchingGepgItems ? <CircularProgress size={24} /> : (
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label={t('gepg.items.search')}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={8} sm={4}>
+              <TextField
+                select
+                fullWidth
+                size="small"
+                label={t('gepg.items.col.decision')}
+                value={decision}
+                onChange={(e) => { setDecision(e.target.value); setPage(0); }}
+              >
+                {DECISIONS.map((d) => (
+                  <MenuItem key={d || 'all'} value={d}>{t(`gepg.items.decision.${d || 'ALL'}`)}</MenuItem>
+                ))}
+              </TextField>
+            </Grid>
+            <Grid item xs={4} sm={2}>
+              {state?.fetchingGepgItems && <CircularProgress size={20} />}
+            </Grid>
+          </Grid>
+          {!state?.fetchingGepgItems && items.rows.length === 0 ? (
+            <Typography className={classes.empty}>{t('gepg.items.none')}</Typography>
+          ) : (
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -125,7 +181,7 @@ function GepgRequestsTable({ requests, emptyClassName }) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {(state?.gepgItems || []).map((i) => (
+                {items.rows.map((i) => (
                   <TableRow key={i.item_id}>
                     <TableCell>{i.item_id}</TableCell>
                     <TableCell>{i.hhid || '—'}</TableCell>
@@ -144,6 +200,15 @@ function GepgRequestsTable({ requests, emptyClassName }) {
               </TableBody>
             </Table>
           )}
+          <TablePagination
+            component="div"
+            count={items.total}
+            page={page}
+            rowsPerPage={pageSize}
+            rowsPerPageOptions={PAGE_SIZES}
+            onPageChange={(_, p) => setPage(p)}
+            onRowsPerPageChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
+          />
         </DialogContent>
         <DialogActions>
           <Button color="primary" onClick={() => setViewing(null)}>{t('payloadPreview.close')}</Button>
