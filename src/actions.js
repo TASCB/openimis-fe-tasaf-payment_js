@@ -17,6 +17,8 @@ export const PAYMENT_ACCOUNT_PROJECTION = () => [
   'uuid',
   'accountNumber',
   'accountName',
+  'recipientName',
+  'firstPaymentCheck',
   'fspType',
   'fspName',
   'verificationStatus',
@@ -28,7 +30,7 @@ export const PAYMENT_ACCOUNT_PROJECTION = () => [
   'isDeleted',
   'dateCreated',
   'dateUpdated',
-  'groupBeneficiary { id uuid group { id uuid } }',
+  'groupBeneficiary { id uuid group { id uuid code } }',
   'verificationAttempts { result failureReason receivedAt expectedName returnedName matchScore matchReason matchMember }',
 ];
 
@@ -487,9 +489,13 @@ export function deletePaymentAccount(account, clientMutationLabel) {
 
 // ─── Verification mutations ───────────────────────────────────────────────────
 
-export function runVerification(accountUuids, clientMutationLabel) {
+export function runVerification(accountUuids, clientMutationLabel, beforeFirstPayment = false) {
   const ids = accountUuids.map((id) => `"${id}"`).join(', ');
-  const mutation = formatMutation('runVerification', `accountUuids: [${ids}]`, clientMutationLabel);
+  const mutation = formatMutation(
+    'runVerification',
+    `accountUuids: [${ids}]${beforeFirstPayment ? ', beforeFirstPayment: true' : ''}`,
+    clientMutationLabel,
+  );
   return graphql(
     mutation.payload,
     [REQUEST(ACTION_TYPE.MUTATION), SUCCESS(ACTION_TYPE.RUN_VERIFICATION), ERROR(ACTION_TYPE.MUTATION)],
@@ -508,6 +514,7 @@ export function runBatchVerification(filters, clientMutationLabel) {
   // Location is the legacy integer PK, so unquoted.
   if (filters.locationId) parts.push(`locationId: ${filters.locationId}`);
   if (filters.rerun !== undefined) parts.push(`rerun: ${filters.rerun}`);
+  if (filters.beforeFirstPayment) parts.push('beforeFirstPayment: true');
   const mutation = formatMutation('runBatchVerification', parts.join(', '), clientMutationLabel);
   return graphql(
     mutation.payload,
@@ -575,6 +582,7 @@ export function fetchVerificationPreview(filters, sampleRows = 20) {
     args.push(`accountNumberIcontains: "${formatGQLString(filters.accountNumberIcontains)}"`);
   }
   if (filters.locationId) args.push(`locationId: ${filters.locationId}`);
+  if (filters.beforeFirstPayment) args.push('beforeFirstPayment: true');
   return graphql(`{ verificationBatchPreview(${args.join(', ')}) }`, ACTION_TYPE.VERIFICATION_PREVIEW);
 }
 

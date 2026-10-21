@@ -8,6 +8,7 @@ import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 import CodeIcon from '@material-ui/icons/Code';
 import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import CancelIcon from '@material-ui/icons/Cancel';
+import ReplayIcon from '@material-ui/icons/Replay';
 
 import {
   Helmet,
@@ -161,15 +162,15 @@ function VerificationResultsPage({
     if (!pendingAction) return;
     const { type, accounts } = pendingAction;
     const count = accounts.length;
-    if (type === 'send' || type === 'resend') {
+    if (type === 'send' || type === 'resend' || type === 'recheck') {
       coreConfirm(
         formatMessage(`verificationResults.${type}.confirm.title`),
         formatMessageWithValues(`verificationResults.${type}.confirm.message`, { count }),
       );
-    } else if (type === 'batch') {
+    } else if (type === 'batch' || type === 'recheckBatch') {
       coreConfirm(
-        formatMessage('verificationResults.batch.confirm.title'),
-        formatMessageWithValues('verificationResults.batch.confirm.message', {
+        formatMessage(`verificationResults.${type}.confirm.title`),
+        formatMessageWithValues(`verificationResults.${type}.confirm.message`, {
           count: paymentAccountsTotalCount ?? 0,
           filters: describeBatchFilters(),
         }),
@@ -189,11 +190,18 @@ function VerificationResultsPage({
       const uuids = accounts.map((a) => a.uuid);
       if (type === 'send' || type === 'resend') {
         runVerification(uuids, formatMessageWithValues('mutation.runVerificationLabel', { count: uuids.length }));
+      } else if (type === 'recheck') {
+        runVerification(uuids, formatMessageWithValues('mutation.recheckLabel', { count: uuids.length }), true);
       } else if (type === 'batch' && hasBatchFilter) {
         // Every matching account on all pages; the backend rebuilds the query from the filters.
         runBatchVerification(
           batchFilters,
           formatMessageWithValues('mutation.runBatchVerificationLabel', { filters: describeBatchFilters() }),
+        );
+      } else if (type === 'recheckBatch' && hasBatchFilter) {
+        runBatchVerification(
+          { ...batchFilters, beforeFirstPayment: true },
+          formatMessageWithValues('mutation.recheckBatchLabel', { filters: describeBatchFilters() }),
         );
       } else if (type === 'approve' || type === 'reject') {
         approvePaymentAccounts(
@@ -226,7 +234,7 @@ function VerificationResultsPage({
   const nameFormatters = () => [
     (row) => row.accountNumber,
     (row) => row.fspName,
-    (row) => latest(row).expectedName || '-',
+    (row) => latest(row).expectedName || row.recipientName || '-',
     (row) => latest(row).returnedName || '-',
     (row) => (latest(row).matchScore != null ? `${latest(row).matchScore}%` : '-'),
     (row) => matchReasonText(latest(row), formatMessage, formatMessageWithValues) || row.lastFailureReason || '-',
@@ -234,20 +242,26 @@ function VerificationResultsPage({
 
   const headers = () => [
     formatMessage('paymentAccount.accountNumber'),
-    formatMessage('paymentAccount.accountName'),
+    formatMessage('review.expectedName'),
+    formatMessage('review.household'),
     formatMessage('paymentAccount.fspType'),
     formatMessage('paymentAccount.fspName'),
     formatMessage('paymentAccount.verificationStatus'),
-    formatMessage('paymentAccount.failureReason'),
   ];
 
   const itemFormatters = () => [
     (row) => row.accountNumber,
-    (row) => row.accountName ?? '',
+    (row) => row.recipientName || '-',
+    (row) => row.groupBeneficiary?.group?.code || '-',
     (row) => formatMessage(`paymentAccount.fspType.${row.fspType}`),
     (row) => row.fspName,
     (row) => <StatusBadge status={row.verificationStatus} />,
-    (row) => row.lastFailureReason ?? '-',
+  ];
+
+  const successHeaders = () => [...headers().slice(0, 5), formatMessage('paymentAccount.firstPaymentCheck')];
+  const successFormatters = () => [
+    ...itemFormatters().slice(0, 5),
+    (row) => (row.firstPaymentCheck ? formatMessage(`paymentAccount.firstPaymentCheck.${row.firstPaymentCheck}`) : '-'),
   ];
 
   const canOpenCorrection = !!modulesManager.getRef(ROUTE_REF_ACCOUNT_CORRECTION)
@@ -276,8 +290,7 @@ function VerificationResultsPage({
   // PENDING_MUSE is already in flight; re-sending it would duplicate the request, so it is
   // excluded from the subset rather than blocking the whole action.
   const unsentSelected = withStatus(VERIFICATION_STATUS.PENDING);
-  // Success accounts are done — re-verifying them is wrong, and they qualify for payment
-  // automatically through paylist generation, so the Success tab offers no send action.
+  const dueSelected = canAct ? selectedAccounts.filter((a) => a.firstPaymentCheck === 'DUE') : [];
   const reviewActions = [
     {
       // A borderline name match an officer can clear without a field visit.
@@ -323,11 +336,40 @@ function VerificationResultsPage({
     },
   ];
 
+  const successActions = [
+    {
+      label: formatMessage('button.recheckBeforePayment'),
+      icon: <ReplayIcon />,
+      onClick: () => setPendingAction({ type: 'recheck', accounts: dueSelected }),
+      authorized: dueSelected.length > 0 && canVerify,
+    },
+    {
+      label: formatMessage('button.showPayload'),
+      icon: <CodeIcon />,
+      onClick: () => {
+        fetchVerificationPreview({ ...batchFilters, beforeFirstPayment: true }, PAYLOAD_SAMPLE_ROWS);
+        setShowPayload(true);
+      },
+      authorized: canVerify && hasBatchFilter,
+    },
+    {
+      label: formatMessage('button.recheckAllMatching'),
+      icon: <VerifiedUserIcon />,
+      onClick: () => setPendingAction({ type: 'recheckBatch', accounts: [] }),
+      authorized: !submittingMutation && canVerify && hasBatchFilter,
+    },
+  ];
+
   let searcherActions;
   if (isPending) searcherActions = pendingActions;
   else if (isReview) searcherActions = reviewActions;
-  else if (isSuccess) searcherActions = [];
+  else if (isSuccess) searcherActions = successActions;
   else searcherActions = failedActions;
+
+  let tableHeaders = headers;
+  let tableFormatters = itemFormatters;
+  if (showsNames) { tableHeaders = nameHeaders; tableFormatters = nameFormatters; }
+  else if (isSuccess) { tableHeaders = successHeaders; tableFormatters = successFormatters; }
 
   return (
     <div className={classes.page}>
@@ -364,8 +406,8 @@ function VerificationResultsPage({
         fetchedItems={fetchedPaymentAccounts}
         errorItems={errorPaymentAccounts}
         tableTitle={formatMessageWithValues('searcher.results', { totalCount: paymentAccountsTotalCount })}
-        headers={showsNames ? nameHeaders : headers}
-        itemFormatters={showsNames ? nameFormatters : itemFormatters}
+        headers={tableHeaders}
+        itemFormatters={tableFormatters}
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         defaultPageSize={DEFAULT_PAGE_SIZE}
         rowIdentifier={(row) => row.id}

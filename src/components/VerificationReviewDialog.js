@@ -64,7 +64,7 @@ function VerificationReviewDialog({ account, onClose, onDecide, canDecide }) {
         {a.fspType && <span className={p.tag}>{formatMessage(`paymentAccount.fspType.${a.fspType}`)}</span>}
         <span className={p.statusTag}>{formatMessage('verificationResults.tab.review')}</span>
       </div>
-      <PreviewField label={formatMessage('review.household')} value={a.accountName} />
+      <PreviewField label={formatMessage('review.household')} value={a.groupBeneficiary?.group?.code} />
     </div>
   );
 
@@ -105,7 +105,7 @@ function VerificationReviewDialog({ account, onClose, onDecide, canDecide }) {
       <div className={classes.names}>
         <div className={classes.nameBox}>
           <div className={classes.nameLabel}>{formatMessage('review.expectedName')}</div>
-          <div className={classes.nameValue}>{latest.expectedName || '—'}</div>
+          <div className={classes.nameValue}>{latest.expectedName || a.recipientName || '—'}</div>
         </div>
         <div className={classes.nameBox}>
           <div className={classes.nameLabel}>{formatMessage('review.returnedName')}</div>
