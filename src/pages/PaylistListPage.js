@@ -75,7 +75,7 @@ function PaylistListPage({
 
   const itemFormatters = () => [
     (row) => formatMessage(`paylist.batchType.${row.batchType}`),
-    (row) => (row.batchTotal && row.batchTotal > 1
+    (row) => (row.batchTotal
       ? formatMessageWithValues('paylist.batch.label', { seq: row.batchSequence, total: row.batchTotal })
       : '-'),
     (row) => (
