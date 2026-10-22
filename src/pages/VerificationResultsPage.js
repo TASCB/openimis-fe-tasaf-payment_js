@@ -3,7 +3,7 @@ import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import { makeStyles } from '@material-ui/styles';
-import { IconButton, Paper } from '@material-ui/core';
+import { Button, IconButton, Paper, Typography } from '@material-ui/core';
 import RefreshIcon from '@material-ui/icons/Refresh';
 import SendIcon from '@material-ui/icons/Send';
 import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
@@ -65,6 +65,10 @@ const useStyles = makeStyles((theme) => ({
   gepg: { '& table': { tableLayout: 'auto' } },
   gepgBar: { display: 'flex', justifyContent: 'flex-end', padding: theme.spacing(1, 1, 0) },
   empty: { padding: theme.spacing(2) },
+  selectionNote: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
+    gap: theme.spacing(1), padding: theme.spacing(1, 2), margin: theme.spacing(0, 0, 1),
+  },
 }));
 
 // The list's filters as the Searcher sends them ('fspType: "BANK"', 'locationId: 12'),
@@ -309,6 +313,16 @@ function VerificationResultsPage({
   // excluded from the subset rather than blocking the whole action.
   const unsentSelected = withStatus(VERIFICATION_STATUS.PENDING);
   const dueSelected = canAct ? selectedAccounts.filter((a) => a.firstPaymentCheck === 'DUE') : [];
+  const inFlightSelected = selectedAccounts.filter((a) => a.verificationStatus === VERIFICATION_STATUS.PENDING_MUSE);
+  let selectionNote = null;
+  if (isPending && selectedAccounts.length && submittingMutation) {
+    selectionNote = formatMessage('verificationResults.selection.busy');
+  } else if (isPending && inFlightSelected.length) {
+    selectionNote = formatMessageWithValues(
+      unsentSelected.length ? 'verificationResults.selection.someInFlight' : 'verificationResults.selection.allInFlight',
+      { count: inFlightSelected.length, sendable: unsentSelected.length },
+    );
+  }
   const reviewActions = [
     {
       // A borderline name match an officer can clear without a field visit.
@@ -421,6 +435,16 @@ function VerificationResultsPage({
   return (
     <div className={classes.page}>
       <Helmet title={formatMessage('verificationResults.page.title')} />
+      {selectionNote && (
+        <Paper className={classes.selectionNote}>
+          <Typography variant="body2">{selectionNote}</Typography>
+          {!submittingMutation && (
+            <Button size="small" color="primary" onClick={() => handleTabChange(null, TAB_GEPG)}>
+              {formatMessage('verificationResults.selection.openRequests')}
+            </Button>
+          )}
+        </Paper>
+      )}
       <Searcher
         key={`${activeTab}-${refreshKey}`}
         module={MODULE_NAME}
