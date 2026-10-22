@@ -13,6 +13,10 @@ import {
 import { CLEAR, ERROR, REQUEST, SUCCESS } from './utils/action-type';
 import { VERIFICATION_STATUS, VERIFICATION_STATUS_BY_CODE } from './constants';
 
+const mutationResp = (state, service, action) => (action.payload?.data?.[service]
+  ? dispatchMutationResp(state, service, action)
+  : { ...state, submittingMutation: false });
+
 const normalizeVerificationStatus = (status) => {
   if (status === null || status === undefined || status === '') return status;
   const code = typeof status === 'string' && /^A_\d+$/.test(status)
@@ -760,59 +764,59 @@ function reducer(state = STORE_STATE, action) {
     case REQUEST(ACTION_TYPE.MUTATION):
       return dispatchMutationReq(state, action);
     case ERROR(ACTION_TYPE.MUTATION):
-      return dispatchMutationErr(state, action);
+      return { ...dispatchMutationErr(state, action), submittingMutation: false };
     case SUCCESS(ACTION_TYPE.CREATE_PAYMENT_ACCOUNT):
-      return dispatchMutationResp(state, MUTATION_SERVICE.PAYMENT_ACCOUNT.CREATE, action);
+      return mutationResp(state, MUTATION_SERVICE.PAYMENT_ACCOUNT.CREATE, action);
     case SUCCESS(ACTION_TYPE.UPDATE_PAYMENT_ACCOUNT):
-      return dispatchMutationResp(state, MUTATION_SERVICE.PAYMENT_ACCOUNT.UPDATE, action);
+      return mutationResp(state, MUTATION_SERVICE.PAYMENT_ACCOUNT.UPDATE, action);
     case SUCCESS(ACTION_TYPE.DELETE_PAYMENT_ACCOUNT):
-      return dispatchMutationResp(state, MUTATION_SERVICE.PAYMENT_ACCOUNT.DELETE, action);
+      return mutationResp(state, MUTATION_SERVICE.PAYMENT_ACCOUNT.DELETE, action);
     case SUCCESS(ACTION_TYPE.RUN_VERIFICATION):
-      return dispatchMutationResp(state, MUTATION_SERVICE.VERIFICATION.RUN, action);
+      return mutationResp(state, MUTATION_SERVICE.VERIFICATION.RUN, action);
     case SUCCESS(ACTION_TYPE.RUN_BATCH_VERIFICATION):
-      return dispatchMutationResp(state, MUTATION_SERVICE.VERIFICATION.RUN_BATCH, action);
+      return mutationResp(state, MUTATION_SERVICE.VERIFICATION.RUN_BATCH, action);
     case SUCCESS(ACTION_TYPE.APPROVE_ACCOUNTS):
-      return dispatchMutationResp(state, MUTATION_SERVICE.VERIFICATION.APPROVE, action);
+      return mutationResp(state, MUTATION_SERVICE.VERIFICATION.APPROVE, action);
     case SUCCESS(ACTION_TYPE.RUN_PRE_AUDIT):
-      return dispatchMutationResp(state, MUTATION_SERVICE.PRE_AUDIT.RUN, action);
+      return mutationResp(state, MUTATION_SERVICE.PRE_AUDIT.RUN, action);
     case SUCCESS(ACTION_TYPE.RUN_BATCH_PRE_AUDIT):
-      return dispatchMutationResp(state, MUTATION_SERVICE.PRE_AUDIT.RUN_BATCH, action);
+      return mutationResp(state, MUTATION_SERVICE.PRE_AUDIT.RUN_BATCH, action);
     case SUCCESS(ACTION_TYPE.GENERATE_PAYLIST):
-      return dispatchMutationResp(state, MUTATION_SERVICE.PAYLIST.GENERATE, action);
+      return mutationResp(state, MUTATION_SERVICE.PAYLIST.GENERATE, action);
     case SUCCESS(ACTION_TYPE.APPROVE_PAYLIST):
-      return dispatchMutationResp(state, MUTATION_SERVICE.PAYLIST.APPROVE, action);
+      return mutationResp(state, MUTATION_SERVICE.PAYLIST.APPROVE, action);
     case SUCCESS(ACTION_TYPE.SUBMIT_PAYLIST):
-      return dispatchMutationResp(state, MUTATION_SERVICE.PAYLIST.SUBMIT, action);
+      return mutationResp(state, MUTATION_SERVICE.PAYLIST.SUBMIT, action);
     // Charges-page saves: clear submittingMutation so the page refreshes and journals.
     case 'TASAF_PAYMENT_SAVE_FSP_MAPPING_RESP':
-      return dispatchMutationResp(state, 'saveFspMapping', action);
+      return mutationResp(state, 'saveFspMapping', action);
     case 'TASAF_PAYMENT_DELETE_FSP_MAPPING_RESP':
-      return dispatchMutationResp(state, 'deleteFspMapping', action);
+      return mutationResp(state, 'deleteFspMapping', action);
     case 'TASAF_PAYMENT_SAVE_FSP_CHARGES_RESP':
-      return dispatchMutationResp(state, 'saveFspCharges', action);
+      return mutationResp(state, 'saveFspCharges', action);
     case 'TASAF_PAYMENT_SAVE_WITHDRAWAL_CHARGE_RESP':
-      return dispatchMutationResp(state, 'saveWithdrawalCharge', action);
+      return mutationResp(state, 'saveWithdrawalCharge', action);
     case 'TASAF_PAYMENT_DELETE_WITHDRAWAL_CHARGE_RESP':
-      return dispatchMutationResp(state, 'deleteWithdrawalCharge', action);
+      return mutationResp(state, 'deleteWithdrawalCharge', action);
     case 'TASAF_PAYMENT_IMPORT_WITHDRAWAL_CHARGES_RESP':
-      return dispatchMutationResp(state, 'importWithdrawalCharges', action);
+      return mutationResp(state, 'importWithdrawalCharges', action);
     case SUCCESS(ACTION_TYPE.SAVE_FSP_PROFILE):
-      return dispatchMutationResp(state, 'saveFspProfile', action);
+      return mutationResp(state, 'saveFspProfile', action);
     case SUCCESS(ACTION_TYPE.DELETE_FSP):
-      return dispatchMutationResp(state, 'deleteFsp', action);
+      return mutationResp(state, 'deleteFsp', action);
     case SUCCESS(ACTION_TYPE.SAVE_MUSE_SETTINGS):
-      return dispatchMutationResp(state, 'saveMuseSettings', action);
+      return mutationResp(state, 'saveMuseSettings', action);
     case SUCCESS(ACTION_TYPE.MUSE_CHANGE_DECISION): {
       const name = ['approveMuseChange', 'rejectMuseChange', 'cancelMuseChange']
         .find((n) => action.payload?.data?.[n]);
-      return dispatchMutationResp(state, name || 'approveMuseChange', action);
+      return mutationResp(state, name || 'approveMuseChange', action);
     }
     case SUCCESS(ACTION_TYPE.SAVE_GEPG_SETTINGS):
-      return dispatchMutationResp(state, 'saveGepgSettings', action);
+      return mutationResp(state, 'saveGepgSettings', action);
     case SUCCESS(ACTION_TYPE.RESEND_GEPG_VERIFICATION):
-      return dispatchMutationResp(state, 'resendGepgVerification', action);
+      return mutationResp(state, 'resendGepgVerification', action);
     case SUCCESS(ACTION_TYPE.RELEASE_GEPG_VERIFICATION):
-      return dispatchMutationResp(state, 'releaseGepgVerification', action);
+      return mutationResp(state, 'releaseGepgVerification', action);
 
     default:
       return state;
