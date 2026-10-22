@@ -44,9 +44,12 @@ import {
   fetchVerificationPreview,
   reviewPaymentAccount,
   fetchGepgRequests,
+  fetchVerificationOutcome,
 } from '../actions';
+import { ACTION_TYPE } from '../reducer';
 import VerificationPayloadDialog from '../components/VerificationPayloadDialog';
 import VerificationReviewDialog from '../components/VerificationReviewDialog';
+import VerificationOutcomeDialog from '../components/VerificationOutcomeDialog';
 import { matchReasonText } from '../utils/verification';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
@@ -99,6 +102,7 @@ function VerificationResultsPage({
   fetchVerificationPreview,
   reviewPaymentAccount,
   fetchGepgRequests,
+  fetchVerificationOutcome,
   gepgRequests,
   fetchingVerificationPreview,
   verificationPreview,
@@ -124,7 +128,10 @@ function VerificationResultsPage({
   const history = useHistory();
 
   // Pending first: an operator's day starts with work not yet sent, not with results.
-  const [activeTab, setActiveTab] = useState(TAB_PENDING);
+  const [activeTab, setActiveTab] = useState(
+    () => (new URLSearchParams(history.location.search).get('verification') === 'gepg' ? TAB_GEPG : TAB_PENDING),
+  );
+  const [outcome, setOutcome] = useState(null);
   const [selectionNote, setSelectionNote] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [location, setLocation] = useState(null);
@@ -239,6 +246,11 @@ function VerificationResultsPage({
     if (prevSubmittingMutationRef.current && !submittingMutation) {
       journalize(mutation);
       fetchGepgRequests();
+      if ([ACTION_TYPE.RUN_VERIFICATION, ACTION_TYPE.RUN_BATCH_VERIFICATION].includes(mutation?.actionType)) {
+        fetchVerificationOutcome(mutation.clientMutationId).then((result) => {
+          if (result) setOutcome(result);
+        });
+      }
     }
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
@@ -460,6 +472,11 @@ function VerificationResultsPage({
           searcherActionsPosition="header-right"
         />
       </FilterExtrasProvider>
+      <VerificationOutcomeDialog
+        outcome={outcome}
+        onClose={() => setOutcome(null)}
+        onOpenRequests={() => { setOutcome(null); handleTabChange(null, TAB_GEPG); }}
+      />
       <VerificationReviewDialog
         account={reviewed}
         onClose={() => setReviewed(null)}
@@ -505,6 +522,7 @@ const mapDispatchToProps = (dispatch) => bindActionCreators(
     fetchVerificationPreview,
     reviewPaymentAccount,
     fetchGepgRequests,
+    fetchVerificationOutcome,
     journalize,
     coreConfirm,
     clearConfirm,

@@ -651,6 +651,19 @@ async function waitForMutationLog(dispatch, clientMutationId) {
   return null;
 }
 
+export function fetchVerificationOutcome(clientMutationId) {
+  return async (dispatch) => {
+    await waitForMutationLog(dispatch, clientMutationId);
+    const response = await dispatch(graphql(
+      `query { verificationOutcome(clientMutationId: "${formatGQLString(clientMutationId)}") }`,
+      ACTION_TYPE.VERIFICATION_OUTCOME,
+    ));
+    const raw = response?.payload?.data?.verificationOutcome;
+    if (!raw) return null;
+    try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return null; }
+  };
+}
+
 function runPaylistAction(kind, paylistUuid, clientMutationLabel) {
   const mutation = formatMutation(kind, `paylistUuid: "${paylistUuid}"`, clientMutationLabel);
   const meta = { kind, paylistUuid, clientMutationId: mutation.clientMutationId, clientMutationLabel };
