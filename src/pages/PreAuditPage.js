@@ -28,9 +28,12 @@ import {
 } from '../constants';
 import { fetchPaymentAccounts, runPreAudit, runBatchPreAudit } from '../actions';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
+import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
 import { defaultPageStyles } from '../utils/styles';
 
 const VERIFIED_FILTER = `verificationStatus: ${VERIFICATION_STATUS.VERIFIED}`;
+
+const AccountFilterPane = withFilterExtras(PaymentAccountFilter);
 
 const useStyles = makeStyles((theme) => defaultPageStyles(theme));
 
@@ -184,37 +187,33 @@ function PreAuditPage({
   return (
     <div className={classes.page}>
       <Helmet title={formatMessage('preAudit.page.title')} />
-      <Searcher
-        module={MODULE_NAME}
-        FilterPane={(props) => (
-          <PaymentAccountFilter
-            {...props}
-            showStatusFilter={false}
-            showPreAuditFilter
-            showLocationFilter
-            location={location}
-            onChangeLocation={setLocation}
-          />
-        )}
-        fetch={(params) => fetchPaymentAccounts([...(params || []), VERIFIED_FILTER])}
-        items={paymentAccounts}
-        itemsPageInfo={paymentAccountsPageInfo}
-        fetchingItems={fetchingPaymentAccounts}
-        fetchedItems={fetchedPaymentAccounts}
-        errorItems={errorPaymentAccounts}
-        tableTitle={formatMessageWithValues('searcher.results', { totalCount: paymentAccountsTotalCount })}
-        headers={headers}
-        itemFormatters={itemFormatters}
-        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-        defaultPageSize={DEFAULT_PAGE_SIZE}
-        rowIdentifier={(row) => row.id}
-        onDoubleClick={canOpenGroup ? openGroup : undefined}
-        withSelection="multiple"
-        onChangeSelection={setSelectedAccounts}
-        enableActionButtons
-        searcherActions={searcherActions}
-        searcherActionsPosition="header-right"
-      />
+      <FilterExtrasProvider value={{
+        showStatusFilter: false, showPreAuditFilter: true, showLocationFilter: true, location, onChangeLocation: setLocation,
+      }}
+      >
+        <Searcher
+          module={MODULE_NAME}
+          FilterPane={AccountFilterPane}
+          fetch={(params) => fetchPaymentAccounts([...(params || []), VERIFIED_FILTER])}
+          items={paymentAccounts}
+          itemsPageInfo={paymentAccountsPageInfo}
+          fetchingItems={fetchingPaymentAccounts}
+          fetchedItems={fetchedPaymentAccounts}
+          errorItems={errorPaymentAccounts}
+          tableTitle={formatMessageWithValues('searcher.results', { totalCount: paymentAccountsTotalCount })}
+          headers={headers}
+          itemFormatters={itemFormatters}
+          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+          defaultPageSize={DEFAULT_PAGE_SIZE}
+          rowIdentifier={(row) => row.id}
+          onDoubleClick={canOpenGroup ? openGroup : undefined}
+          withSelection="multiple"
+          onChangeSelection={setSelectedAccounts}
+          enableActionButtons
+          searcherActions={searcherActions}
+          searcherActionsPosition="header-right"
+        />
+      </FilterExtrasProvider>
     </div>
   );
 }

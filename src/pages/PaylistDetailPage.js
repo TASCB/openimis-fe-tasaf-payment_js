@@ -33,7 +33,6 @@ import {
   ROWS_PER_PAGE_OPTIONS,
   PAYLIST_STATUS,
   WS_TAB_PAYLISTS,
-  RETURN_RESOLUTION_COLORS,
 } from '../constants';
 import {
   fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport, fetchMusePaylistPreview,
@@ -43,12 +42,15 @@ import StatusChip from '../components/StatusChip';
 import ReturnedPaymentDialog from '../components/ReturnedPaymentDialog';
 import MusePayloadDialog from '../components/MusePayloadDialog';
 import PaylistItemFilter from '../components/PaylistItemFilter';
+import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
 import PaylistSummary from '../components/PaylistSummary';
 import PaylistActionNotice from '../components/PaylistActionNotice';
 import MuseLogPanel from '../components/MuseLogPanel';
 import MuseRejectionPanel from '../components/MuseRejectionPanel';
 import { PAYLIST_ITEMS_ACTIONS_KEY, PaylistActionsContext } from '../components/PaylistItemsActions';
 import { defaultPageStyles } from '../utils/styles';
+
+const ItemFilterPane = withFilterExtras(PaylistItemFilter);
 
 const useStyles = makeStyles((theme) => ({
   ...defaultPageStyles(theme),
@@ -261,7 +263,6 @@ function PaylistDetailPage({
     formatMessage('paylistItem.fspName'),
     formatMessage('paylistItem.amount'),
     formatMessage('paylistItem.status'),
-    formatMessage('paylistItem.progress'),
   ];
 
   const itemFormatters = () => [
@@ -277,11 +278,6 @@ function PaylistDetailPage({
         color={ITEM_STATUS_COLORS[row.status]}
       />
     ),
-    (row) => (row.resolution ? (
-      <span role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => setReturnedItem(row)} onKeyDown={() => setReturnedItem(row)}>
-        <StatusChip label={formatMessage(`returned.resolution.${row.resolution}`)} color={RETURN_RESOLUTION_COLORS[row.resolution]} />
-      </span>
-    ) : ''),
   ];
 
   return (
@@ -333,31 +329,26 @@ function PaylistDetailPage({
       </Paper>
 
       <PaylistActionsContext.Provider value={actionsContext}>
-        <Searcher
-          module={MODULE_NAME}
-          FilterPane={(props) => (
-            <PaylistItemFilter
-              {...props}
-              location={location}
-              onChangeLocation={setLocation}
-              fspOptions={paylistFspOptions}
-            />
-          )}
-          fetch={fetchItems}
-          items={paylistItems}
-          itemsPageInfo={paylistItemsPageInfo}
-          fetchingItems={fetchingPaylistItems}
-          fetchedItems={fetchedPaylistItems}
-          errorItems={errorPaylistItems}
-          tableTitle={formatMessageWithValues('paylistItem.searcher.results', { totalCount: paylistItemsTotalCount })}
-          headers={headers}
-          itemFormatters={itemFormatters}
-          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-          defaultPageSize={DEFAULT_PAGE_SIZE}
-          rowIdentifier={(row) => row.id}
-          actionsContributionKey={PAYLIST_ITEMS_ACTIONS_KEY}
-          onDoubleClick={(row) => row.resolution && setReturnedItem(row)}
-        />
+        <FilterExtrasProvider value={{ location, onChangeLocation: setLocation, fspOptions: paylistFspOptions }}>
+          <Searcher
+            module={MODULE_NAME}
+            FilterPane={ItemFilterPane}
+            fetch={fetchItems}
+            items={paylistItems}
+            itemsPageInfo={paylistItemsPageInfo}
+            fetchingItems={fetchingPaylistItems}
+            fetchedItems={fetchedPaylistItems}
+            errorItems={errorPaylistItems}
+            tableTitle={formatMessageWithValues('paylistItem.searcher.results', { totalCount: paylistItemsTotalCount })}
+            headers={headers}
+            itemFormatters={itemFormatters}
+            rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+            defaultPageSize={DEFAULT_PAGE_SIZE}
+            rowIdentifier={(row) => row.id}
+            actionsContributionKey={PAYLIST_ITEMS_ACTIONS_KEY}
+            onDoubleClick={(row) => row.resolution && setReturnedItem(row)}
+          />
+        </FilterExtrasProvider>
         <ReturnedPaymentDialog item={returnedItem} onClose={() => setReturnedItem(null)} />
       </PaylistActionsContext.Provider>
       {paylist?.destination === 'MUSE' && (

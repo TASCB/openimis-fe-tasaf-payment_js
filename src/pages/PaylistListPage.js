@@ -4,7 +4,6 @@ import { bindActionCreators } from 'redux';
 import { useHistory } from 'react-router-dom';
 
 import { makeStyles } from '@material-ui/styles';
-import { Typography } from '@material-ui/core';
 
 import {
   Helmet,
@@ -79,15 +78,10 @@ function PaylistListPage({
       ? formatMessageWithValues('paylist.batch.label', { seq: row.batchSequence, total: row.batchTotal })
       : '-'),
     (row) => (
-      <>
-        <StatusChip
-          label={formatMessage(`paylist.status.${row.status}`)}
-          color={STATUS_COLORS[row.status]}
-        />
-        {row.museStatusDesc && (
-          <Typography variant="caption" color="textSecondary" display="block">{row.museStatusDesc}</Typography>
-        )}
-      </>
+      <StatusChip
+        label={formatMessage(`paylist.status.${row.status}`)}
+        color={STATUS_COLORS[row.status]}
+      />
     ),
     (row) => row.itemCount ?? '-',
     (row) => (

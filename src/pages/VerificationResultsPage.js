@@ -53,12 +53,15 @@ import VerificationPayloadDialog from '../components/VerificationPayloadDialog';
 import VerificationReviewDialog from '../components/VerificationReviewDialog';
 import { matchReasonText } from '../utils/verification';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
+import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
 import StatusBadge from '../components/StatusBadge';
 import VerificationTabs from '../components/VerificationTabs';
 import GepgRequestsTable from '../components/GepgRequestsTable';
 import { defaultPageStyles } from '../utils/styles';
 
 // 6 columns, so the shared equal-width rule applies.
+const AccountFilterPane = withFilterExtras(PaymentAccountFilter);
+
 const useStyles = makeStyles((theme) => ({
   ...defaultPageStyles(theme),
   paper: theme.paper.paper,
@@ -445,42 +448,38 @@ function VerificationResultsPage({
           )}
         </Paper>
       )}
-      <Searcher
-        key={`${activeTab}-${refreshKey}`}
-        module={MODULE_NAME}
-        FilterPane={(props) => (
-          <PaymentAccountFilter
-            {...props}
-            showStatusFilter={false}
-            showLocationFilter
-            location={location}
-            onChangeLocation={setLocation}
-            verificationTabs={verificationTabs}
-          />
-        )}
-        fetch={(params) => {
-          setBatchFilters(batchFiltersFrom(params));
-          return fetchPaymentAccounts([...(params || []), statusFilter]);
-        }}
-        items={paymentAccounts}
-        itemsPageInfo={paymentAccountsPageInfo}
-        fetchingItems={fetchingPaymentAccounts}
-        fetchedItems={fetchedPaymentAccounts}
-        errorItems={errorPaymentAccounts}
-        tableTitle={formatMessageWithValues('searcher.results', { totalCount: paymentAccountsTotalCount })}
-        headers={tableHeaders}
-        itemFormatters={tableFormatters}
-        rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
-        defaultPageSize={DEFAULT_PAGE_SIZE}
-        rowIdentifier={(row) => row.id}
-        onDoubleClick={isReview ? (row) => setReviewed(row)
-          : (activeTab === TAB_FAILED && canOpenCorrection ? openCorrection : undefined)}
-        withSelection="multiple"
-        onChangeSelection={setSelectedAccounts}
-        enableActionButtons
-        searcherActions={searcherActions}
-        searcherActionsPosition="header-right"
-      />
+      <FilterExtrasProvider value={{
+        showStatusFilter: false, showLocationFilter: true, location, onChangeLocation: setLocation, verificationTabs,
+      }}
+      >
+        <Searcher
+          key={`${activeTab}-${refreshKey}`}
+          module={MODULE_NAME}
+          FilterPane={AccountFilterPane}
+          fetch={(params) => {
+            setBatchFilters(batchFiltersFrom(params));
+            return fetchPaymentAccounts([...(params || []), statusFilter]);
+          }}
+          items={paymentAccounts}
+          itemsPageInfo={paymentAccountsPageInfo}
+          fetchingItems={fetchingPaymentAccounts}
+          fetchedItems={fetchedPaymentAccounts}
+          errorItems={errorPaymentAccounts}
+          tableTitle={formatMessageWithValues('searcher.results', { totalCount: paymentAccountsTotalCount })}
+          headers={tableHeaders}
+          itemFormatters={tableFormatters}
+          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+          defaultPageSize={DEFAULT_PAGE_SIZE}
+          rowIdentifier={(row) => row.id}
+          onDoubleClick={isReview ? (row) => setReviewed(row)
+            : (activeTab === TAB_FAILED && canOpenCorrection ? openCorrection : undefined)}
+          withSelection="multiple"
+          onChangeSelection={setSelectedAccounts}
+          enableActionButtons
+          searcherActions={searcherActions}
+          searcherActionsPosition="header-right"
+        />
+      </FilterExtrasProvider>
       <VerificationReviewDialog
         account={reviewed}
         onClose={() => setReviewed(null)}
