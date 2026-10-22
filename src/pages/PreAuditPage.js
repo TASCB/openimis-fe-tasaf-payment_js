@@ -3,7 +3,6 @@ import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import { makeStyles } from '@material-ui/styles';
-import FactCheckIcon from '@material-ui/icons/PlaylistAddCheck';
 import DoneAllIcon from '@material-ui/icons/DoneAll';
 
 import {
@@ -76,7 +75,6 @@ function PreAuditPage({
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
   const history = useHistory();
 
-  const [selectedAccounts, setSelectedAccounts] = useState([]);
   const [pendingAudit, setPendingAudit] = useState(null);
   const [batchPending, setBatchPending] = useState(false);
   const [location, setLocation] = useState(null);
@@ -166,14 +164,12 @@ function PreAuditPage({
   };
 
   const canRun = rights.includes(RIGHT_RUN_PRE_AUDIT);
-  const canAct = selectedAccounts.length > 0 && !submittingMutation && canRun;
+  const selectionActions = [{
+    label: 'tasafPayment.button.runPreAudit',
+    enabled: (selection) => selection.length > 0 && !submittingMutation && canRun,
+    action: (selection) => setPendingAudit(selection),
+  }];
   const searcherActions = [
-    {
-      label: formatMessage('button.runPreAudit'),
-      icon: <FactCheckIcon />,
-      onClick: () => setPendingAudit(selectedAccounts),
-      authorized: canAct,
-    },
     {
       label: location
         ? formatMessageWithValues('button.preAuditAreaNamed', { location: location.name })
@@ -208,7 +204,7 @@ function PreAuditPage({
           rowIdentifier={(row) => row.id}
           onDoubleClick={canOpenGroup ? openGroup : undefined}
           withSelection="multiple"
-          onChangeSelection={setSelectedAccounts}
+          actions={selectionActions}
           enableActionButtons
           searcherActions={searcherActions}
           searcherActionsPosition="header-right"

@@ -55,6 +55,7 @@
   "tasafPayment.verificationResults.selection.someInFlight": "{count} of the selected account(s) are Pending GePG and will be left out; Verify sends the other {sendable}. To send them fresh, release their request on the GePG requests tab.",
   "tasafPayment.verificationResults.selection.busy": "The previous action is still running; the buttons come back when it finishes.",
   "tasafPayment.verificationResults.selection.openRequests": "Open GePG requests",
+  "tasafPayment.verificationResults.selection.noneDue": "None of the selected accounts are due a re-check before their first payment.",
   "tasafPayment.preAudit.page.title": "Pre-Audit & Claims Validation",
   "tasafPayment.paylistList.page.title": "Paylists",
   "tasafPayment.paylistDetail.page.title": "Paylist Detail",

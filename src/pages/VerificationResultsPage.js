@@ -5,12 +5,8 @@ import { bindActionCreators } from 'redux';
 import { makeStyles } from '@material-ui/styles';
 import { Button, IconButton, Paper, Typography } from '@material-ui/core';
 import RefreshIcon from '@material-ui/icons/Refresh';
-import SendIcon from '@material-ui/icons/Send';
 import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 import CodeIcon from '@material-ui/icons/Code';
-import CheckCircleIcon from '@material-ui/icons/CheckCircle';
-import CancelIcon from '@material-ui/icons/Cancel';
-import ReplayIcon from '@material-ui/icons/Replay';
 
 import {
   Helmet,
@@ -129,7 +125,7 @@ function VerificationResultsPage({
 
   // Pending first: an operator's day starts with work not yet sent, not with results.
   const [activeTab, setActiveTab] = useState(TAB_PENDING);
-  const [selectedAccounts, setSelectedAccounts] = useState([]);
+  const [selectionNote, setSelectionNote] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [location, setLocation] = useState(null);
   const [batchFilters, setBatchFilters] = useState({});
@@ -151,7 +147,7 @@ function VerificationResultsPage({
 
   const handleTabChange = (_, tab) => {
     setActiveTab(tab);
-    setSelectedAccounts([]);
+    setSelectionNote(null);
     // The remount below resets the Searcher's filters; clear the picker with them so it
     // never shows an area that is no longer being filtered on.
     setLocation(null);
@@ -306,57 +302,49 @@ function VerificationResultsPage({
     return null;
   };
 
-  const canAct = !submittingMutation;
-  const withStatus = (status) => (canAct
-    ? selectedAccounts.filter((a) => a.verificationStatus === status)
-    : []);
-  const manualSelected = withStatus(VERIFICATION_STATUS.MANUAL);
-  const failedSelected = withStatus(VERIFICATION_STATUS.FAILED);
-  // PENDING_MUSE is already in flight; re-sending it would duplicate the request, so it is
-  // excluded from the subset rather than blocking the whole action.
-  const unsentSelected = withStatus(VERIFICATION_STATUS.PENDING);
-  const dueSelected = canAct ? selectedAccounts.filter((a) => a.firstPaymentCheck === 'DUE') : [];
-  const inFlightSelected = selectedAccounts.filter((a) => a.verificationStatus === VERIFICATION_STATUS.PENDING_MUSE);
-  let selectionNote = null;
-  if (isPending && selectedAccounts.length && submittingMutation) {
-    selectionNote = formatMessage('verificationResults.selection.busy');
-  } else if (isPending && inFlightSelected.length) {
-    selectionNote = formatMessageWithValues(
-      unsentSelected.length ? 'verificationResults.selection.someInFlight' : 'verificationResults.selection.allInFlight',
-      { count: inFlightSelected.length, sendable: unsentSelected.length },
-    );
-  }
-  const reviewActions = [
-    {
-      // A borderline name match an officer can clear without a field visit.
-      label: formatMessage('button.confirmMatch'),
-      icon: <CheckCircleIcon />,
-      onClick: () => setPendingAction({ type: 'approve', accounts: manualSelected }),
-      authorized: manualSelected.length > 0 && rights.includes(RIGHT_APPROVE_ACCOUNTS),
-    },
-    {
-      label: formatMessage('button.reject'),
-      icon: <CancelIcon />,
-      onClick: () => setPendingAction({ type: 'reject', accounts: manualSelected }),
-      authorized: manualSelected.length > 0 && rights.includes(RIGHT_APPROVE_ACCOUNTS),
-    },
-  ];
-  const failedActions = [
-    {
-      label: formatMessage('button.sendToMuse'),
-      icon: <SendIcon />,
-      onClick: () => setPendingAction({ type: 'resend', accounts: failedSelected }),
-      authorized: failedSelected.length > 0 && rights.includes(RIGHT_RUN_VERIFICATION),
-    },
-  ];
   const canVerify = rights.includes(RIGHT_RUN_VERIFICATION);
+  const canDecide = rights.includes(RIGHT_APPROVE_ACCOUNTS);
+  const withStatus = (selection, status) => selection.filter((a) => a.verificationStatus === status);
+  const actOnSelection = (type, selection) => {
+    let accounts;
+    let note = null;
+    if (type === 'send') {
+      accounts = withStatus(selection, VERIFICATION_STATUS.PENDING);
+      const inFlight = withStatus(selection, VERIFICATION_STATUS.PENDING_MUSE).length;
+      if (inFlight) {
+        note = formatMessageWithValues(
+          accounts.length ? 'verificationResults.selection.someInFlight' : 'verificationResults.selection.allInFlight',
+          { count: inFlight, sendable: accounts.length },
+        );
+      }
+    } else if (type === 'resend') {
+      accounts = withStatus(selection, VERIFICATION_STATUS.FAILED);
+    } else if (type === 'approve' || type === 'reject') {
+      accounts = withStatus(selection, VERIFICATION_STATUS.MANUAL);
+    } else {
+      accounts = selection.filter((a) => a.firstPaymentCheck === 'DUE');
+      if (!accounts.length) note = formatMessage('verificationResults.selection.noneDue');
+    }
+    setSelectionNote(note);
+    if (accounts.length) setPendingAction({ type, accounts });
+  };
+  const selectionAction = (type, label, allowed) => ({
+    label,
+    enabled: (selection) => allowed && selection.length > 0 && !submittingMutation,
+    action: (selection) => actOnSelection(type, selection),
+  });
+  let selectionActions = [];
+  if (isPending) selectionActions = [selectionAction('send', 'tasafPayment.button.sendToMuse', canVerify)];
+  else if (isReview) {
+    selectionActions = [
+      selectionAction('approve', 'tasafPayment.button.confirmMatch', canDecide),
+      selectionAction('reject', 'tasafPayment.button.reject', canDecide),
+    ];
+  } else if (isSuccess) {
+    selectionActions = [selectionAction('recheck', 'tasafPayment.button.recheckBeforePayment', canVerify)];
+  } else selectionActions = [selectionAction('resend', 'tasafPayment.button.sendToMuse', canVerify)];
+
   const pendingActions = [
-    {
-      label: formatMessage('button.sendToMuse'),
-      icon: <SendIcon />,
-      onClick: () => setPendingAction({ type: 'send', accounts: unsentSelected }),
-      authorized: unsentSelected.length > 0 && canVerify,
-    },
     {
       label: formatMessage('button.showPayload'),
       icon: <CodeIcon />,
@@ -372,12 +360,6 @@ function VerificationResultsPage({
   ];
 
   const successActions = [
-    {
-      label: formatMessage('button.recheckBeforePayment'),
-      icon: <ReplayIcon />,
-      onClick: () => setPendingAction({ type: 'recheck', accounts: dueSelected }),
-      authorized: dueSelected.length > 0 && canVerify,
-    },
     {
       label: formatMessage('button.showPayload'),
       icon: <CodeIcon />,
@@ -395,11 +377,9 @@ function VerificationResultsPage({
     },
   ];
 
-  let searcherActions;
+  let searcherActions = [];
   if (isPending) searcherActions = pendingActions;
-  else if (isReview) searcherActions = reviewActions;
   else if (isSuccess) searcherActions = successActions;
-  else searcherActions = failedActions;
 
   let tableHeaders = headers;
   let tableFormatters = itemFormatters;
@@ -474,7 +454,7 @@ function VerificationResultsPage({
           onDoubleClick={isReview ? (row) => setReviewed(row)
             : (activeTab === TAB_FAILED && canOpenCorrection ? openCorrection : undefined)}
           withSelection="multiple"
-          onChangeSelection={setSelectedAccounts}
+          actions={selectionActions}
           enableActionButtons
           searcherActions={searcherActions}
           searcherActionsPosition="header-right"
