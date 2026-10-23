@@ -251,10 +251,6 @@ function PaymentGenerationStepper({
 
         {activeStep === 2 && (
           <Block title={formatMessage('generation.step.review')} titleVariant="h6">
-            <Typography variant="body2" color="textSecondary">
-              {formatMessage('generation.review.help')}
-            </Typography>
-            <Divider className={classes.divider} />
             {reviewRow('generation.payroll', selectedPayroll?.name)}
             {reviewRow('generation.review.cycle', selectedPayroll?.paymentCycle?.code)}
             {reviewRow('batchGeneration.batchType', batchType ? formatMessage(`paylist.batchType.${batchType}`) : null)}
@@ -354,10 +350,6 @@ function PaymentGenerationStepper({
 
         {activeStep === 3 && (
           <Block title={formatMessage('generation.step.generate')} titleVariant="h6">
-            <Typography variant="body2" color="textSecondary">
-              {formatMessage('generation.generate.help')}
-            </Typography>
-            <Divider className={classes.divider} />
             {reviewRow('batchGeneration.destination', destination ? formatMessage(`paylist.destination.${destination}`) : null)}
             {reviewRow('generation.fsp', fspCode || formatMessage('generation.fsp.all'))}
             <Typography variant="body2" color="textSecondary" className={classes.generateNote}>

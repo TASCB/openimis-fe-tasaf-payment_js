@@ -143,7 +143,6 @@ function GepgSettingsPage() {
         open={open.connection}
         onToggle={() => setOpen({ ...open, connection: !open.connection })}
       >
-        <Typography variant="body2" className={classes.subtitle}>{t('gepg.connection.help')}</Typography>
         {field('serviceCode', 50, { required: false, upper: false })}
       </Section>
 

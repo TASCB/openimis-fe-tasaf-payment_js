@@ -186,12 +186,6 @@ function EpaymentSummaryPage({
           <Typography variant="caption" className={classes.note}>
             {formatMessage('report.epaymentByFsp.scope')}
           </Typography>
-          <Typography variant="caption" className={classes.note}>
-            {formatMessage('report.epaymentByFsp.capNote')}
-          </Typography>
-          <Typography variant="caption" className={classes.note}>
-            {formatMessage('report.epaymentByFsp.pwpNote')}
-          </Typography>
         </>
       )}
     </div>
