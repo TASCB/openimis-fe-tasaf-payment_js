@@ -87,6 +87,7 @@ export const ACTION_TYPE = {
   EXPORT_EPAYMENT_SUMMARY:        'TASAF_PAYMENT_EPAYMENT_EXPORT',
   FETCH_EPAYMENT_SUMMARY:         'TASAF_PAYMENT_EPAYMENT_SUMMARY',
   FETCH_DASHBOARD_COUNTS:         'TASAF_PAYMENT_DASHBOARD_COUNTS',
+  FETCH_ACCOUNT_STATUS_COUNTS:    'TASAF_PAYMENT_ACCOUNT_STATUS_COUNTS',
 };
 
 export const MUTATION_SERVICE = {
@@ -171,6 +172,7 @@ const STORE_STATE = {
   fetchedDashboard: false,
   errorDashboard: null,
   dashboardCounts: { accounts: {}, paylists: {} },
+  accountStatusCounts: {},
   fspProviders: [],
   fetchingFspProviders: false,
   museSettings: null,
@@ -705,6 +707,14 @@ function reducer(state = STORE_STATE, action) {
     }
     case ERROR(ACTION_TYPE.FETCH_DASHBOARD_COUNTS):
       return { ...state, fetchingDashboard: false, errorDashboard: formatServerError(action.payload) };
+
+    case SUCCESS(ACTION_TYPE.FETCH_ACCOUNT_STATUS_COUNTS): {
+      const accountStatusCounts = {};
+      (action.payload.data.paymentAccountStatusCounts ?? []).forEach((row) => {
+        accountStatusCounts[row.status] = row.count ?? 0;
+      });
+      return { ...state, accountStatusCounts };
+    }
 
     case REQUEST(ACTION_TYPE.VERIFICATION_PREVIEW):
       return {

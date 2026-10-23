@@ -611,6 +611,10 @@ export function fetchDashboardCounts() {
   return graphql(payload, ACTION_TYPE.FETCH_DASHBOARD_COUNTS);
 }
 
+export function fetchAccountStatusCounts() {
+  return graphql('{ paymentAccountStatusCounts { status count } }', ACTION_TYPE.FETCH_ACCOUNT_STATUS_COUNTS);
+}
+
 // ─── Paylist mutations ────────────────────────────────────────────────────────
 
 export function generatePaylist(

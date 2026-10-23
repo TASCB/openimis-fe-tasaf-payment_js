@@ -37,7 +37,7 @@ import {
 } from '../constants';
 import {
   fetchPaymentAccounts,
-  fetchDashboardCounts,
+  fetchAccountStatusCounts,
   runVerification,
   runBatchVerification,
   approvePaymentAccounts,
@@ -95,7 +95,7 @@ function batchFiltersFrom(params) {
 
 function VerificationResultsPage({
   fetchPaymentAccounts,
-  fetchDashboardCounts,
+  fetchAccountStatusCounts,
   runVerification,
   runBatchVerification,
   approvePaymentAccounts,
@@ -113,7 +113,7 @@ function VerificationResultsPage({
   paymentAccounts,
   paymentAccountsPageInfo,
   paymentAccountsTotalCount,
-  dashboardCounts,
+  accountStatusCounts,
   submittingMutation,
   mutation,
   coreConfirm,
@@ -172,16 +172,16 @@ function VerificationResultsPage({
   else statusFilter = `verificationStatus: ${VERIFICATION_STATUS.FAILED}`;
   const showsNames = isReview || activeTab === TAB_FAILED;
 
-  const passedCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.VERIFIED] ?? 0;
-  const failedCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.FAILED] ?? 0;
-  const manualCount = dashboardCounts?.accounts?.[VERIFICATION_STATUS.MANUAL] ?? 0;
-  const pendingCount = (dashboardCounts?.accounts?.[VERIFICATION_STATUS.PENDING] ?? 0)
-    + (dashboardCounts?.accounts?.[VERIFICATION_STATUS.PENDING_MUSE] ?? 0);
+  const passedCount = accountStatusCounts?.[VERIFICATION_STATUS.VERIFIED] ?? 0;
+  const failedCount = accountStatusCounts?.[VERIFICATION_STATUS.FAILED] ?? 0;
+  const manualCount = accountStatusCounts?.[VERIFICATION_STATUS.MANUAL] ?? 0;
+  const pendingCount = (accountStatusCounts?.[VERIFICATION_STATUS.PENDING] ?? 0)
+    + (accountStatusCounts?.[VERIFICATION_STATUS.PENDING_MUSE] ?? 0);
 
   useEffect(() => {
-    fetchDashboardCounts();
+    fetchAccountStatusCounts();
     fetchGepgRequests();
-  }, [fetchDashboardCounts, refreshKey]);
+  }, [fetchAccountStatusCounts, refreshKey]);
 
   useEffect(() => {
     if (!pendingAction) return;
@@ -502,7 +502,7 @@ const mapStateToProps = (state) => ({
   paymentAccounts: state.tasafPayment.paymentAccounts,
   paymentAccountsPageInfo: state.tasafPayment.paymentAccountsPageInfo,
   paymentAccountsTotalCount: state.tasafPayment.paymentAccountsTotalCount,
-  dashboardCounts: state.tasafPayment.dashboardCounts,
+  accountStatusCounts: state.tasafPayment.accountStatusCounts,
   gepgRequests: state.tasafPayment.gepgRequests,
   fetchingVerificationPreview: state.tasafPayment.fetchingVerificationPreview,
   verificationPreview: state.tasafPayment.verificationPreview,
@@ -515,7 +515,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
     fetchPaymentAccounts,
-    fetchDashboardCounts,
+    fetchAccountStatusCounts,
     runVerification,
     runBatchVerification,
     approvePaymentAccounts,
