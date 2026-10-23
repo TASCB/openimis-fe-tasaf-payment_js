@@ -158,6 +158,10 @@ export const TAB_REVIEW = 'review';
 export const TAB_SUCCESS = 'success';
 export const TAB_FAILED = 'failed';
 export const TAB_GEPG = 'gepg';
+export const PRE_AUDIT_TAB_OVERVIEW = 'overview';
+export const PRE_AUDIT_TAB_ACCOUNTS = 'accounts';
+export const PRE_AUDIT_TAB_COMPLIANCE = 'compliance';
+export const PRE_AUDIT_TAB_DUPLICATES = 'duplicates';
 
 export const TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY = 'tasafPayment.WorkspaceTabPanel.label';
 export const TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY = 'tasafPayment.WorkspaceTabPanel.panel';
