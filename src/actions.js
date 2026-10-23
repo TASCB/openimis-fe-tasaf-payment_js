@@ -273,10 +273,10 @@ export function fetchFspBandSet(fspCode) {
 }
 
 // The whole tariff for one FSP goes in one action -- a half-applied set misprices payments.
-export function saveFspCharges(fspCode, bands, effectiveFrom, clientMutationLabel) {
+export function saveFspCharges(fspCode, bands, reason, clientMutationLabel) {
   const rows = bands.map((b) => `{lowerAmount: ${b.lowerAmount}, upperAmount: ${b.upperAmount}, withdrawal: ${b.withdrawal}}`).join(', ');
   const args = [`fspCode: "${fspCode}"`, `bands: [${rows}]`]
-    .concat(effectiveFrom ? [`effectiveFrom: "${effectiveFrom}"`] : []).join(', ');
+    .concat(reason?.trim() ? [`reason: ${JSON.stringify(reason.trim())}`] : []).join(', ');
   const mutation = formatMutation('saveFspCharges', args, clientMutationLabel);
   return graphql(mutation.payload, ['TASAF_PAYMENT_MUTATION_REQ',
     'TASAF_PAYMENT_SAVE_FSP_CHARGES_RESP', 'TASAF_PAYMENT_MUTATION_ERR'],
@@ -287,7 +287,7 @@ export function saveFspCharges(fspCode, bands, effectiveFrom, clientMutationLabe
 
 export function fetchFspProviders() {
   return graphql(
-    'query { fspProviders { uuid fspCode name bandCount bankName fspType bic mobilePrefixes prefixesFromConfig names hasBands accounts missing pending } }',
+    'query { fspProviders { uuid fspCode name bandCount bankName fspType bic mobilePrefixes prefixesFromConfig names hasBands accounts missing pending bandsPending namesPending bandGaps bandLowest } }',
     ACTION_TYPE.FETCH_FSP_PROVIDERS,
   );
 }
@@ -345,7 +345,7 @@ export function saveMuseSettings(s, clientMutationLabel, reason = '') {
 }
 
 export function fetchMuseChanges() {
-  return graphql('query { museChangeRequests(kinds: ["SETTINGS", "FSP_PROFILE"]) }', ACTION_TYPE.FETCH_MUSE_CHANGES);
+  return graphql('query { museChangeRequests(kinds: ["SETTINGS", "FSP_PROFILE", "FSP_CHARGES", "FSP_NAMES"]) }', ACTION_TYPE.FETCH_MUSE_CHANGES);
 }
 
 export function fetchGepgSettings() {

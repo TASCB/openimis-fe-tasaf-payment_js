@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 import {
-  Chip, Fab, Grid, IconButton, Paper, Tab, Tooltip, Typography,
+  Checkbox, Chip, Fab, FormControlLabel, Grid, IconButton, Paper, Tab, Tooltip, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import { alpha } from '@material-ui/core/styles/colorManipulator';
@@ -22,11 +22,38 @@ import FspDialog from './FspDialog';
 const PAGE_SIZES = [50, 100];
 const CHANNELS = ['ALL', 'BANK', 'MOBILE'];
 
+const amount = (v) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const gapsOf = (p) => {
+  try {
+    return (typeof p.bandGaps === 'string' ? JSON.parse(p.bandGaps) : p.bandGaps) || [];
+  } catch (e) {
+    return [];
+  }
+};
+
+export const fspIssues = (p) => {
+  const issues = [];
+  if (p.accounts && !p.bandCount) issues.push({ key: 'noBands', tone: 'error' });
+  if (p.accounts) {
+    gapsOf(p).forEach((g) => issues.push({ key: 'gap', tone: 'error', values: { from: amount(g.from), to: amount(g.to) } }));
+  }
+  if (p.accounts && (p.missing || []).length) {
+    issues.push(p.fspType === 'MOBILE' ? { key: 'awaitingMuse', tone: 'awaiting' } : { key: 'museMissing', tone: 'error' });
+  }
+  if (p.pending || p.bandsPending || p.namesPending) issues.push({ key: 'pending', tone: 'pending' });
+  return issues;
+};
+
 const useStyles = makeStyles((theme) => ({
   hint: { padding: theme.spacing(2, 2, 0) },
   chip: { marginRight: theme.spacing(0.5), marginBottom: theme.spacing(0.5) },
   missing: { color: theme.palette.error.main, fontWeight: 600 },
   awaiting: { color: theme.palette.grey[600], fontStyle: 'italic', cursor: 'help' },
+  pendingText: { color: theme.palette.primary.main },
+  ready: { color: theme.palette.success.dark },
+  unused: { color: theme.palette.grey[600] },
+  status: { whiteSpace: 'nowrap' },
+  attention: { padding: theme.spacing(0, 2) },
   mono: { fontFamily: 'monospace' },
   paper: theme.paper.paper,
   tableTitle: theme.table.title,
@@ -58,18 +85,35 @@ function FspProvidersConfig() {
   const [openCode, setOpenCode] = useState(null);
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [onlyAttention, setOnlyAttention] = useState(false);
 
   useEffect(() => { dispatch(fetchFspMappings([])); }, []);
 
-  const allProviders = state?.fspProviders ?? [];
+  const allProviders = (state?.fspProviders ?? []).filter((p) => !onlyAttention || fspIssues(p).length);
   const countOf = (c) => (c === 'ALL' ? allProviders.length : allProviders.filter((p) => p.fspType === c).length);
   const providers = channel === 'ALL' ? allProviders : allProviders.filter((p) => p.fspType === channel);
+  const attentionCount = (state?.fspProviders ?? []).filter((p) => fspIssues(p).length).length;
   const opened = allProviders.find((p) => p.fspCode === openCode);
 
   const headers = () => [
     'providers.code', 'fsp.name', 'providers.channel', 'providers.bic',
-    'fsp.otherNames', 'providers.bands', 'providers.accounts', 'emptyLabel',
+    'fsp.otherNames', 'providers.bands', 'providers.accounts', 'providers.status', 'emptyLabel',
   ];
+
+  const tones = {
+    error: classes.missing, awaiting: classes.awaiting, pending: classes.pendingText,
+  };
+  const status = (p) => {
+    const issues = fspIssues(p);
+    if (!issues.length) {
+      return <span className={p.accounts ? classes.ready : classes.unused}>{t(p.accounts ? 'providers.status.ready' : 'providers.status.unused')}</span>;
+    }
+    return issues.map((i) => (
+      <div key={`${i.key}-${i.values?.from || ''}`} className={`${classes.status} ${tones[i.tone]}`}>
+        {tv(`providers.status.${i.key}`, i.values || {})}
+      </div>
+    ));
+  };
 
   const itemFormatters = () => {
     const cell = (p, value, field) => {
@@ -92,9 +136,9 @@ function FspProvidersConfig() {
         .map((n) => <Chip key={n} size="small" label={n} className={classes.chip} />),
       (p) => (p.bandCount ? p.bandCount : <span className={classes.missing}>{t('fsp.bands.noneShort')}</span>),
       (p) => p.accounts,
+      status,
       (p) => (
         <>
-          {p.pending && <Chip size="small" variant="outlined" color="primary" label={t('providers.pending')} />}
           <Tooltip title={t('fsp.open')}>
             <IconButton size="small" onClick={() => setOpenCode(p.fspCode)}>
               <EditIcon fontSize="small" />
@@ -108,6 +152,11 @@ function FspProvidersConfig() {
   return (
     <div>
       <Typography variant="body2" className={classes.hint}>{t('fsp.help')}</Typography>
+      <FormControlLabel
+        className={classes.attention}
+        control={<Checkbox color="primary" checked={onlyAttention} onChange={(e) => setOnlyAttention(e.target.checked)} />}
+        label={tv('providers.onlyAttention', { count: attentionCount })}
+      />
       <Paper className={classes.paper}>
         <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
           {CHANNELS.map((c) => (
@@ -136,7 +185,7 @@ function FspProvidersConfig() {
           )}
         </Grid>
         <Searcher
-          key={`providers-${channel}`}
+          key={`providers-${channel}-${onlyAttention}`}
           module={MODULE_NAME}
           fetch={() => dispatch(fetchFspProviders())}
           items={providers}

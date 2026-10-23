@@ -78,12 +78,20 @@ function ChargesImportDialog({ onClose }) {
   const [mode, setMode] = useState(ADD);
 
   const pick = async (file) => { if (file) setResult(await inspect(file)); };
-  const bad = !!result && (!!result.error || !!result.missing?.length || !result.rows);
+  const bad = !!result && (!!result.error || !!result.missing?.length || !result.rows || !!result.problems?.length);
   const known = new Set(providers.map((p) => p.fspCode));
 
   let blocker = null;
   if (!result) blocker = t('chargesImport.hint.file');
   else if (bad) blocker = t('chargesImport.hint.fix');
+  const problems = result?.problems?.length ? (
+    <Alert severity="error">
+      {tv('chargesImport.preview.skipped', { n: result.problems.length })}
+      {result.problems.slice(0, 5).map((p) => (
+        <div key={p.line}>{tv(`chargesImport.problem.${p.problem}`, { line: p.line })}</div>
+      ))}
+    </Alert>
+  ) : null;
 
   let meta = null;
   if (result?.error) meta = t('chargesImport.file.notCsv');
@@ -140,6 +148,7 @@ function ChargesImportDialog({ onClose }) {
               <Link className={classes.link} onClick={downloadTemplate}>{t('chargesImport.template')}</Link>
             </Typography>
           </div>
+          {problems}
           <ChoiceList
             value={mode}
             onChange={setMode}
@@ -170,15 +179,8 @@ function ChargesImportDialog({ onClose }) {
               </Typography>
             ))}
           </div>
-          {!!result.problems.length && (
-            <Alert severity="warning">
-              {tv('chargesImport.preview.skipped', { n: result.problems.length })}
-              {result.problems.slice(0, 5).map((p) => (
-                <div key={p.line}>{tv(`chargesImport.problem.${p.problem}`, { line: p.line })}</div>
-              ))}
-            </Alert>
-          )}
           {mode === REPLACE && <Alert severity="warning">{t('chargesImport.preview.replace')}</Alert>}
+          <Alert severity="info">{t('chargesImport.preview.approval')}</Alert>
         </>
       )}
     </ImportDialog>

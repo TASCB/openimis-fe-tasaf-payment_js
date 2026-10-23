@@ -106,9 +106,30 @@ export function Notice({ tone, children, classes }) {
 }
 
 const kindLabel = (c, t, tv) => {
-  if (c.kind === 'FSP_PROFILE') return tv('museChanges.kind.FSP_PROFILE', { code: c.fsp_code });
+  if (['FSP_PROFILE', 'FSP_CHARGES', 'FSP_NAMES'].includes(c.kind)) return tv(`museChanges.kind.${c.kind}`, { code: c.fsp_code });
   return t(`museChanges.kind.${c.kind}`);
 };
+
+const amount = (v) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const bandText = (b) => `${amount(b.lower_amount)}–${amount(b.upper_amount)}: ${amount(b.withdrawal)}`;
+
+const LIST_CHANGES = { FSP_CHARGES: ['bands', bandText], FSP_NAMES: ['names', (n) => n] };
+
+function ListDiff({ change, classes }) {
+  const [field, text] = LIST_CHANGES[change.kind];
+  const before = ((change.current || {})[field] || []).map(text);
+  const after = ((change.proposed || {})[field] || []).map(text);
+  return (
+    <>
+      {before.filter((b) => !after.includes(b)).map((b) => (
+        <div key={`-${b}`} className={classes.diff}><span className={classes.before}>{b}</span></div>
+      ))}
+      {after.filter((b) => !before.includes(b)).map((b) => (
+        <div key={`+${b}`} className={classes.diff}>{b}</div>
+      ))}
+    </>
+  );
+}
 
 export function ChangeRequests({
   changes, open, onToggle, canApprove, submitting, onApprove, onReject, onCancel, classes,
@@ -153,7 +174,8 @@ export function ChangeRequests({
                 <TableRow key={c.id}>
                   <TableCell>{kindLabel(c, t, tv)}</TableCell>
                   <TableCell>
-                    {(c.changed || []).map((f) => (
+                    {LIST_CHANGES[c.kind] && <ListDiff change={c} classes={classes} />}
+                    {!LIST_CHANGES[c.kind] && (c.changed || []).map((f) => (
                       <div key={f} className={classes.diff}>
                         <b>{t(`museChanges.field.${FIELD_KEYS[f] || f}`)}</b>
                         {': '}

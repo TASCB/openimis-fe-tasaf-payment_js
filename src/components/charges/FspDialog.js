@@ -50,7 +50,9 @@ function FspDialog({
   }));
   const [otherName, setOtherName] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const canDelete = !adding && canManage && !provider.accounts && !provider.pending;
+  const canDelete = !adding && canManage && !provider.accounts && !provider.pending
+    && !provider.bandsPending && !provider.namesPending;
+  const namesEditable = canManage && !provider?.namesPending;
   const set = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
   const code = form.fspCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -150,7 +152,9 @@ function FspDialog({
           <>
             <Divider className={classes.divider} />
             <Typography className={classes.section}>{t('fsp.section.otherNames')}</Typography>
-            <Typography variant="body2" className={classes.hint}>{t('fsp.otherNames.help')}</Typography>
+            <Typography variant="body2" className={classes.hint}>
+              {t(provider.namesPending ? 'fsp.otherNames.pending' : 'fsp.otherNames.help')}
+            </Typography>
             <div>
               {!otherNames.length && <Typography variant="body2">—</Typography>}
               {otherNames.map((m) => (
@@ -159,13 +163,13 @@ function FspDialog({
                   size="small"
                   className={classes.chip}
                   label={m.fspName}
-                  onDelete={canManage
+                  onDelete={namesEditable
                     ? () => dispatch(deleteFspMappings([m.uuid], t('charges.mapping.mutation.delete')))
                     : undefined}
                 />
               ))}
             </div>
-            {canManage && (
+            {namesEditable && (
               <div className={classes.addName}>
                 <TextField
                   label={t('fsp.otherNames.add')}
@@ -188,7 +192,7 @@ function FspDialog({
 
             <Divider className={classes.divider} />
             <Typography className={classes.section}>{t('fsp.section.bands')}</Typography>
-            <FspBandEditor fspCode={code} canManage={canManage} />
+            <FspBandEditor fspCode={code} canManage={canManage} pending={provider.bandsPending} />
           </>
         )}
       </DialogContent>
