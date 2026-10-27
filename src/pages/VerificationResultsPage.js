@@ -462,6 +462,7 @@ function VerificationResultsPage({
           itemFormatters={tableFormatters}
           rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
           defaultPageSize={DEFAULT_PAGE_SIZE}
+          defaultOrderBy="-dateUpdated"
           rowIdentifier={(row) => row.id}
           onDoubleClick={isReview ? (row) => setReviewed(row)
             : (activeTab === TAB_FAILED && canOpenCorrection ? openCorrection : undefined)}
