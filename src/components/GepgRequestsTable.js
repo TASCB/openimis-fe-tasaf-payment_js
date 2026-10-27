@@ -12,7 +12,7 @@ import { MODULE_NAME, RIGHT_RUN_VERIFICATION } from '../constants';
 
 const RESENDABLE = ['FAILED', 'REFUSED', 'REJECTED', 'EXPIRED'];
 const RELEASABLE = ['SENDING', 'SENT', 'ACCEPTED'];
-const DECISIONS = ['', 'VERIFIED', 'MANUAL', 'FAILED', 'NONE'];
+const DECISIONS = ['', 'VERIFIED', 'MANUAL', 'FAILED', 'UNCHECKED', 'NONE'];
 const PAGE_SIZES = [50, 100, 500];
 const when = (v) => (v ? v.slice(0, 16).replace('T', ' ') : '—');
 
@@ -90,7 +90,9 @@ function GepgRequestsTable({ requests, emptyClassName }) {
                 <TableCell align="right">{r.item_count}</TableCell>
                 <TableCell>
                   {r.answered
-                    ? tv('gepg.requests.results', { verified: r.verified, manual: r.manual, failed: r.failed })
+                    ? tv(r.unchecked ? 'gepg.requests.resultsUnchecked' : 'gepg.requests.results', {
+                      verified: r.verified, manual: r.manual, failed: r.failed, unchecked: r.unchecked,
+                    })
                     : '—'}
                 </TableCell>
                 <TableCell>
@@ -230,7 +232,10 @@ function GepgRequestsTable({ requests, emptyClassName }) {
                         <Typography variant="caption" display="block" color="textSecondary">{i.acc_sts_desc}</Typography>
                       )}
                     </TableCell>
-                    <TableCell>{i.decision || t(`gepg.itemStatus.${i.status}`)}</TableCell>
+                    <TableCell>
+                      {(DECISIONS.includes(i.decision) && i.decision && t(`gepg.items.decision.${i.decision}`))
+                        || i.decision || t(`gepg.itemStatus.${i.status}`)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
