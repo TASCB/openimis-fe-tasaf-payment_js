@@ -9,6 +9,7 @@ import _debounce from 'lodash/debounce';
 import {
   formatMessage, formatMessageWithValues, journalize, Searcher,
 } from '@openimis/fe-core';
+import { useTabStyles } from '@openimis/fe-tasaf_common';
 import { fetchFspMappings, fetchFspProviders, fetchWithdrawalCharges } from '../actions';
 import FspDialog from '../components/charges/FspDialog';
 import WithdrawalChargeFilter from '../components/charges/WithdrawalChargeFilter';
@@ -21,9 +22,6 @@ import {
 const useStyles = makeStyles((theme) => ({
   page: theme.page,
   tableTitle: theme.table.title,
-  tabs: { display: 'flex', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' },
-  selectedTab: { borderBottom: '4px solid white', minWidth: 'auto' },
-  unselectedTab: { borderBottom: '4px solid transparent', minWidth: 'auto' },
 }));
 
 const SUB_TABS = [['providers', 'charges.tab.providers'], ['list', 'charges.tab.list']];
@@ -31,6 +29,7 @@ const SUB_TABS = [['providers', 'charges.tab.providers'], ['list', 'charges.tab.
 function WithdrawalChargesPage() {
   const intl = useIntl();
   const classes = useStyles();
+  const tabClasses = useTabStyles();
   const dispatch = useDispatch();
   const t = (id) => formatMessage(intl, MODULE_NAME, id);
   const tv = (id, values) => formatMessageWithValues(intl, MODULE_NAME, id, values);
@@ -80,14 +79,14 @@ function WithdrawalChargesPage() {
 
   return (
     <div className={classes.page}>
-      <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
+      <Grid container className={`${classes.tableTitle} ${tabClasses.tabs}`}>
         {SUB_TABS.map(([value, label]) => (
           <Tab
             key={value}
             value={value}
             label={t(label)}
             selected={subTab === value}
-            className={subTab === value ? classes.selectedTab : classes.unselectedTab}
+            className={subTab === value ? tabClasses.selectedTab : tabClasses.unselectedTab}
             onChange={(e, v) => setSubTab(v)}
           />
         ))}

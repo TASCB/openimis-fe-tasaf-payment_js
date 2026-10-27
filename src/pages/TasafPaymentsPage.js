@@ -9,6 +9,7 @@ import {
   useModulesManager,
   useTranslations,
 } from '@openimis/fe-core';
+import { useTabStyles } from '@openimis/fe-tasaf_common';
 
 import {
   MODULE_NAME,
@@ -38,9 +39,6 @@ const useStyles = makeStyles((theme) => ({
   page: theme.page,
   paper: theme.paper.paper,
   tableTitle: theme.table.title,
-  tabs: { display: 'flex', alignItems: 'center', flexWrap: 'nowrap', overflowX: 'auto' },
-  selectedTab: { borderBottom: '4px solid white', minWidth: 'auto' },
-  unselectedTab: { borderBottom: '4px solid transparent', minWidth: 'auto' },
 }));
 
 // Tabs in pipeline order, each paired with the right that unlocks it.
@@ -59,6 +57,7 @@ const TAB_ORDER = [
 
 function TasafPaymentsPage() {
   const classes = useStyles();
+  const tabClasses = useTabStyles();
   const modulesManager = useModulesManager();
   const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
@@ -79,7 +78,7 @@ function TasafPaymentsPage() {
   useEffect(() => { setActiveTab(tabFromUrl()); }, [location.search]);
 
   const isSelected = (tab) => tab === activeTab;
-  const tabStyle = (tab) => (isSelected(tab) ? classes.selectedTab : classes.unselectedTab);
+  const tabStyle = (tab) => (isSelected(tab) ? tabClasses.selectedTab : tabClasses.unselectedTab);
   const handleChange = (_, tab) => {
     setActiveTab(tab);
     history.replace({ pathname: location.pathname, search: `?tab=${tab}` });
@@ -89,7 +88,7 @@ function TasafPaymentsPage() {
     <div className={classes.page}>
       <Helmet title={formatMessage('workspace.page.title')} />
       <Paper className={classes.paper}>
-        <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
+        <Grid container className={`${classes.tableTitle} ${tabClasses.tabs}`}>
           <Contributions
             contributionKey={TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY}
             rights={rights}
