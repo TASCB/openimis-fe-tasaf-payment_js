@@ -246,12 +246,15 @@ export function importWithdrawalCharges(csvContent, replace, clientMutationLabel
   { clientMutationId: mutation.clientMutationId, clientMutationLabel });
 }
 
+// graphene 2's Decimal only parses string literals: a bare 1739.00 is rejected.
+const gqlDecimal = (v) => JSON.stringify(String(v));
+
 function formatChargeGQL(c) {
   const parts = [
     `fspCode: "${c.fspCode}"`,
-    `lowerAmount: ${c.lowerAmount}`,
-    `upperAmount: ${c.upperAmount}`,
-    `withdrawal: ${c.withdrawal}`,
+    `lowerAmount: ${gqlDecimal(c.lowerAmount)}`,
+    `upperAmount: ${gqlDecimal(c.upperAmount)}`,
+    `withdrawal: ${gqlDecimal(c.withdrawal)}`,
   ];
   if (c.uuid) parts.push(`uuid: "${c.uuid}"`);
   if (c.effectiveFrom) parts.push(`effectiveFrom: "${c.effectiveFrom}"`);
@@ -274,7 +277,7 @@ export function fetchFspBandSet(fspCode) {
 
 // The whole tariff for one FSP goes in one action -- a half-applied set misprices payments.
 export function saveFspCharges(fspCode, bands, reason, clientMutationLabel) {
-  const rows = bands.map((b) => `{lowerAmount: ${b.lowerAmount}, upperAmount: ${b.upperAmount}, withdrawal: ${b.withdrawal}}`).join(', ');
+  const rows = bands.map((b) => `{lowerAmount: ${gqlDecimal(b.lowerAmount)}, upperAmount: ${gqlDecimal(b.upperAmount)}, withdrawal: ${gqlDecimal(b.withdrawal)}}`).join(', ');
   const args = [`fspCode: "${fspCode}"`, `bands: [${rows}]`]
     .concat(reason?.trim() ? [`reason: ${JSON.stringify(reason.trim())}`] : []).join(', ');
   const mutation = formatMutation('saveFspCharges', args, clientMutationLabel);
