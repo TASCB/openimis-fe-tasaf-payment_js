@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { IconButton, Tooltip } from '@material-ui/core';
 import GetAppIcon from '@material-ui/icons/GetApp';
+import SendIcon from '@material-ui/icons/Send';
 import {
-  downloadExport, formatDateTimeFromISO, Searcher, useModulesManager, useTranslations,
+  clearConfirm, coreConfirm, downloadExport, formatDateTimeFromISO, Searcher, useModulesManager, useTranslations,
 } from '@openimis/fe-core';
 
-import { exportAccountCheck, fetchAccountChecks } from '../../actions';
+import { exportAccountCheck, fetchAccountChecks, sendAccountCheck } from '../../actions';
 import { DEFAULT_PAGE_SIZE, MODULE_NAME, ROWS_PER_PAGE_OPTIONS } from '../../constants';
 import AccountCheckUploadDialog from './AccountCheckUploadDialog';
 
@@ -25,6 +26,27 @@ function AccountCheckPanel() {
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [reload, setReload] = useState(0);
+  const [sending, setSending] = useState(null);
+  const confirmed = useSelector((state) => state.core.confirmed);
+
+  useEffect(() => {
+    if (!sending || confirmed === null) return;
+    const job = sending;
+    setSending(null);
+    dispatch(clearConfirm(null));
+    if (confirmed) {
+      dispatch(sendAccountCheck(job.uuid, formatMessage('accountCheck.mutation.send')))
+        .then(() => setReload((k) => k + 1));
+    }
+  }, [confirmed]);
+
+  const send = (job) => {
+    setSending(job);
+    dispatch(coreConfirm(
+      formatMessage('accountCheck.confirm.title'),
+      formatMessageWithValues('accountCheck.confirm.message', { count: job.validCount, file: job.fileName }),
+    ));
+  };
 
   const fetch = async (params) => {
     setFetching(true);
@@ -66,9 +88,16 @@ function AccountCheckPanel() {
     (job) => (job.status === 'VALIDATED' ? '-' : progress(job)),
     (job) => formatMessage(`accountCheck.status.${job.status}`),
     (job) => (
-      <Tooltip title={formatMessage('accountCheck.download')}>
-        <IconButton size="small" onClick={() => download(job)}><GetAppIcon fontSize="small" /></IconButton>
-      </Tooltip>
+      <>
+        {job.status === 'VALIDATED' && job.validCount > 0 && (
+          <Tooltip title={formatMessage('accountCheck.sendRow')}>
+            <IconButton size="small" onClick={() => send(job)}><SendIcon fontSize="small" /></IconButton>
+          </Tooltip>
+        )}
+        <Tooltip title={formatMessage('accountCheck.download')}>
+          <IconButton size="small" onClick={() => download(job)}><GetAppIcon fontSize="small" /></IconButton>
+        </Tooltip>
+      </>
     ),
   ];
 
