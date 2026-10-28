@@ -292,7 +292,11 @@ function PaylistDetailPage({
             <Typography variant="h6">
               {paylist
                 ? formatMessageWithValues('paylist.detail.heading', {
-                  batchType: formatMessage(`paylist.batchType.${paylist.batchType}`),
+                  batchType: paylist.paymentType === 'UNAPPLIED'
+                    ? formatMessageWithValues('paylist.unappliedResend', {
+                      batchType: formatMessage(`paylist.batchType.${paylist.batchType}`),
+                    })
+                    : formatMessage(`paylist.batchType.${paylist.batchType}`),
                   destination: formatMessage(`paylist.destination.${paylist.destination}`),
                 })
                 : formatMessage('paylist.detail.loading')}

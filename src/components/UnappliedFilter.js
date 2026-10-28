@@ -12,10 +12,8 @@ import { defaultFilterStyles } from '../utils/styles';
 
 const TEXT_FILTERS = [
   ['hhid', 'filter.hhid'],
-  ['payeeName', 'filter.payeeName'],
   ['accountNumber', 'filter.accountNumber'],
   ['batchReference', 'filter.museBatchReference'],
-  ['reasonCode', 'filter.reasonCode'],
 ];
 
 function UnappliedFilter({ classes, filters, onChangeFilters }) {

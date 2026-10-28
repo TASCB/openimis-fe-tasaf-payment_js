@@ -49,6 +49,7 @@ export const PAYLIST_PROJECTION = () => [
   'id',
   'uuid',
   'batchType',
+  'paymentType',
   'destination',
   'status',
   'generatedAt',
@@ -78,6 +79,11 @@ export const PAYLIST_ITEM_PROJECTION = () => [
   'resolution',
   'repayment',
   'followUp',
+  'suggestedAction',
+  'unappliedDecision',
+  'museWithdrawal',
+  'endToEndId',
+  'orgEndToEndId',
   'returnReasonCode',
   'returnedAt',
   'paylist { id uuid museBatchReference status batchType }',
@@ -700,6 +706,30 @@ export function reviewPaymentAccount(accountUuid, approved, reviewNotes, clientM
   };
 }
 
+export function decideUnappliedPayment(itemUuid, action, note, clientMutationLabel) {
+  const args = [`itemUuid: "${itemUuid}"`, `action: "${action}"`];
+  if (note) args.push(`note: "${formatGQLString(note)}"`);
+  const mutation = formatMutation('decideUnappliedPayment', args.join(', '), clientMutationLabel);
+  return async (dispatch) => {
+    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.DECIDE_UNAPPLIED));
+    if (!sent || sent.error) return { status: null, error: sent?.payload?.message || 'error' };
+    return waitForMutationLog(dispatch, mutation.clientMutationId);
+  };
+}
+
+export function fetchUnappliedWithdrawalsPending() {
+  return graphql('{ unappliedWithdrawalsPending }', ACTION_TYPE.UNAPPLIED_WITHDRAWALS_PENDING);
+}
+
+export function sendUnappliedWithdrawals(clientMutationLabel) {
+  const mutation = formatMutation('sendUnappliedWithdrawals', '', clientMutationLabel);
+  return async (dispatch) => {
+    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.SEND_UNAPPLIED_WITHDRAWALS));
+    if (!sent || sent.error) return { status: null, error: sent?.payload?.message || 'error' };
+    return waitForMutationLog(dispatch, mutation.clientMutationId);
+  };
+}
+
 export const approvePaylist = (paylistUuid, label) => runPaylistAction('approvePaylist', paylistUuid, label);
 export const submitPaylist = (paylistUuid, label) => runPaylistAction('submitPaylist', paylistUuid, label);
 
@@ -717,6 +747,10 @@ export function fetchPaylistFspOptions(paylistUuid) {
   );
 }
 
+export function exportUnappliedItems(params) {
+  return graphql(`{ unappliedItemsExport(${params.join(', ')}) }`, ACTION_TYPE.EXPORT_UNAPPLIED_ITEMS);
+}
+
 export function exportPaylistItems(paylistUuid, filterArgs) {
   const args = [`paylistUuid: "${paylistUuid}"`, ...filterArgs];
   return graphql(`{ paylistItemsExport(${args.join(', ')}) }`, ACTION_TYPE.EXPORT_PAYLIST_ITEMS);
@@ -724,10 +758,17 @@ export function exportPaylistItems(paylistUuid, filterArgs) {
 
 // ─── Reports (read-only, auditor tab) ──────────────────────────────────────────
 
-export function fetchEpaymentSummaryByFsp(paymentCycleUuid, destination) {
-  const args = [];
-  if (paymentCycleUuid) args.push(`paymentCycleId: "${paymentCycleUuid}"`);
-  if (destination) args.push(`destination: "${destination}"`);
+export const reportFilterArgs = ({
+  paymentCycleUuid, destination, dateFrom, dateTo,
+} = {}) => [
+  ...(paymentCycleUuid ? [`paymentCycleId: "${paymentCycleUuid}"`] : []),
+  ...(destination ? [`destination: "${destination}"`] : []),
+  ...(dateFrom ? [`dateFrom: "${dateFrom}"`] : []),
+  ...(dateTo ? [`dateTo: "${dateTo}"`] : []),
+];
+
+export function fetchEpaymentSummaryByFsp(filters) {
+  const args = reportFilterArgs(filters);
   const ROW = `epaymentCode households withdrawalCharges pctPayment childGrant disabilityGrant
     pwpPayment eiPayment hasChild primaryStudent secondaryStudent componentTotal totalPaid items`;
   const payload = `{
@@ -739,10 +780,13 @@ export function fetchEpaymentSummaryByFsp(paymentCycleUuid, destination) {
   return graphql(payload, ACTION_TYPE.FETCH_EPAYMENT_SUMMARY);
 }
 
-export function exportEpaymentSummaryByFsp(paymentCycleUuid, destination) {
-  const args = [];
-  if (paymentCycleUuid) args.push(`paymentCycleId: "${paymentCycleUuid}"`);
-  if (destination) args.push(`destination: "${destination}"`);
+export function fetchUnappliedSummary(filters) {
+  const args = reportFilterArgs(filters);
+  return graphql(`{ unappliedSummary${args.length ? `(${args.join(', ')})` : ''} }`, ACTION_TYPE.FETCH_UNAPPLIED_SUMMARY);
+}
+
+export function exportEpaymentSummaryByFsp(filters) {
+  const args = reportFilterArgs(filters);
   const payload = `{ epaymentSummaryByFspExport${args.length ? `(${args.join(', ')})` : ''} }`;
   return graphql(payload, ACTION_TYPE.EXPORT_EPAYMENT_SUMMARY);
 }

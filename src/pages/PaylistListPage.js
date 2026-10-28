@@ -73,7 +73,9 @@ function PaylistListPage({
   ];
 
   const itemFormatters = () => [
-    (row) => formatMessage(`paylist.batchType.${row.batchType}`),
+    (row) => (row.paymentType === 'UNAPPLIED'
+      ? formatMessageWithValues('paylist.unappliedResend', { batchType: formatMessage(`paylist.batchType.${row.batchType}`) })
+      : formatMessage(`paylist.batchType.${row.batchType}`)),
     (row) => (row.batchTotal
       ? formatMessageWithValues('paylist.batch.label', { seq: row.batchSequence, total: row.batchTotal })
       : '-'),

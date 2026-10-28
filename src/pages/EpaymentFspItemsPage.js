@@ -33,7 +33,7 @@ const ITEM_STATUS_COLORS = {
 const money = (v) => (v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
 function EpaymentFspItemsPage({
-  epaymentCode, onBack,
+  epaymentCode, onBack, filterArgs = [],
   fspItems, fspItemsPageInfo, fspItemsTotalCount,
   fetchingFspItems, fetchedFspItems, errorFspItems, fetchEpaymentFspItems,
 }) {
@@ -99,6 +99,7 @@ function EpaymentFspItemsPage({
   const fetch = (params) => fetchEpaymentFspItems([
     ...(params || []),
     `epaymentCode: "${epaymentCode}"`,
+    ...filterArgs,
     ...(includeUnpaid ? ['includeUnpaid: true'] : []),
   ]);
 

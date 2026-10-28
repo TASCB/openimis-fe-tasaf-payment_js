@@ -18,6 +18,7 @@ export const RIGHT_APPROVE_PAYLIST   = 270303;
 export const RIGHT_SUBMIT_PAYLIST    = 270304;
 // Entity 24: Return feedback
 export const RIGHT_RETURN_FEEDBACK   = 270401;
+export const RIGHT_UNAPPLIED_DECIDE  = 270402;
 // Tariff table. Editing a fee table must not ride on a returns-processing right.
 export const RIGHT_WITHDRAWAL_CHARGE_SEARCH = 270701;
 export const RIGHT_WITHDRAWAL_CHARGE_MANAGE = 270702;
@@ -48,10 +49,14 @@ export const DEFAULT_PAGE_SIZE = 10;
 export const ROWS_PER_PAGE_OPTIONS = [10, 20, 50, 100];
 export const DEFAULT_DEBOUNCE_TIME = 500;
 
-export const RETURN_RESOLUTIONS = ['IN_CORRECTION', 'READY', 'REPAYING', 'REPAID', 'LAPSED', 'FINAL'];
+export const RETURN_RESOLUTIONS = [
+  'AWAITING_ACTION', 'IN_CORRECTION', 'REPAYING', 'REPAID', 'UNAPPLIED_WITHDRAWN', 'LAPSED',
+];
 export const RETURN_RESOLUTION_COLORS = {
-  IN_CORRECTION: '#b45309', READY: '#0d9488', REPAYING: '#2563eb', REPAID: '#15803d', LAPSED: '#b91c1c', FINAL: '#6b7280',
+  AWAITING_ACTION: '#9e9e9e', IN_CORRECTION: '#9e9e9e', REPAYING: '#2563eb', REPAID: '#15803d',
+  UNAPPLIED_WITHDRAWN: '#475569', LAPSED: '#b91c1c',
 };
+export const UNAPPLIED_ACTIONS = ['REPAY', 'CASE', 'WITHDRAW'];
 export const CONTAINS_LOOKUP = 'Icontains';
 export const EMPTY_STRING = '';
 
