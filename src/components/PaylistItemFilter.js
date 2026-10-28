@@ -15,7 +15,6 @@ import { defaultFilterStyles } from '../utils/styles';
 const TEXT_FILTERS = [
   ['hhid', 'filter.hhid'],
   ['payeeCode', 'filter.payeeCode'],
-  ['payeeName', 'filter.payeeName'],
   ['benefitCode', 'filter.benefitCode'],
   ['accountNumber', 'filter.accountNumber'],
 ];
@@ -77,7 +76,7 @@ function PaylistItemFilter({
           ])}
         />
       </Grid>
-      <Grid item xs={12} md={10} className={classes.item}>
+      <Grid item xs={12} className={classes.item}>
         <PaaLocationFilter
           value={location}
           onChange={(loc) => {

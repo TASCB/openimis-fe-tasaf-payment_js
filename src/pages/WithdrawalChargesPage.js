@@ -61,17 +61,19 @@ function WithdrawalChargesPage() {
   useEffect(() => { prevSubmitting.current = submitting; });
 
   const opened = (state?.fspProviders ?? []).find((p) => p.fspCode === openCode);
+  const providerName = Object.fromEntries((state?.fspProviders ?? []).map((p) => [p.fspCode, p.name]));
 
   const headers = () => [
-    'charges.fspCode', 'charges.lowerAmount', 'charges.upperAmount',
+    'charges.fspCode', 'fsp.name', 'charges.lowerAmount', 'charges.upperAmount',
     'charges.withdrawal',
   ];
   const sorts = () => [
-    ['fspCode', true], ['lowerAmount', true], ['upperAmount', true],
+    ['fspCode', true], null, ['lowerAmount', true], ['upperAmount', true],
     ['withdrawal', true],
   ];
   const itemFormatters = () => [
     (c) => c.fspCode,
+    (c) => providerName[c.fspCode] || '—',
     (c) => c.lowerAmount,
     (c) => c.upperAmount,
     (c) => (Number(c.withdrawal) === 0 ? t('charges.noCharge') : c.withdrawal),
