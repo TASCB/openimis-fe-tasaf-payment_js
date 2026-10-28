@@ -11,7 +11,7 @@ import { exportAccountCheck, fetchAccountChecks, sendAccountCheck } from '../../
 import { DEFAULT_PAGE_SIZE, MODULE_NAME, ROWS_PER_PAGE_OPTIONS } from '../../constants';
 import AccountCheckUploadDialog from './AccountCheckUploadDialog';
 
-const ANSWERED = ['VERIFIED', 'REVIEW', 'NAME_MISMATCH', 'NOT_FOUND', 'PROVIDER_ERROR', 'NO_ANSWER'];
+const ANSWERED = ['VERIFIED', 'REVIEW', 'NAME_MISMATCH', 'NOT_FOUND', 'DORMANT', 'PROVIDER_ERROR', 'NO_ANSWER'];
 
 const parse = (value) => {
   try { return (typeof value === 'string' ? JSON.parse(value || '{}') : value) || {}; } catch (e) { return {}; }
