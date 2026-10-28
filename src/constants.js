@@ -7,6 +7,7 @@ export const RIGHT_PAYMENT_ACCOUNT_DELETE = 270004;
 // Entity 21: Verification workflow
 export const RIGHT_RUN_VERIFICATION  = 270101;
 export const RIGHT_APPROVE_ACCOUNTS  = 270102;
+export const RIGHT_ACCOUNT_CHECK     = 270104;
 // Entity 22: Pre-audit. Viewing is separate from running so an auditor can read the
 // eligibility gate without being able to operate it.
 export const RIGHT_PRE_AUDIT_SEARCH  = 270202;
@@ -163,6 +164,7 @@ export const TAB_REVIEW = 'review';
 export const TAB_SUCCESS = 'success';
 export const TAB_FAILED = 'failed';
 export const TAB_GEPG = 'gepg';
+export const TAB_CHECK = 'check';
 export const PRE_AUDIT_TAB_OVERVIEW = 'overview';
 export const PRE_AUDIT_TAB_ACCOUNTS = 'accounts';
 export const PRE_AUDIT_TAB_COMPLIANCE = 'compliance';

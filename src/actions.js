@@ -717,6 +717,35 @@ export function decideUnappliedPayment(itemUuid, action, note, clientMutationLab
   };
 }
 
+// ─── Bulk account check (CSV, outside the MIS) ─────────────────────────────────
+
+export const ACCOUNT_CHECK_UPLOAD_URL = '/tasaf_payment/account_check/upload/';
+
+export function fetchAccountChecks(params) {
+  const payload = formatPageQueryWithCount('accountCheckJob', params, [
+    'id', 'uuid', 'fileName', 'status', 'createdBy', 'rowCount', 'validCount', 'createdAt', 'sentAt',
+    'finishedAt', 'results',
+  ]);
+  return graphql(payload, ACTION_TYPE.SEARCH_ACCOUNT_CHECKS);
+}
+
+export function fetchAccountCheckSummary(uuid) {
+  return graphql(`{ accountCheckSummary(uuid: "${uuid}") }`, ACTION_TYPE.ACCOUNT_CHECK_SUMMARY);
+}
+
+export function exportAccountCheck(uuid) {
+  return graphql(`{ accountCheckExport(uuid: "${uuid}") }`, ACTION_TYPE.EXPORT_ACCOUNT_CHECK);
+}
+
+export function sendAccountCheck(jobUuid, clientMutationLabel) {
+  const mutation = formatMutation('sendAccountCheck', `jobUuid: "${jobUuid}"`, clientMutationLabel);
+  return async (dispatch) => {
+    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.SEND_ACCOUNT_CHECK));
+    if (!sent || sent.error) return { status: null, error: sent?.payload?.message || 'error' };
+    return waitForMutationLog(dispatch, mutation.clientMutationId);
+  };
+}
+
 export function fetchUnappliedWithdrawalsPending() {
   return graphql('{ unappliedWithdrawalsPending }', ACTION_TYPE.UNAPPLIED_WITHDRAWALS_PENDING);
 }

@@ -34,6 +34,7 @@ import {
   TAB_SUCCESS,
   TAB_FAILED,
   TAB_GEPG,
+  TAB_CHECK,
 } from '../constants';
 import {
   fetchPaymentAccounts,
@@ -56,6 +57,7 @@ import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
 import StatusBadge from '../components/StatusBadge';
 import VerificationTabs from '../components/VerificationTabs';
 import GepgRequestsTable from '../components/GepgRequestsTable';
+import AccountCheckPanel from '../components/accountCheck/AccountCheckPanel';
 import { defaultPageStyles } from '../utils/styles';
 
 // 6 columns, so the shared equal-width rule applies.
@@ -129,7 +131,8 @@ function VerificationResultsPage({
 
   // Pending first: an operator's day starts with work not yet sent, not with results.
   const [activeTab, setActiveTab] = useState(
-    () => (new URLSearchParams(history.location.search).get('verification') === 'gepg' ? TAB_GEPG : TAB_PENDING),
+    () => ({ gepg: TAB_GEPG, check: TAB_CHECK })[new URLSearchParams(history.location.search).get('verification')]
+      || TAB_PENDING,
   );
   const [outcome, setOutcome] = useState(null);
   const [selectionNote, setSelectionNote] = useState(null);
@@ -409,6 +412,17 @@ function VerificationResultsPage({
     pendingCount,
     gepgCount: (gepgRequests || []).length,
   };
+
+  if (activeTab === TAB_CHECK) {
+    return (
+      <div className={classes.page}>
+        <Paper className={classes.paper}>
+          <VerificationTabs tabs={verificationTabs} />
+        </Paper>
+        <AccountCheckPanel />
+      </div>
+    );
+  }
 
   if (activeTab === TAB_GEPG) {
     return (

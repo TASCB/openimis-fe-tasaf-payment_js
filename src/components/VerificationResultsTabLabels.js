@@ -1,8 +1,9 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { Tab } from '@material-ui/core';
 import { useTranslations } from '@openimis/fe-core';
 import {
-  MODULE_NAME, TAB_PENDING, TAB_REVIEW, TAB_SUCCESS, TAB_FAILED, TAB_GEPG,
+  MODULE_NAME, RIGHT_ACCOUNT_CHECK, TAB_CHECK, TAB_PENDING, TAB_REVIEW, TAB_SUCCESS, TAB_FAILED, TAB_GEPG,
 } from '../constants';
 
 export function VerificationPendingTabLabel({
@@ -97,6 +98,26 @@ export function VerificationGepgTabLabel({
       selected={isSelected(TAB_GEPG)}
       value={TAB_GEPG}
       label={`${gepgCount ?? 0} ${formatMessage('verificationResults.tab.gepg')}`}
+    />
+  );
+}
+
+export function VerificationCheckTabLabel({
+  onChange,
+  tabStyle,
+  isSelected,
+  modulesManager,
+}) {
+  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
+  const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
+  if (!rights.includes(RIGHT_ACCOUNT_CHECK)) return null;
+  return (
+    <Tab
+      onChange={onChange}
+      className={tabStyle(TAB_CHECK)}
+      selected={isSelected(TAB_CHECK)}
+      value={TAB_CHECK}
+      label={formatMessage('accountCheck.tab')}
     />
   );
 }
