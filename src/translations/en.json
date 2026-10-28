@@ -297,7 +297,7 @@
   "tasafPayment.accountCheck.status.DONE": "Done",
   "tasafPayment.accountCheck.status.CANCELLED": "Cancelled",
   "tasafPayment.accountCheck.dialog.title": "Bulk account check",
-  "tasafPayment.accountCheck.dialog.help": "Columns: HHID, Name, Account number, FSP (up to 40,000 rows). Nothing in the MIS changes; you are notified when GePG has answered.",
+  "tasafPayment.accountCheck.dialog.help": "Columns: HHID, Name, Account number, FSP (up to 50,000 rows). Nothing in the MIS changes; you are notified when GePG has answered.",
   "tasafPayment.accountCheck.dialog.summary": "{rows} rows: {valid} will be sent, {invalid} have a problem and will not be sent.",
   "tasafPayment.accountCheck.template": "Template",
   "tasafPayment.accountCheck.check": "Check file",
