@@ -14,21 +14,26 @@ import {
 } from '@openimis/fe-core';
 
 import {
-  decideUnappliedPayment, exportUnappliedItems, fetchUnappliedItems, fetchUnappliedWithdrawalsPending,
-  sendUnappliedWithdrawals,
+  createUnappliedResends, decideUnappliedPayment, exportUnappliedItems, fetchUnappliedItems,
+  fetchUnappliedResendPreview, fetchUnappliedWithdrawalsPending,
 } from '../actions';
 import {
   MODULE_NAME,
+  RIGHT_GENERATE_PAYLIST,
   RIGHT_RETURN_FEEDBACK,
   RIGHT_UNAPPLIED_DECIDE,
   DEFAULT_PAGE_SIZE,
   ROWS_PER_PAGE_OPTIONS,
-  RETURN_RESOLUTION_COLORS,
 } from '../constants';
 import { defaultPageStyles } from '../utils/styles';
 import UnappliedFilter from '../components/UnappliedFilter';
 import ReturnedPaymentDialog from '../components/ReturnedPaymentDialog';
+import UnappliedMuseDialog from '../components/UnappliedMuseDialog';
 import StatusChip from '../components/StatusChip';
+
+const parseList = (raw) => {
+  try { return (typeof raw === 'string' ? JSON.parse(raw || '[]') : raw) || []; } catch (e) { return []; }
+};
 
 const parseDecision = (value) => {
   try { return typeof value === 'string' ? JSON.parse(value || 'null') : value; } catch (e) { return null; }
@@ -49,8 +54,9 @@ function UnappliedPaymentsPage({
   fetchUnappliedItems,
   decideUnappliedPayment,
   fetchUnappliedWithdrawalsPending,
-  sendUnappliedWithdrawals,
   exportUnappliedItems,
+  fetchUnappliedResendPreview,
+  createUnappliedResends,
   fetchingUnappliedItems,
   fetchedUnappliedItems,
   errorUnappliedItems,
@@ -65,47 +71,45 @@ function UnappliedPaymentsPage({
   const [selected, setSelected] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [withdrawals, setWithdrawals] = useState(0);
-  const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState(null);
+  const [resendRows, setResendRows] = useState([]);
+  const [museOpen, setMuseOpen] = useState(false);
   const canView = rights.includes(RIGHT_RETURN_FEEDBACK);
 
   useEffect(() => {
     if (!canView) return;
     fetchUnappliedWithdrawalsPending().then((r) => setWithdrawals(r?.payload?.data?.unappliedWithdrawalsPending ?? 0));
-  }, [canView, refreshKey, fetchUnappliedWithdrawalsPending]);
+    fetchUnappliedResendPreview().then((r) => setResendRows(parseList(r?.payload?.data?.unappliedResendPreview)));
+  }, [canView, refreshKey, fetchUnappliedWithdrawalsPending, fetchUnappliedResendPreview]);
 
   if (!canView) return null;
 
   const canDecide = rights.includes(RIGHT_UNAPPLIED_DECIDE);
+  const canGenerate = rights.includes(RIGHT_GENERATE_PAYLIST);
+  const refresh = () => setRefreshKey((k) => k + 1);
+  const outcome = (log, fallback) => {
+    if (log?.status !== MUTATION_SUCCESS) return log?.error ? String(log.error) : formatMessage(fallback);
+    refresh();
+    return null;
+  };
+
   const decide = async (row, action, note) => {
     const label = formatMessageWithValues('returned.mutation.decide', {
       action: formatMessage(`returned.action.${action}`),
     });
-    const log = await decideUnappliedPayment(row.uuid, action, note, label);
-    if (log?.status !== MUTATION_SUCCESS) {
-      return log?.error ? String(log.error) : formatMessage('returned.decision.failed');
-    }
-    setSelected(null);
-    setRefreshKey((k) => k + 1);
-    return null;
+    const error = outcome(await decideUnappliedPayment(row.uuid, action, note, label), 'returned.decision.failed');
+    if (!error) setSelected(null);
+    return error;
   };
+  const createResends = async () => outcome(
+    await createUnappliedResends(formatMessage('returned.resend.mutation')), 'returned.resend.failed',
+  );
 
-  const sendWithdrawals = async () => {
-    setSending(true);
-    setNotice(null);
-    const log = await sendUnappliedWithdrawals(formatMessage('returned.withdrawal.sent'));
-    setSending(false);
-    if (log?.status !== MUTATION_SUCCESS) {
-      setNotice(log?.error ? String(log.error) : formatMessage('returned.withdrawal.failed'));
-      return;
-    }
-    setNotice(formatMessage('returned.withdrawal.sent'));
-    setRefreshKey((k) => k + 1);
-  };
+  const ready = resendRows.filter((r) => !r.blocked).reduce((n, r) => n + (r.ready || 0), 0);
   const searcherActions = [{
-    label: formatMessageWithValues('returned.withdrawal.send', { count: withdrawals }),
-    onClick: sendWithdrawals,
-    authorized: canDecide && withdrawals > 0 && !sending,
+    label: formatMessageWithValues('returned.muse.open', { count: ready }),
+    onClick: () => setMuseOpen(true),
+    authorized: true,
   }];
 
   const exportCsv = async (params) => {
@@ -125,6 +129,7 @@ function UnappliedPaymentsPage({
     formatMessage('paylist.museBatchReference'),
     formatMessage('returned.reason'),
     formatMessage('returnFeedback.receivedAt'),
+    formatMessage('returned.daysWaiting'),
     formatMessage('returned.suggested'),
     formatMessage('returned.progress'),
     '',
@@ -138,6 +143,9 @@ function UnappliedPaymentsPage({
     (row) => row.paylist?.museBatchReference ?? '-',
     (row) => [row.returnReasonCode, row.returnReason].filter(Boolean).join(' · ') || '-',
     (row) => formatDateTimeFromISO(modulesManager, null, row.returnedAt) || '-',
+    (row) => (row.resolution === 'AWAITING_ACTION' && row.returnedAt
+      ? Math.max(0, Math.floor((Date.now() - new Date(row.returnedAt).getTime()) / 86400000))
+      : '-'),
     (row) => {
       const decided = parseDecision(row.unappliedDecision)?.action;
       if (decided) return formatMessage(`returned.action.${decided}`);
@@ -146,7 +154,7 @@ function UnappliedPaymentsPage({
         : '-';
     },
     (row) => (row.resolution
-      ? <StatusChip label={formatMessage(`returned.resolution.${row.resolution}`)} color={RETURN_RESOLUTION_COLORS[row.resolution]} />
+      ? <StatusChip label={formatMessage(`returned.resolution.${row.resolution}`)} />
       : '-'),
     (row) => (
       <Tooltip title={formatMessage('returned.view')}>
@@ -191,6 +199,14 @@ function UnappliedPaymentsPage({
         canDecide={canDecide}
         onDecide={decide}
       />
+      <UnappliedMuseDialog
+        open={museOpen}
+        onClose={() => setMuseOpen(false)}
+        resendRows={resendRows}
+        withdrawals={withdrawals}
+        canCreate={canGenerate}
+        onCreateResends={createResends}
+      />
     </div>
   );
 }
@@ -205,8 +221,8 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => bindActionCreators({
-  fetchUnappliedItems, decideUnappliedPayment, fetchUnappliedWithdrawalsPending, sendUnappliedWithdrawals,
-  exportUnappliedItems,
+  fetchUnappliedItems, decideUnappliedPayment, fetchUnappliedWithdrawalsPending, exportUnappliedItems,
+  fetchUnappliedResendPreview, createUnappliedResends,
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(UnappliedPaymentsPage);

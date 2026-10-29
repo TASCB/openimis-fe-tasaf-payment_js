@@ -81,6 +81,7 @@ export const PAYLIST_ITEM_PROJECTION = () => [
   'followUp',
   'suggestedAction',
   'unappliedDecision',
+  'timesReturned',
   'museWithdrawal',
   'endToEndId',
   'orgEndToEndId',
@@ -750,10 +751,19 @@ export function fetchUnappliedWithdrawalsPending() {
   return graphql('{ unappliedWithdrawalsPending }', ACTION_TYPE.UNAPPLIED_WITHDRAWALS_PENDING);
 }
 
-export function sendUnappliedWithdrawals(clientMutationLabel) {
-  const mutation = formatMutation('sendUnappliedWithdrawals', '', clientMutationLabel);
+export function fetchUnappliedResendPreview() {
+  return graphql('{ unappliedResendPreview }', ACTION_TYPE.UNAPPLIED_RESEND_PREVIEW);
+}
+
+export function fetchUnappliedReconciliation(paymentCycleUuid) {
+  const args = paymentCycleUuid ? `(paymentCycleId: "${paymentCycleUuid}")` : '';
+  return graphql(`{ unappliedReconciliation${args} }`, ACTION_TYPE.UNAPPLIED_RECONCILIATION);
+}
+
+export function createUnappliedResends(clientMutationLabel) {
+  const mutation = formatMutation('createUnappliedResends', '', clientMutationLabel);
   return async (dispatch) => {
-    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.SEND_UNAPPLIED_WITHDRAWALS));
+    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.CREATE_UNAPPLIED_RESENDS));
     if (!sent || sent.error) return { status: null, error: sent?.payload?.message || 'error' };
     return waitForMutationLog(dispatch, mutation.clientMutationId);
   };

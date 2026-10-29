@@ -9,7 +9,9 @@ import {
   PreviewDialog, PreviewField, PreviewSection, usePreviewStyles, PREVIEW_BORDER, PREVIEW_MUTED,
 } from '@openimis/fe-tasaf_common';
 
-import { MODULE_NAME, RETURN_RESOLUTION_COLORS, UNAPPLIED_ACTIONS } from '../constants';
+import { MODULE_NAME, UNAPPLIED_ACTIONS } from '../constants';
+
+const PROGRESS_GREY = '#9e9e9e';
 
 const REPAY_STEPS = ['RETURNED', 'AWAITING_ACTION', 'REPAYING', 'REPAID'];
 const CASE_STEPS = ['RETURNED', 'AWAITING_ACTION', 'IN_CORRECTION', 'REPAYING', 'REPAID'];
@@ -78,7 +80,7 @@ function ReturnedPaymentDialog({ item, onClose, canDecide, onDecide }) {
       <div className={p.tags} style={{ justifyContent: 'center' }}>
         <span className={p.tag}>{formatMessage(`paylistItem.status.${row.status}`)}</span>
         {resolution && (
-          <span className={p.statusTag} style={{ background: RETURN_RESOLUTION_COLORS[resolution], color: '#fff' }}>
+          <span className={p.statusTag} style={{ background: PROGRESS_GREY, color: '#fff' }}>
             {formatMessage(`returned.resolution.${resolution}`)}
           </span>
         )}
@@ -136,7 +138,7 @@ function ReturnedPaymentDialog({ item, onClose, canDecide, onDecide }) {
             <span
               key={step}
               className={classes.step}
-              style={index <= reached ? { background: RETURN_RESOLUTION_COLORS[step] || '#6b7280', color: '#fff', borderColor: 'transparent' } : {}}
+              style={index <= reached ? { background: PROGRESS_GREY, color: '#fff', borderColor: 'transparent' } : {}}
             >
               {formatMessage(`returned.resolution.${step}`)}
             </span>
@@ -150,6 +152,9 @@ function ReturnedPaymentDialog({ item, onClose, canDecide, onDecide }) {
           <PreviewField label={formatMessage('returnFeedback.reasonCode')} value={row.returnReasonCode} />
           <PreviewField label={formatMessage('paylist.museBatchReference')} value={row.paylist?.museBatchReference} />
           <PreviewField label={formatMessage('paylistItem.benefitCode')} value={row.benefitConsumption?.code} />
+          {row.status === 'UNAPPLIED' && (
+            <PreviewField label={formatMessage('returned.timesReturned')} value={row.timesReturned} />
+          )}
         </div>
       </PreviewSection>
 

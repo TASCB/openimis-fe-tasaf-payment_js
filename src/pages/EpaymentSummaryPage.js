@@ -14,10 +14,12 @@ import {
   DESTINATION_LIST, MODULE_NAME, RIGHT_REPORTS, WS_TAB_RETURNS,
 } from '../constants';
 import {
-  exportEpaymentSummaryByFsp, fetchEpaymentSummaryByFsp, fetchUnappliedSummary, reportFilterArgs,
+  exportEpaymentSummaryByFsp, fetchEpaymentSummaryByFsp, fetchUnappliedReconciliation, fetchUnappliedSummary,
+  reportFilterArgs,
 } from '../actions';
 import { cycleUuid } from '../components/preAudit/cycleUuid';
 import EpaymentFspItemsPage from './EpaymentFspItemsPage';
+import UnappliedReconciliationTable from '../components/UnappliedReconciliationTable';
 
 const useStyles = makeStyles((theme) => ({
   page: theme.page,
@@ -42,7 +44,7 @@ const money = (v) => (v ?? 0).toLocaleString(undefined, { maximumFractionDigits:
 function EpaymentSummaryPage({
   epaymentSummary, fetchingEpaymentSummary, errorEpaymentSummary, fetchEpaymentSummaryByFsp,
   epaymentSummaryExport, fetchingEpaymentSummaryExport, exportEpaymentSummaryByFsp, downloadExport,
-  fetchUnappliedSummary,
+  fetchUnappliedSummary, fetchUnappliedReconciliation,
 }) {
   const classes = useStyles();
   const history = useHistory();
@@ -56,6 +58,7 @@ function EpaymentSummaryPage({
   const [dateFrom, setDateFrom] = useState(null);
   const [dateTo, setDateTo] = useState(null);
   const [unapplied, setUnapplied] = useState(null);
+  const [reconciliation, setReconciliation] = useState([]);
 
   const filters = {
     paymentCycleUuid: cycleUuid(paymentCycle), destination, dateFrom, dateTo,
@@ -67,6 +70,10 @@ function EpaymentSummaryPage({
     fetchUnappliedSummary(filters).then((r) => {
       const value = r?.payload?.data?.unappliedSummary;
       setUnapplied(typeof value === 'string' ? JSON.parse(value) : value ?? null);
+    });
+    fetchUnappliedReconciliation(filters.paymentCycleUuid).then((r) => {
+      const value = r?.payload?.data?.unappliedReconciliation;
+      setReconciliation((typeof value === 'string' ? JSON.parse(value || '[]') : value) || []);
     });
   }, [filterKey]);
 
@@ -258,6 +265,18 @@ function EpaymentSummaryPage({
               {formatMessage('report.epaymentByFsp.hint')}
             </Typography>
           </Paper>
+
+          <Paper className={classes.paper}>
+            <div className={classes.tableTitle}>
+              <Typography variant="h6">{formatMessage('returned.reconciliation.title')}</Typography>
+            </div>
+            <div className={classes.tableWrap}>
+              <UnappliedReconciliationTable rows={reconciliation} />
+            </div>
+            <Typography variant="caption" className={classes.note}>
+              {formatMessage('returned.reconciliation.help')}
+            </Typography>
+          </Paper>
         </>
       )}
     </div>
@@ -275,6 +294,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
     fetchEpaymentSummaryByFsp, exportEpaymentSummaryByFsp, downloadExport, fetchUnappliedSummary,
+    fetchUnappliedReconciliation,
   }, dispatch,
 );
 
