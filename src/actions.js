@@ -305,7 +305,7 @@ export function fetchFspProviders() {
 export function fetchMuseSettings() {
   return graphql(
     `query {
-      museSettings { institutionCode payerAccount subBudgetClass unappliedSubBudgetClass paymentDesc
+      museSettings { institutionCode payerAccount subBudgetClass paymentDesc
         isStp glAccounts environment dateUpdated }
       museReadiness { serverEnvironment settingsEnvironment environmentMismatch subBudgetClasses }
     }`,
@@ -345,7 +345,6 @@ export function saveMuseSettings(s, clientMutationLabel, reason = '') {
     `institutionCode: ${q(s.institutionCode)}`,
     `payerAccount: ${q(s.payerAccount)}`,
     ...(blank(s.subBudgetClass) ? [] : [`subBudgetClass: ${parseInt(s.subBudgetClass, 10)}`]),
-    ...(blank(s.unappliedSubBudgetClass) ? [] : [`unappliedSubBudgetClass: ${parseInt(s.unappliedSubBudgetClass, 10)}`]),
     `paymentDesc: ${q(s.paymentDesc)}`,
     `isStp: ${!!s.isStp}`,
     `glAccounts: ${q(JSON.stringify(s.glAccounts || []))}`,

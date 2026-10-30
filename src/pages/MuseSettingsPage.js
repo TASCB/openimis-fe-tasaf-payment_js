@@ -23,7 +23,7 @@ import {
 } from '../components/settings/SettingsKit';
 
 const EMPTY = {
-  institutionCode: '', payerAccount: '', subBudgetClass: '', unappliedSubBudgetClass: '',
+  institutionCode: '', payerAccount: '', subBudgetClass: '',
   paymentDesc: '', isStp: false, glAccounts: [],
 };
 
@@ -80,7 +80,7 @@ function MuseSettingsPage() {
   });
   const intOk = (v) => v === '' || v === null || /^\d+$/.test(String(v));
   const glIncomplete = form.glAccounts.some((g) => !(g.glaccount || '').trim());
-  const valid = !glIncomplete && intOk(form.subBudgetClass) && intOk(form.unappliedSubBudgetClass);
+  const valid = !glIncomplete && intOk(form.subBudgetClass);
 
   const field = (k, { required, type, className } = {}) => (
     <div className={className}>
@@ -102,15 +102,23 @@ function MuseSettingsPage() {
     </div>
   );
 
-  const sbcField = (k, { required }) => {
-    if (!sbcOptions.length) return field(k, { required, type: 'number' });
+  const sbcField = (k) => {
+    if (!sbcOptions.length) return field(k, { required: true, type: 'number' });
     const value = form[k] === null || form[k] === undefined ? '' : String(form[k]);
-    const listed = sbcOptions.some((o) => String(o.code) === value);
+    const option = sbcOptions.find((o) => String(o.code) === value);
+    const listed = !!option;
+    let helper = null;
+    if (value && !listed) helper = t('museSettings.sbcNotListed');
+    else if (option) {
+      helper = option.unapplied
+        ? tv('museSettings.unappliedClass', { code: option.unapplied })
+        : t('museSettings.unappliedClass.none');
+    }
     return (
       <div>
         <div className={classes.label}>
           {t(`museSettings.${k}`)}
-          {required && <span className={classes.required}>*</span>}
+          <span className={classes.required}>*</span>
         </div>
         <TextField
           select
@@ -121,9 +129,8 @@ function MuseSettingsPage() {
           onChange={set(k)}
           disabled={!editable}
           error={!!value && !listed}
-          helperText={value && !listed ? t('museSettings.sbcNotListed') : null}
+          helperText={helper}
         >
-          {!required && <MenuItem value="">{t('museSettings.sbcNone')}</MenuItem>}
           {value && !listed && <MenuItem value={value}>{value}</MenuItem>}
           {sbcOptions.map((o) => (
             <MenuItem key={o.code} value={String(o.code)}>{`${o.code} — ${o.description}`}</MenuItem>
@@ -193,8 +200,7 @@ function MuseSettingsPage() {
             </TextField>
           </div>
         </div>
-        {sbcField('subBudgetClass', { required: true })}
-        {sbcField('unappliedSubBudgetClass', {})}
+        {sbcField('subBudgetClass')}
         <FormControlLabel
           className={classes.full}
           control={(
