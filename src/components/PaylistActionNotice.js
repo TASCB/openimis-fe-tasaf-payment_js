@@ -49,10 +49,13 @@ export default function PaylistActionNotice({
   }
   if (lastSubmit) {
     const values = { at: formatTime(lastSubmit.at), by: lastSubmit.by || '-', reason: lastSubmit.message || '-' };
+    let key = lastSubmit.success ? 'paylist.lastSubmit.ok' : 'paylist.lastSubmit.failed';
+    if (lastSubmit.outcome === 'QUEUED') key = lastSubmit.sending ? 'paylist.lastSubmit.sending' : 'paylist.lastSubmit.stopped';
+    const failed = !lastSubmit.success || key === 'paylist.lastSubmit.stopped';
     return (
       <div className={classes.box}>
-        <Typography variant="body2" className={lastSubmit.success ? classes.muted : classes.error}>
-          {tv(lastSubmit.success ? 'paylist.lastSubmit.ok' : 'paylist.lastSubmit.failed', values)}
+        <Typography variant="body2" className={failed ? classes.error : classes.muted}>
+          {tv(key, values)}
         </Typography>
       </div>
     );

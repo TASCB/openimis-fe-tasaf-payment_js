@@ -65,7 +65,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 // Households nobody will pay until someone fixes their account, vs. ones simply not in this batch.
-const ATTENTION_REASONS = ['NOT_VERIFIED', 'PRE_AUDIT_NOT_PASSED', 'INVALID_MOBILE_NUMBER', 'NO_ACCOUNT'];
+const ATTENTION_REASONS = ['NOT_VERIFIED', 'PRE_AUDIT_NOT_PASSED', 'INVALID_MOBILE_NUMBER', 'NO_P3_HHID', 'NO_ACCOUNT'];
 const INFO_REASONS = ['OTHER_FSP', 'OTHER_CHANNEL', 'ALREADY_ON_PAYLIST', 'UNAPPLIED_RESEND'];
 const money = (v) => `TZS ${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 

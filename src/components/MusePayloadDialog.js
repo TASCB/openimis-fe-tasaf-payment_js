@@ -89,6 +89,11 @@ export default function MusePayloadDialog({
                 ? formatMessage('musePreview.valid')
                 : formatMessageWithValues('musePreview.invalid', { count: preview.problem_count })}
             </Typography>
+            {preview.checked_all === false && (
+              <Typography variant="body2" className={classes.line}>
+                {formatMessageWithValues('musePreview.partial', { rows: preview.rows_shown })}
+              </Typography>
+            )}
 
             {!preview.valid && (
               <>

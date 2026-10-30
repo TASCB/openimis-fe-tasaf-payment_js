@@ -188,7 +188,8 @@ function PaylistDetailPage({
   const status = paylist?.status;
   const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL;
   const isResend = status === PAYLIST_STATUS.REJECTED;
-  const canSubmit = SUBMITTABLE.includes(status) && !(isResend && paylist?.pendingCount === 0);
+  const canSubmit = SUBMITTABLE.includes(status) && !(isResend && paylist?.pendingCount === 0)
+    && !paylist?.lastSubmit?.sending;
   const back = () => (history.length > 1
     ? history.goBack()
     : history.push(`/${modulesManager.getRef('tasafPayment.route.workspace')}?tab=${WS_TAB_PAYLISTS}`));
