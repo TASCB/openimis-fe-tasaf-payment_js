@@ -7,6 +7,7 @@ import CheckCircleIcon from '@material-ui/icons/CheckCircle';
 import { useModulesManager, useTranslations, formatDateFromISO } from '@openimis/fe-core';
 import {
   PreviewDialog, PreviewField, PreviewSection, usePreviewStyles, PREVIEW_BORDER, PREVIEW_MUTED, PREVIEW_PANEL,
+  toDisplayTime,
 } from '@openimis/fe-tasaf_common';
 
 import { MODULE_NAME } from '../constants';
@@ -44,7 +45,7 @@ function VerificationReviewDialog({ account, onClose, onDecide, canDecide }) {
   const a = account || {};
   const attempts = a.verificationAttempts || [];
   const latest = attempts[0] || {};
-  const fmtDate = (v) => (v ? formatDateFromISO(modulesManager, intl, v) : null);
+  const fmtDate = (v) => (v ? formatDateFromISO(modulesManager, intl, toDisplayTime(v)) : null);
   const reason = matchReasonText(latest, formatMessage, formatMessageWithValues) || a.lastFailureReason;
 
   const decide = async (approved) => {

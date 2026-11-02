@@ -5,6 +5,7 @@ import {
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import RefreshIcon from '@material-ui/icons/Refresh';
+import { formatDisplayTime } from '@openimis/fe-tasaf_common';
 
 const useStyles = makeStyles((theme) => ({
   paper: { ...theme.paper.paper, margin: 0, marginTop: theme.spacing(3), marginBottom: theme.spacing(2) },
@@ -30,8 +31,7 @@ const useStyles = makeStyles((theme) => ({
   detailLabel: { minWidth: 150, color: theme.palette.grey[600] },
 }));
 
-const EAT = 'Africa/Dar_es_Salaam';
-const formatTime = (value) => (value ? new Date(value).toLocaleString(undefined, { timeZone: EAT }) : '-');
+const formatTime = (value) => formatDisplayTime(value) || '-';
 const money = (v) => `TZS ${Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 const KNOWN_WHAT = ['OUT.BULK_PAYMENT', 'OUT.ACK', 'IN.RESPONSE', 'IN.ACK', 'IN.PAYMENT_STATUS'];
 const KNOWN_RESULT = ['SUCCESS', 'FAILED', 'RETRYING', 'REJECTED', 'PENDING', 'UNKNOWN', 'NOT_SENT'];

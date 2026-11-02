@@ -6,6 +6,7 @@ import SendIcon from '@material-ui/icons/Send';
 import {
   clearConfirm, coreConfirm, downloadExport, formatDateTimeFromISO, Searcher, useModulesManager, useTranslations,
 } from '@openimis/fe-core';
+import { toDisplayTime } from '@openimis/fe-tasaf_common';
 
 import { exportAccountCheck, fetchAccountChecks, sendAccountCheck } from '../../actions';
 import { DEFAULT_PAGE_SIZE, MODULE_NAME, ROWS_PER_PAGE_OPTIONS } from '../../constants';
@@ -82,7 +83,7 @@ function AccountCheckPanel() {
   const itemFormatters = () => [
     (job) => job.fileName || '-',
     (job) => job.createdBy || '-',
-    (job) => formatDateTimeFromISO(modulesManager, null, job.createdAt) || '-',
+    (job) => formatDateTimeFromISO(modulesManager, null, toDisplayTime(job.createdAt)) || '-',
     (job) => job.rowCount,
     (job) => job.validCount,
     (job) => (job.status === 'VALIDATED' ? '-' : progress(job)),
