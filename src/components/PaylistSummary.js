@@ -32,7 +32,9 @@ export default function PaylistSummary({ t, summary }) {
   const byStatus = summary.by_status || {};
   return (
     <Grid container spacing={2} className={classes.grid}>
-      <Card classes={classes} title={t('paylist.summary.gross')} value={`TZS ${number(summary.amount)}`} />
+      <Card classes={classes} title={t('paylist.summary.gross')} value={`TZS ${number(summary.amount)}`}
+        sub={`${number(summary.payees)} ${t('paylist.summary.payees')}`}
+      />
       <Card classes={classes} title={t('paylist.summary.net')} value={`TZS ${number(summary.net_amount)}`} />
       <Card classes={classes} title={t('paylist.summary.charges')} value={`TZS ${number(summary.charge_amount)}`} />
       {[...STATUSES, ...OPTIONAL_STATUSES.filter((s) => byStatus[s]?.count)].map((status) => (

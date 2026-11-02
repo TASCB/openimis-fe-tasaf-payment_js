@@ -218,6 +218,7 @@
   "tasafPayment.paylist.summary.gross": "Gross (to MUSE)",
   "tasafPayment.paylist.summary.net": "Net (to households)",
   "tasafPayment.paylist.summary.charges": "Withdrawal charges",
+  "tasafPayment.paylist.summary.payees": "payees",
   "tasafPayment.paylist.action.running.submitPaylist": "Queuing the send to MUSE…",
   "tasafPayment.paylist.action.running.approvePaylist": "Approving… waiting for the server to finish.",
   "tasafPayment.paylist.action.done.submitPaylist": "Being sent to MUSE. Refresh in a few minutes for the result.",
