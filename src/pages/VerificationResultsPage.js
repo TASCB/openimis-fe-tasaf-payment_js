@@ -35,6 +35,7 @@ import {
   TAB_FAILED,
   TAB_GEPG,
   TAB_CHECK,
+  RIGHT_ACCOUNT_CHECK,
 } from '../constants';
 import {
   fetchPaymentAccounts,
@@ -413,7 +414,7 @@ function VerificationResultsPage({
     gepgCount: (gepgRequests || []).length,
   };
 
-  if (activeTab === TAB_CHECK) {
+  if (activeTab === TAB_CHECK && rights.includes(RIGHT_ACCOUNT_CHECK)) {
     return (
       <div className={classes.page}>
         <Paper className={classes.paper}>
