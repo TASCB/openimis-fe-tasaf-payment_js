@@ -11,6 +11,14 @@ const useStyles = makeStyles((theme) => ({
 
 const formatTime = (value) => (value ? new Date(value).toLocaleString() : '');
 
+// Engine refusals arrive as message keys; show the paylist wording when there is one.
+const reasonText = (t, error) => {
+  if (!error) return t('paylist.action.noReason');
+  const id = `paylist.refused.${error}`;
+  const text = /^[\w]+(\.[\w]+)+$/.test(error) ? t(id) : id;
+  return text === id ? error : text;
+};
+
 export default function PaylistActionNotice({
   t, tv, running, runningKind, result, lastSubmit,
 }) {
@@ -36,7 +44,7 @@ export default function PaylistActionNotice({
       return (
         <div className={classes.box}>
           <Typography variant="body2" className={classes.error}>
-            {tv(`paylist.action.failed.${result.kind}`, { reason: result.error || t('paylist.action.noReason') })}
+            {tv(`paylist.action.failed.${result.kind}`, { reason: reasonText(t, result.error) })}
           </Typography>
         </div>
       );
