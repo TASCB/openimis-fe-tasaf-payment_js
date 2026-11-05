@@ -677,8 +677,8 @@ export function fetchVerificationOutcome(clientMutationId) {
   };
 }
 
-function runPaylistAction(kind, paylistUuid, clientMutationLabel) {
-  const mutation = formatMutation(kind, `paylistUuid: "${paylistUuid}"`, clientMutationLabel);
+function runPaylistAction(kind, paylistUuid, clientMutationLabel, extra = '') {
+  const mutation = formatMutation(kind, `paylistUuid: "${paylistUuid}"${extra}`, clientMutationLabel);
   const meta = { kind, paylistUuid, clientMutationId: mutation.clientMutationId, clientMutationLabel };
   return async (dispatch) => {
     dispatch({ type: REQUEST(ACTION_TYPE.PAYLIST_ACTION), meta });
@@ -770,6 +770,10 @@ export function createUnappliedResends(clientMutationLabel) {
 
 export const approvePaylist = (paylistUuid, label) => runPaylistAction('approvePaylist', paylistUuid, label);
 export const submitPaylist = (paylistUuid, label) => runPaylistAction('submitPaylist', paylistUuid, label);
+export const moveRejectedToCaseManagement = (paylistUuid, accounts, label) => runPaylistAction(
+  'moveRejectedToCaseManagement', paylistUuid, label,
+  accounts?.length ? `, accounts: [${accounts.map((a) => `"${formatGQLString(a)}"`).join(', ')}]` : '',
+);
 
 export function fetchPaylistMuseLog(paylistUuid) {
   const payload = `{ paylistMuseLog(paylistUuid: "${paylistUuid}", limit: 200) {

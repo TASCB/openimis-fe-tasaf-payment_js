@@ -35,8 +35,8 @@ import {
   WS_TAB_PAYLISTS,
 } from '../constants';
 import {
-  fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport, fetchMusePaylistPreview,
-  fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems,
+  fetchPaylistItems, approvePaylist, submitPaylist, moveRejectedToCaseManagement, fetchPaylistHeader,
+  fetchPaylistForExport, fetchMusePaylistPreview, fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems,
 } from '../actions';
 import StatusChip from '../components/StatusChip';
 import ReturnedPaymentDialog from '../components/ReturnedPaymentDialog';
@@ -93,6 +93,7 @@ function PaylistDetailPage({
   fetchPaylistItems,
   approvePaylist,
   submitPaylist,
+  moveRejectedToCaseManagement,
   fetchPaylistHeader,
   fetchPaylistForExport,
   fetchMusePaylistPreview,
@@ -187,6 +188,12 @@ function PaylistDetailPage({
   const paylist = paylistHeader?.uuid === paylistUuid ? paylistHeader : null;
   const status = paylist?.status;
   const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL;
+  const awaitingMuse = status === PAYLIST_STATUS.SUBMITTED;
+  useEffect(() => {
+    if (!awaitingMuse) return undefined;
+    const timer = setInterval(reload, 30000);
+    return () => clearInterval(timer);
+  }, [awaitingMuse, paylistUuid]);
   const isResend = status === PAYLIST_STATUS.REJECTED;
   const canSubmit = SUBMITTABLE.includes(status) && !(isResend && paylist?.pendingCount === 0)
     && !paylist?.lastSubmit?.sending;
@@ -330,6 +337,15 @@ function PaylistDetailPage({
           rejections={paylist?.museRejections}
           hold={paylist?.withdrawnHold}
           onOpenAccount={openAccountCorrection}
+          isRejected={isResend}
+          canMove={isResend && rights.includes(RIGHT_SUBMIT_PAYLIST)}
+          moving={submittingMutation}
+          onMove={(accounts) => moveRejectedToCaseManagement(
+            paylistUuid, accounts, formatMessage('mutation.moveRejectedLabel'),
+          )}
+          onOpenCaseManagement={() => history.push(
+            `/${modulesManager.getRef('caseManagement.route.accountCorrections')}?reason=WITHDRAWN`,
+          )}
         />
       </Paper>
 
@@ -401,8 +417,8 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
-    fetchPaylistItems, approvePaylist, submitPaylist, fetchPaylistHeader, fetchPaylistForExport,
-    fetchMusePaylistPreview, fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems, downloadExport,
+    fetchPaylistItems, approvePaylist, submitPaylist, moveRejectedToCaseManagement, fetchPaylistHeader,
+    fetchPaylistForExport, fetchMusePaylistPreview, fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems, downloadExport,
     journalize, coreConfirm, clearConfirm,
   },
   dispatch,
