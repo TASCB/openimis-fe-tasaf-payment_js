@@ -11,7 +11,7 @@ import {
   decodeId,
 } from '@openimis/fe-core';
 import { CLEAR, ERROR, REQUEST, SUCCESS } from './utils/action-type';
-import { VERIFICATION_STATUS, VERIFICATION_STATUS_BY_CODE } from './constants';
+import { VERIFICATION_STATUS_BY_CODE } from './constants';
 
 const mutationResp = (state, service, action) => (action.payload?.data?.[service]
   ? dispatchMutationResp(state, service, action)

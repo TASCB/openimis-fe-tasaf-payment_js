@@ -413,7 +413,7 @@ export const rejectMuseChange = (id, comment, label) => museChangeMutation('reje
 export const cancelMuseChange = (id, comment, label) => museChangeMutation('cancelMuseChange', id, comment, label);
 
 export function saveFspMapping(m, clientMutationLabel) {
-  const args = [`fspName: "${m.fspName}"`, `fspCode: "${m.fspCode}"`]
+  const args = [`fspName: "${formatGQLString(m.fspName)}"`, `fspCode: "${formatGQLString(m.fspCode)}"`]
     .concat(m.uuid ? [`uuid: "${m.uuid}"`] : []).join(', ');
   const mutation = formatMutation('saveFspMapping', args, clientMutationLabel);
   return graphql(mutation.payload, ['TASAF_PAYMENT_MUTATION_REQ',
