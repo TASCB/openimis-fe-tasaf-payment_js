@@ -15,7 +15,7 @@ import {
 
 import {
   createUnappliedResends, decideUnappliedPayment, exportUnappliedItems, fetchUnappliedItems,
-  fetchUnappliedResendPreview, fetchUnappliedWithdrawalsPending,
+  fetchUnappliedResendPreview, fetchUnappliedWithdrawalsPending, sendUnappliedWithdrawals,
 } from '../actions';
 import {
   MODULE_NAME,
@@ -57,6 +57,7 @@ function UnappliedPaymentsPage({
   exportUnappliedItems,
   fetchUnappliedResendPreview,
   createUnappliedResends,
+  sendUnappliedWithdrawals,
   fetchingUnappliedItems,
   fetchedUnappliedItems,
   errorUnappliedItems,
@@ -103,6 +104,9 @@ function UnappliedPaymentsPage({
   };
   const createResends = async () => outcome(
     await createUnappliedResends(formatMessage('returned.resend.mutation')), 'returned.resend.failed',
+  );
+  const sendWithdrawals = async () => outcome(
+    await sendUnappliedWithdrawals(formatMessage('returned.withdraw.mutation')), 'returned.withdraw.failed',
   );
 
   const ready = resendRows.filter((r) => !r.blocked).reduce((n, r) => n + (r.ready || 0), 0);
@@ -206,6 +210,8 @@ function UnappliedPaymentsPage({
         withdrawals={withdrawals}
         canCreate={canGenerate}
         onCreateResends={createResends}
+        canSendWithdrawals={canDecide}
+        onSendWithdrawals={sendWithdrawals}
       />
     </div>
   );
@@ -222,7 +228,7 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => bindActionCreators({
   fetchUnappliedItems, decideUnappliedPayment, fetchUnappliedWithdrawalsPending, exportUnappliedItems,
-  fetchUnappliedResendPreview, createUnappliedResends,
+  fetchUnappliedResendPreview, createUnappliedResends, sendUnappliedWithdrawals,
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(UnappliedPaymentsPage);

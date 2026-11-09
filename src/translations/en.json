@@ -1063,5 +1063,11 @@
   "tasafPayment.returned.reconciliation.none": "No unapplied payment for these filters.",
   "tasafPayment.returned.muse.tab.batch": "Send unapplied batch",
   "tasafPayment.returned.muse.tab.withdraw": "Send unapplied withdraw",
-  "tasafPayment.returned.muse.withdraw.help": "Not available yet: unapplied withdrawals will be sent to MUSE through its own withdrawal API."
+  "tasafPayment.returned.muse.withdraw.help": "Tells MUSE, one message per payment, that these unapplied payments will not be re-sent. MUSE closes each one; it cannot be undone.",
+  "tasafPayment.returned.withdraw.sendCount": "Send withdrawals ({count})",
+  "tasafPayment.returned.withdraw.confirm": "MUSE will close these unapplied payments. This cannot be undone.",
+  "tasafPayment.returned.withdraw.confirmSend": "Confirm and send",
+  "tasafPayment.returned.withdraw.mutation": "Send unapplied withdrawals to MUSE",
+  "tasafPayment.returned.withdraw.failed": "The withdrawals could not be sent",
+  "tasafPayment.returned.withdraw.done": "Sent. Each payment shows Received by MUSE when MUSE answers."
 }

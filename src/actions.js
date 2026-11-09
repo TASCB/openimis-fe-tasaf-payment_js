@@ -768,6 +768,15 @@ export function createUnappliedResends(clientMutationLabel) {
   };
 }
 
+export function sendUnappliedWithdrawals(clientMutationLabel) {
+  const mutation = formatMutation('sendUnappliedWithdrawals', '', clientMutationLabel);
+  return async (dispatch) => {
+    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.SEND_UNAPPLIED_WITHDRAWALS));
+    if (!sent || sent.error) return { status: null, error: sent?.payload?.message || 'error' };
+    return waitForMutationLog(dispatch, mutation.clientMutationId);
+  };
+}
+
 export const approvePaylist = (paylistUuid, label) => runPaylistAction('approvePaylist', paylistUuid, label);
 export const submitPaylist = (paylistUuid, label) => runPaylistAction('submitPaylist', paylistUuid, label);
 export const moveRejectedToCaseManagement = (paylistUuid, accounts, label) => runPaylistAction(

@@ -26,9 +26,8 @@ const useStyles = makeStyles((theme) => ({
 
 const money = (value) => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
-// Tab 2 waits for MUSE's withdrawal API: it only shows the count.
 function UnappliedMuseDialog({
-  open, onClose, resendRows, withdrawals, canCreate, onCreateResends,
+  open, onClose, resendRows, withdrawals, canCreate, onCreateResends, canSendWithdrawals, onSendWithdrawals,
 }) {
   const classes = useStyles();
   const modulesManager = useModulesManager();
@@ -36,12 +35,15 @@ function UnappliedMuseDialog({
   const [activeTab, setActiveTab] = useState(TAB_BATCH);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null);
+  const [confirming, setConfirming] = useState(false);
 
-  useEffect(() => { if (open) { setActiveTab(TAB_BATCH); setBusy(false); setMessage(null); } }, [open]);
+  useEffect(() => {
+    if (open) { setActiveTab(TAB_BATCH); setBusy(false); setMessage(null); setConfirming(false); }
+  }, [open]);
 
   const isSelected = (tab) => tab === activeTab;
   const tabStyle = (tab) => (isSelected(tab) ? classes.selectedTab : classes.unselectedTab);
-  const onTabChange = (_, tab) => setActiveTab(tab);
+  const onTabChange = (_, tab) => { setActiveTab(tab); setConfirming(false); };
 
   const create = async () => {
     setBusy(true);
@@ -49,6 +51,15 @@ function UnappliedMuseDialog({
     const error = await onCreateResends();
     setBusy(false);
     setMessage(error ? { error } : { text: formatMessage('returned.resend.done') });
+  };
+
+  const sendWithdrawals = async () => {
+    setConfirming(false);
+    setBusy(true);
+    setMessage(null);
+    const error = await onSendWithdrawals();
+    setBusy(false);
+    setMessage(error ? { error } : { text: formatMessage('returned.withdraw.done') });
   };
 
   const ready = (resendRows || []).filter((r) => !r.blocked).reduce((n, r) => n + (r.ready || 0), 0);
@@ -126,6 +137,23 @@ function UnappliedMuseDialog({
               ? formatMessageWithValues('returned.muse.withdrawals', { count: withdrawals })
               : formatMessage('returned.muse.nothing')}
           </Typography>
+          {canSendWithdrawals && (
+            <div className={classes.stepAction}>
+              {confirming && (
+                <span className={classes.message}>{formatMessage('returned.withdraw.confirm')}</span>
+              )}
+              <Button
+                color="primary"
+                variant={confirming ? 'contained' : 'text'}
+                disabled={busy || !withdrawals}
+                onClick={confirming ? sendWithdrawals : () => setConfirming(true)}
+              >
+                {confirming
+                  ? formatMessage('returned.withdraw.confirmSend')
+                  : formatMessageWithValues('returned.withdraw.sendCount', { count: withdrawals })}
+              </Button>
+            </div>
+          )}
         </PublishedComponent>
       </DialogContent>
       <DialogActions>
