@@ -175,12 +175,15 @@ function PaylistDetailPage({
     }
   }, [paylistUuid]);
 
+  const itemsExportRequestedRef = useRef(false);
   useEffect(() => {
-    if (paylistItemsExport) {
-      downloadExport(paylistItemsExport, `${formatMessage('paylistItem.export.filename')}.csv`, 'csv')();
+    if (paylistItemsExport && itemsExportRequestedRef.current) {
+      itemsExportRequestedRef.current = false;
+      downloadExport(paylistItemsExport, `${formatMessage('paylistItem.export.filename')}.csv`, 'csv');
     }
   }, [paylistItemsExport]);
   const handleExportItems = () => {
+    itemsExportRequestedRef.current = true;
     exportPaylistItems(paylistUuid, itemParamsRef.current.map(toExportArg).filter(Boolean));
   };
 
@@ -210,7 +213,7 @@ function PaylistDetailPage({
       setExportingBreakdown(false);
       const name = r?.payload?.data?.paylistBenefitBreakdownExport;
       const file = `${formatMessage('breakdown.filename')}_${breakdown?.reference || ''}.csv`;
-      if (name) downloadExport(name, file, 'csv')();
+      if (name) downloadExport(name, file, 'csv');
     });
   };
   const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL;

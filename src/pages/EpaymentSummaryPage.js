@@ -84,7 +84,7 @@ function EpaymentSummaryPage({
         epaymentSummaryExport,
         `${formatMessage('report.epaymentByFsp.filename')}.csv`,
         'csv',
-      )();
+      );
     }
   }, [epaymentSummaryExport]);
 

@@ -120,7 +120,7 @@ function UnappliedPaymentsPage({
   const exportCsv = async (params) => {
     const response = await exportUnappliedItems(params);
     const name = response?.payload?.data?.unappliedItemsExport;
-    if (name) downloadExport(name, `${formatMessage('returned.export.filename')}.csv`, 'csv')();
+    if (name) downloadExport(name, `${formatMessage('returned.export.filename')}.csv`, 'csv');
     else setNotice(formatMessage('returned.export.failed'));
   };
 
