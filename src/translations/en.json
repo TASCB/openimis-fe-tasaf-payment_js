@@ -1078,6 +1078,8 @@
   "tasafPayment.returned.withdraw.done": "Sending to MUSE in the background. You get a notification with the result.",
   "tasafPayment.breakdown.title": "Benefit breakdown",
   "tasafPayment.breakdown.export": "Download CSV",
+  "tasafPayment.breakdown.show": "Show breakdown ({count})",
+  "tasafPayment.breakdown.hide": "Hide breakdown",
   "tasafPayment.breakdown.filename": "benefit_breakdown",
   "tasafPayment.breakdown.blocked": "This batch cannot be submitted until its benefit breakdown adds up to the batch total.",
   "tasafPayment.breakdown.col.line": "Line",
