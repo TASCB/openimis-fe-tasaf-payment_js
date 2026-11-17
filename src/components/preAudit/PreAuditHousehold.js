@@ -9,8 +9,9 @@ import {
 
 import { MODULE_NAME } from '../../constants';
 import { cycleUuid } from './cycleUuid';
+import { money, parseJson } from './helpers';
 
-const PARTS = ['base', 'disability', 'health', 'primary', 'secondary'];
+const PARTS = ['base', 'disability', 'pregnancy', 'health', 'primary', 'secondary'];
 
 const useStyles = makeStyles((theme) => ({
   band: { ...theme.table.title, padding: theme.spacing(1, 2), marginTop: theme.spacing(3) },
@@ -19,8 +20,6 @@ const useStyles = makeStyles((theme) => ({
   warning: { color: theme.palette.error.main },
   findings: { margin: theme.spacing(1, 0, 0), paddingLeft: theme.spacing(3) },
 }));
-
-const money = (v) => (v == null ? '-' : v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
 
 function PreAuditHousehold({
   paymentWindow, groupId, hhid, onClose,
@@ -38,8 +37,7 @@ function PreAuditHousehold({
     { id: uuid, groupId: groupId || null, hhid: picked || hhid || null },
     { skip: !uuid },
   );
-  const raw = data?.preAuditHousehold;
-  const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  const parsed = parseJson(data?.preAuditHousehold);
   const matches = parsed?.matches;
   const hh = matches ? null : parsed;
 
@@ -159,8 +157,8 @@ function PreAuditHousehold({
         <Table
           module={MODULE_NAME}
           headers={[t('col.name'), t('col.role'), t('col.dob'), t('col.age'), t('col.active'),
-            t('col.child'), t('col.disabled'), t('col.primary'), t('col.secondary')]}
-          aligns={['left', 'left', 'left', 'right', 'left', 'left', 'left', 'right', 'right']}
+            t('col.child'), t('col.disabled'), t('col.pregnant'), t('col.primary'), t('col.secondary')]}
+          aligns={['left', 'left', 'left', 'right', 'left', 'left', 'left', 'left', 'right', 'right']}
           itemFormatters={[
             (m) => m.name,
             (m) => m.role || '-',
@@ -169,6 +167,7 @@ function PreAuditHousehold({
             (m) => (m.active ? yes(true) : <span className={classes.warning}>{t('no')}</span>),
             (m) => yes(m.child),
             (m) => yes(m.disabled),
+            (m) => yes(m.pregnant),
             (m) => (m.primary ?? ''),
             (m) => (m.secondary ?? ''),
           ]}
@@ -202,7 +201,7 @@ function PreAuditHousehold({
       <DialogTitle>{formatMessageWithValues('preAudit.household.title', { hhid: hh?.hhid || picked || hhid || '' })}</DialogTitle>
       <DialogContent>{body}</DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="primary">{formatMessage('verificationOutcome.close')}</Button>
+        <Button onClick={onClose} color="primary">{formatMessage('preAudit.close')}</Button>
       </DialogActions>
     </Dialog>
   );

@@ -33,6 +33,7 @@ import {
 } from '../constants';
 import { fetchPaymentAccounts, runPreAudit, runBatchPreAudit } from '../actions';
 import PaymentAccountFilter from '../components/PaymentAccountFilter';
+import PaaLocationFilter from '../components/PaaLocationFilter';
 import PreAuditOverview from '../components/preAudit/PreAuditOverview';
 import PreAuditCompliance from '../components/preAudit/PreAuditCompliance';
 import PreAuditDuplicates from '../components/preAudit/PreAuditDuplicates';
@@ -97,6 +98,8 @@ function PreAuditPage({
   const [batchPending, setBatchPending] = useState(false);
   const [location, setLocation] = useState(null);
   const [paymentWindow, setPaymentWindow] = useState(null);
+  const [windowLocation, setWindowLocation] = useState(null);
+  const windowLocationId = windowLocation?.id ?? null;
   const [activeTab, setActiveTab] = useState(PRE_AUDIT_TAB_OVERVIEW);
   const isSelected = (tab) => tab === activeTab;
   const tabStyle = (tab) => (isSelected(tab) ? classes.selectedTab : classes.unselectedTab);
@@ -120,7 +123,7 @@ function PreAuditPage({
           ? formatMessageWithValues('preAudit.batch.confirm.message', {
             location: location.name,
           })
-          : formatMessage('batch.needsArea'),
+          : formatMessage('preAudit.batch.confirm.messageAll'),
       );
     }
   }, [batchPending]);
@@ -133,10 +136,12 @@ function PreAuditPage({
       );
       setPendingAudit(null);
     }
-    if (batchPending && confirmed && location) {
+    if (batchPending && confirmed) {
       runBatchPreAudit(
-        { locationId: location?.id, rerun: true },
-        formatMessageWithValues('mutation.runBatchPreAuditLabel', { location: location?.name ?? '' }),
+        location ? { locationId: location.id, rerun: true } : { allHouseholds: true, rerun: true },
+        formatMessageWithValues('mutation.runBatchPreAuditLabel', {
+          location: location?.name ?? formatMessage('preAudit.allHouseholds'),
+        }),
       );
       setBatchPending(false);
     }
@@ -163,13 +168,9 @@ function PreAuditPage({
     (row) => row.accountName ?? '',
     (row) => formatMessage(`paymentAccount.fspType.${row.fspType}`),
     (row) => row.fspName,
-    // The keys exist (paymentAccount.preAuditStatus.PASSED/FAILED/PENDING); rendering the
-    // bare enum here left an untranslated value in a translated table.
     (row) => (row.preAuditStatus
       ? formatMessage(`paymentAccount.preAuditStatus.${row.preAuditStatus}`)
       : '-'),
-    // The reasons were always computed and stored; they were simply never displayed,
-    // so a FAILED row read as a verdict with no evidence behind it.
     (row) => {
       const reasons = rawPreAuditReasons(row).map((r) => (
         PRE_AUDIT_REASON_CODES.includes(r) ? formatMessage(`preAudit.reason.${r}`) : r
@@ -196,7 +197,7 @@ function PreAuditPage({
     {
       label: location
         ? formatMessageWithValues('button.preAuditAreaNamed', { location: location.name })
-        : formatMessage('button.preAuditArea'),
+        : formatMessage('button.preAuditAll'),
       icon: <DoneAllIcon />,
       onClick: () => setBatchPending(true),
       authorized: !submittingMutation && canRun,
@@ -216,6 +217,9 @@ function PreAuditPage({
               value={paymentWindow}
               onChange={(value) => setPaymentWindow(value)}
             />
+          </Grid>
+          <Grid item xs={12} md={8}>
+            <PaaLocationFilter allowRegion value={windowLocation} onChange={setWindowLocation} />
           </Grid>
         </Grid>
       </Paper>
@@ -256,7 +260,7 @@ function PreAuditPage({
           index={PRE_AUDIT_TAB_OVERVIEW}
           value={activeTab}
         >
-          <PreAuditOverview paymentWindow={paymentWindow} />
+          <PreAuditOverview paymentWindow={paymentWindow} locationId={windowLocationId} />
         </PublishedComponent>
         <PublishedComponent
           pubRef="policyHolder.TabPanel"
@@ -264,7 +268,7 @@ function PreAuditPage({
           index={PRE_AUDIT_TAB_COMPLIANCE}
           value={activeTab}
         >
-          {isSelected(PRE_AUDIT_TAB_COMPLIANCE) && <PreAuditCompliance paymentWindow={paymentWindow} />}
+          {isSelected(PRE_AUDIT_TAB_COMPLIANCE) && <PreAuditCompliance paymentWindow={paymentWindow} locationId={windowLocationId} />}
         </PublishedComponent>
         <PublishedComponent
           pubRef="policyHolder.TabPanel"
@@ -272,12 +276,17 @@ function PreAuditPage({
           index={PRE_AUDIT_TAB_DUPLICATES}
           value={activeTab}
         >
-          {isSelected(PRE_AUDIT_TAB_DUPLICATES) && <PreAuditDuplicates paymentWindow={paymentWindow} />}
+          {isSelected(PRE_AUDIT_TAB_DUPLICATES) && <PreAuditDuplicates paymentWindow={paymentWindow} locationId={windowLocationId} />}
         </PublishedComponent>
       </Paper>
       <div hidden={!isSelected(PRE_AUDIT_TAB_ACCOUNTS)}>
         <FilterExtrasProvider value={{
-          showStatusFilter: false, showPreAuditFilter: true, showLocationFilter: true, location, onChangeLocation: setLocation,
+          showStatusFilter: false,
+          showPreAuditFilter: true,
+          showLocationFilter: true,
+          allowRegion: true,
+          location,
+          onChangeLocation: setLocation,
         }}
         >
           <Searcher

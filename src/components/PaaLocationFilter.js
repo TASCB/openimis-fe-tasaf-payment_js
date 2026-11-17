@@ -19,22 +19,56 @@ function locationLevels(location) {
   return levels;
 }
 
-function PaaLocationFilter({ value, onChange, readOnly = false }) {
-  const { D: district, W: ward, V: village } = locationLevels(value);
+function PaaLocationFilter({
+  value, onChange, readOnly = false, allowRegion = false,
+}) {
+  const {
+    R: region, D: district, W: ward, V: village,
+  } = locationLevels(value);
 
   return (
     <Grid container>
-      <Grid item xs={12} sm={6}>
-        <PublishedComponent
-          pubRef="location.CoarseLocation"
-          readOnly={readOnly}
-          required={false}
-          withNull
-          district={district}
-          filterLabels={false}
-          onChange={(d) => onChange(d ?? null)}
-        />
-      </Grid>
+      {allowRegion ? (
+        <>
+          <Grid item xs={6} sm={3}>
+            <PublishedComponent
+              pubRef="location.LocationPicker"
+              locationLevel={0}
+              value={region ?? null}
+              readOnly={readOnly}
+              required={false}
+              withNull
+              filterLabels={false}
+              onChange={(r) => onChange(r ?? null)}
+            />
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <PublishedComponent
+              pubRef="location.LocationPicker"
+              locationLevel={1}
+              parentLocation={region}
+              value={district ?? null}
+              readOnly={readOnly || !region}
+              required={false}
+              withNull
+              filterLabels={false}
+              onChange={(d) => onChange(d ?? region ?? null)}
+            />
+          </Grid>
+        </>
+      ) : (
+        <Grid item xs={12} sm={6}>
+          <PublishedComponent
+            pubRef="location.CoarseLocation"
+            readOnly={readOnly}
+            required={false}
+            withNull
+            district={district}
+            filterLabels={false}
+            onChange={(d) => onChange(d ?? null)}
+          />
+        </Grid>
+      )}
       <Grid item xs={6} sm={3}>
         <PublishedComponent
           pubRef="location.LocationPicker"

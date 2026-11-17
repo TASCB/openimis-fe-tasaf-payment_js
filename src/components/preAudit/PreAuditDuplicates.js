@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import {
   Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Paper, TextField,
@@ -7,29 +7,22 @@ import {
 import { makeStyles } from '@material-ui/styles';
 import RefreshIcon from '@material-ui/icons/Refresh';
 import {
-  Table, graphql, useGraphqlQuery, useModulesManager, useTranslations,
+  Table, graphqlWithVariables, useGraphqlQuery, useModulesManager, useTranslations,
 } from '@openimis/fe-core';
 
 import { MODULE_NAME } from '../../constants';
 import PreAuditHousehold from './PreAuditHousehold';
 import { cycleUuid } from './cycleUuid';
+import {
+  cardStyles, int, money, parseJson, useDebounced,
+} from './helpers';
 
 const KINDS = ['SAME_HOUSEHOLD', 'SAME_ACCOUNT', 'SAME_PERSON'];
 const PAGE_SIZES = [20, 50, 100];
 
-const useStyles = makeStyles((theme) => ({
-  card: { padding: 20, height: '100%' },
-  cardLabel: { color: theme.palette.primary.main },
-  band: { ...theme.table.title, padding: theme.spacing(1, 2), marginTop: theme.spacing(3) },
-  filters: { margin: theme.spacing(2, 0), alignItems: 'center' },
-  note: { color: theme.palette.text.secondary, display: 'block', marginTop: theme.spacing(1) },
-  link: { padding: 0, minWidth: 0, textTransform: 'none', fontWeight: 500 },
-}));
+const useStyles = makeStyles(cardStyles);
 
-const int = (v) => (v ?? 0).toLocaleString();
-const money = (v) => (v == null ? '-' : v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
-
-function PreAuditDuplicates({ paymentWindow }) {
+function PreAuditDuplicates({ paymentWindow, locationId }) {
   const classes = useStyles();
   const dispatch = useDispatch();
   const modulesManager = useModulesManager();
@@ -37,33 +30,43 @@ function PreAuditDuplicates({ paymentWindow }) {
   const uuid = cycleUuid(paymentWindow);
   const [kind, setKind] = useState('');
   const [search, setSearch] = useState('');
+  const searchTerm = useDebounced(search);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
+  useEffect(() => setPage(0), [locationId]);
   const [nonce, setNonce] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [opened, setOpened] = useState(null);
   const [household, setHousehold] = useState(null);
 
   const { isLoading, data, error } = useGraphqlQuery(
-    `query PreAuditDuplicates($id: UUID!, $kind: String, $search: String, $offset: Int, $limit: Int) {
-      preAuditDuplicates(paymentCycleId: $id, kind: $kind, search: $search, offset: $offset, limit: $limit)
+    `query PreAuditDuplicates($id: UUID!, $loc: Int, $kind: String, $search: String, $offset: Int, $limit: Int) {
+      preAuditDuplicates(paymentCycleId: $id, locationId: $loc, kind: $kind, search: $search, offset: $offset,
+        limit: $limit)
     } # ${nonce}`,
     {
-      id: uuid, kind: kind || null, search: search || null, offset: page * pageSize, limit: pageSize,
+      id: uuid,
+      loc: locationId || null,
+      kind: kind || null,
+      search: searchTerm || null,
+      offset: page * pageSize,
+      limit: pageSize,
     },
     { skip: !uuid, keepStale: true },
   );
 
   if (!uuid) return <Typography>{formatMessage('preAudit.overview.chooseWindow')}</Typography>;
   if (error) return <Typography color="error">{formatMessage('preAudit.duplicates.error')}</Typography>;
-  const raw = data?.preAuditDuplicates;
-  const report = (typeof raw === 'string' ? JSON.parse(raw) : raw) || null;
+  const report = parseJson(data?.preAuditDuplicates);
   if (!report) return <CircularProgress />;
 
   const recalculate = async () => {
     setRefreshing(true);
-    await dispatch(graphql(`{ preAuditDuplicates(paymentCycleId: "${uuid}", limit: 1, refresh: true) }`,
-      'TASAF_PAYMENT_PRE_AUDIT_DUPLICATES_REFRESH'));
+    await dispatch(graphqlWithVariables(
+      'query ($id: UUID!) { preAuditDuplicates(paymentCycleId: $id, limit: 1, refresh: true) }',
+      { id: uuid },
+      'TASAF_PAYMENT_PRE_AUDIT_DUPLICATES_REFRESH',
+    ));
     setRefreshing(false);
     setNonce((n) => n + 1);
   };
@@ -118,7 +121,7 @@ function PreAuditDuplicates({ paymentWindow }) {
         </Grid>
         <Grid item>
           <Button startIcon={<RefreshIcon />} color="primary" disabled={isLoading || refreshing} onClick={recalculate}>
-            {formatMessage('preAudit.compliance.refresh')}
+            {formatMessage('preAudit.refresh')}
           </Button>
         </Grid>
         {(isLoading || refreshing) && <Grid item><CircularProgress size={24} /></Grid>}
@@ -192,7 +195,7 @@ function PreAuditDuplicates({ paymentWindow }) {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpened(null)} color="primary">{formatMessage('verificationOutcome.close')}</Button>
+            <Button onClick={() => setOpened(null)} color="primary">{formatMessage('preAudit.close')}</Button>
           </DialogActions>
         </Dialog>
       )}

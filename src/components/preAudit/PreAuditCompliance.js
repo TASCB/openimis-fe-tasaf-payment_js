@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import {
   Button, CircularProgress, Grid, MenuItem, Paper, TextField, Typography,
@@ -7,34 +7,30 @@ import { makeStyles } from '@material-ui/styles';
 import GetAppIcon from '@material-ui/icons/GetApp';
 import RefreshIcon from '@material-ui/icons/Refresh';
 import {
-  Table, downloadExport, graphql, useGraphqlQuery, useModulesManager, useTranslations,
+  Table, downloadExport, graphqlWithVariables, useGraphqlQuery, useModulesManager, useTranslations,
 } from '@openimis/fe-core';
 
 import { MODULE_NAME } from '../../constants';
 import PreAuditHousehold from './PreAuditHousehold';
 import { cycleUuid } from './cycleUuid';
+import {
+  cardStyles, int, money, parseJson, useDebounced,
+} from './helpers';
 
 const STATUSES = ['OVERPAID', 'UNDERPAID', 'DATA_ERROR'];
 const PAGE_SIZES = [20, 50, 100];
 const PARTS = [
-  ['base', null], ['disability', 'disability'], ['health', 'children'],
+  ['base', null], ['disability', 'disability'], ['pregnancy', 'pregnancy'], ['health', 'children'],
   ['primary', 'primary_students'], ['secondary', 'secondary_students'],
 ];
 
 const useStyles = makeStyles((theme) => ({
-  card: { padding: 20, height: '100%' },
-  cardLabel: { color: theme.palette.primary.main },
-  band: { ...theme.table.title, padding: theme.spacing(1, 2), marginTop: theme.spacing(3) },
-  filters: { margin: theme.spacing(2, 0), alignItems: 'center' },
-  note: { color: theme.palette.text.secondary, display: 'block', marginTop: theme.spacing(1) },
+  ...cardStyles(theme),
   bold: { fontWeight: 600 },
-  link: { padding: 0, minWidth: 0, textTransform: 'none', fontWeight: 500 },
+  error: { color: theme.palette.error.main },
 }));
 
-const int = (v) => (v ?? 0).toLocaleString();
-const money = (v) => (v == null ? '-' : v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
-
-function PreAuditCompliance({ paymentWindow }) {
+function PreAuditCompliance({ paymentWindow, locationId }) {
   const classes = useStyles();
   const dispatch = useDispatch();
   const modulesManager = useModulesManager();
@@ -42,27 +38,35 @@ function PreAuditCompliance({ paymentWindow }) {
   const uuid = cycleUuid(paymentWindow);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
+  const searchTerm = useDebounced(search);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0]);
+  useEffect(() => setPage(0), [locationId]);
   const [nonce, setNonce] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
   const [household, setHousehold] = useState(null);
 
   const { isLoading, data, error } = useGraphqlQuery(
-    `query PreAuditCompliance($id: UUID!, $status: String, $search: String, $offset: Int, $limit: Int) {
-      preAuditCompliance(paymentCycleId: $id, status: $status, search: $search, offset: $offset, limit: $limit)
+    `query PreAuditCompliance($id: UUID!, $loc: Int, $status: String, $search: String, $offset: Int, $limit: Int) {
+      preAuditCompliance(paymentCycleId: $id, locationId: $loc, status: $status, search: $search, offset: $offset,
+        limit: $limit)
     } # ${nonce}`,
     {
-      id: uuid, status: status || null, search: search || null, offset: page * pageSize, limit: pageSize,
+      id: uuid,
+      loc: locationId || null,
+      status: status || null,
+      search: searchTerm || null,
+      offset: page * pageSize,
+      limit: pageSize,
     },
     { skip: !uuid, keepStale: true },
   );
 
   if (!uuid) return <Typography>{formatMessage('preAudit.overview.chooseWindow')}</Typography>;
   if (error) return <Typography color="error">{formatMessage('preAudit.compliance.error')}</Typography>;
-  const raw = data?.preAuditCompliance;
-  const report = (typeof raw === 'string' ? JSON.parse(raw) : raw) || null;
+  const report = parseJson(data?.preAuditCompliance);
   if (!report) return <CircularProgress />;
 
   const totals = report.totals || {};
@@ -71,21 +75,32 @@ function PreAuditCompliance({ paymentWindow }) {
 
   const recalculate = async () => {
     setRefreshing(true);
-    await dispatch(graphql(`{ preAuditCompliance(paymentCycleId: "${uuid}", limit: 1, refresh: true) }`,
-      'TASAF_PAYMENT_PRE_AUDIT_COMPLIANCE_REFRESH'));
+    await dispatch(graphqlWithVariables(
+      'query ($id: UUID!, $loc: Int) { preAuditCompliance(paymentCycleId: $id, locationId: $loc, limit: 1, refresh: true) }',
+      { id: uuid, loc: locationId || null },
+      'TASAF_PAYMENT_PRE_AUDIT_COMPLIANCE_REFRESH',
+    ));
     setRefreshing(false);
     setNonce((n) => n + 1);
   };
 
   const exportCsv = async () => {
     setExporting(true);
-    const args = [`paymentCycleId: "${uuid}"`];
-    if (status) args.push(`status: "${status}"`);
-    const response = await dispatch(graphql(`{ preAuditComplianceExport(${args.join(', ')}) }`,
-      'TASAF_PAYMENT_PRE_AUDIT_COMPLIANCE_EXPORT'));
-    const name = response?.payload?.data?.preAuditComplianceExport;
-    if (name) dispatch(downloadExport(name, `${formatMessage('preAudit.compliance.filename')}.csv`, 'csv'));
-    setExporting(false);
+    setExportFailed(false);
+    try {
+      const response = await dispatch(graphqlWithVariables(
+        'query ($id: UUID!, $loc: Int, $status: String) { preAuditComplianceExport(paymentCycleId: $id, locationId: $loc, status: $status) }',
+        { id: uuid, loc: locationId || null, status: status || null },
+        'TASAF_PAYMENT_PRE_AUDIT_COMPLIANCE_EXPORT',
+      ));
+      const name = response?.payload?.data?.preAuditComplianceExport;
+      if (!name) throw new Error('no export');
+      dispatch(downloadExport(name, `${formatMessage('preAudit.compliance.filename')}.csv`, 'csv'));
+    } catch (e) {
+      setExportFailed(true);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const cards = [
@@ -181,7 +196,7 @@ function PreAuditCompliance({ paymentWindow }) {
         </Grid>
         <Grid item>
           <Button startIcon={<RefreshIcon />} color="primary" disabled={isLoading || refreshing} onClick={recalculate}>
-            {formatMessage('preAudit.compliance.refresh')}
+            {formatMessage('preAudit.refresh')}
           </Button>
         </Grid>
         <Grid item>
@@ -190,6 +205,9 @@ function PreAuditCompliance({ paymentWindow }) {
           </Button>
         </Grid>
         {(isLoading || refreshing) && <Grid item><CircularProgress size={24} /></Grid>}
+        {exportFailed && (
+          <Grid item><Typography className={classes.error}>{formatMessage('preAudit.compliance.exportFailed')}</Typography></Grid>
+        )}
       </Grid>
       <Paper>
         <Table

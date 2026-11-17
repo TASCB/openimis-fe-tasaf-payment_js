@@ -10,21 +10,20 @@ import {
 import { MODULE_NAME } from '../../constants';
 import PreAuditHousehold from './PreAuditHousehold';
 import { cycleUuid } from './cycleUuid';
+import {
+  cardStyles, int, money, parseJson,
+} from './helpers';
 
 const CARDS = [['MNO', 'preAudit.card.mno'], ['BANK', 'preAudit.card.bank'], ['TOTAL', 'preAudit.card.total']];
 
 const useStyles = makeStyles((theme) => ({
-  card: { padding: 20, height: '100%' },
-  cardLabel: { color: theme.palette.primary.main },
+  ...cardStyles(theme),
   amount: { fontWeight: 500 },
   note: { marginTop: theme.spacing(2) },
   lookup: { marginTop: theme.spacing(3), alignItems: 'center' },
 }));
 
-const int = (v) => (v ?? 0).toLocaleString();
-const money = (v) => (v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
-
-function PreAuditOverview({ paymentWindow }) {
+function PreAuditOverview({ paymentWindow, locationId }) {
   const classes = useStyles();
   const modulesManager = useModulesManager();
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
@@ -33,8 +32,8 @@ function PreAuditOverview({ paymentWindow }) {
   const [opened, setOpened] = useState(null);
 
   const { isLoading, data, error } = useGraphqlQuery(
-    'query PreAuditWindowOverview($id: UUID!) { preAuditWindowOverview(paymentCycleId: $id) }',
-    { id: uuid },
+    'query PreAuditWindowOverview($id: UUID!, $loc: Int) { preAuditWindowOverview(paymentCycleId: $id, locationId: $loc) }',
+    { id: uuid, loc: locationId || null },
     { skip: !uuid },
   );
 
@@ -42,8 +41,7 @@ function PreAuditOverview({ paymentWindow }) {
   if (isLoading) return <CircularProgress />;
   if (error) return <Typography color="error">{formatMessage('preAudit.overview.error')}</Typography>;
 
-  const raw = data?.preAuditWindowOverview;
-  const overview = (typeof raw === 'string' ? JSON.parse(raw) : raw) || {};
+  const overview = parseJson(data?.preAuditWindowOverview) || {};
 
   return (
     <>
@@ -61,7 +59,7 @@ function PreAuditOverview({ paymentWindow }) {
                 <Typography variant="h6" gutterBottom className={classes.cardLabel}>
                   {formatMessage(label)}
                 </Typography>
-                <Typography variant="h5" className={classes.amount}>{money(values.amount)}</Typography>
+                <Typography variant="h5" className={classes.amount}>{money(values.amount ?? 0)}</Typography>
                 <Typography variant="body2" color="textSecondary">
                   {formatMessageWithValues('preAudit.card.counts', {
                     households: int(values.households), payments: int(values.benefits),

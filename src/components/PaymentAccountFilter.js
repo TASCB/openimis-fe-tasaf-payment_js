@@ -41,6 +41,7 @@ function PaymentAccountFilter({
   verificationTabs = null,
   onChangeLocation = null,
   location = null,
+  allowRegion = false,
 }) {
   const classes = useStyles();
   const fieldCount = 3 + (showStatusFilter && fixedVerificationStatus === null ? 1 : 0)
@@ -145,6 +146,7 @@ function PaymentAccountFilter({
         <Grid item xs={12} className={classes.item}>
           <PaaLocationFilter
             value={location}
+            allowRegion={allowRegion}
             onChange={(loc) => {
               onChangeLocation?.(loc);
               onChangeFilters([

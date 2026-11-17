@@ -564,6 +564,7 @@ export function runBatchPreAudit(filters, clientMutationLabel) {
   // Location is the legacy integer PK, so unquoted.
   if (filters.locationId) parts.push(`locationId: ${filters.locationId}`);
   if (filters.rerun !== undefined) parts.push(`rerun: ${filters.rerun}`);
+  if (filters.allHouseholds) parts.push('allHouseholds: true');
   const mutation = formatMutation('runBatchPreAudit', parts.join(', '), clientMutationLabel);
   return graphql(
     mutation.payload,
