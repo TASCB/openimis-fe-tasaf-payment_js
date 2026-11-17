@@ -37,6 +37,7 @@ import {
 import {
   fetchPaylistItems, approvePaylist, submitPaylist, moveRejectedToCaseManagement, fetchPaylistHeader,
   fetchPaylistForExport, fetchMusePaylistPreview, fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems,
+  fetchPaylistBenefitBreakdown, exportPaylistBenefitBreakdown,
 } from '../actions';
 import StatusChip from '../components/StatusChip';
 import ReturnedPaymentDialog from '../components/ReturnedPaymentDialog';
@@ -46,6 +47,7 @@ import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
 import PaylistSummary from '../components/PaylistSummary';
 import PaylistActionNotice from '../components/PaylistActionNotice';
 import MuseLogPanel from '../components/MuseLogPanel';
+import BenefitBreakdownPanel from '../components/BenefitBreakdownPanel';
 import MuseRejectionPanel from '../components/MuseRejectionPanel';
 import { PAYLIST_ITEMS_ACTIONS_KEY, PaylistActionsContext } from '../components/PaylistItemsActions';
 import { defaultPageStyles } from '../utils/styles';
@@ -116,6 +118,8 @@ function PaylistDetailPage({
   paylistItemsExport,
   fetchingPaylistItemsExport,
   exportPaylistItems,
+  fetchPaylistBenefitBreakdown,
+  exportPaylistBenefitBreakdown,
   downloadExport,
   paylistExport,
   fetchingPaylistExport,
@@ -139,6 +143,9 @@ function PaylistDetailPage({
   const [location, setLocation] = useState(null);
   const [exportRequested, setExportRequested] = useState(false);
   const [returnedItem, setReturnedItem] = useState(null);
+  const [breakdown, setBreakdown] = useState(null);
+  const [fetchingBreakdown, setFetchingBreakdown] = useState(false);
+  const [exportingBreakdown, setExportingBreakdown] = useState(false);
   const itemParamsRef = useRef([]);
 
   const fetchItems = (params) => {
@@ -187,6 +194,25 @@ function PaylistDetailPage({
 
   const paylist = paylistHeader?.uuid === paylistUuid ? paylistHeader : null;
   const status = paylist?.status;
+  const showBreakdown = !!status && status !== PAYLIST_STATUS.REJECTED_AT_APPROVAL;
+  useEffect(() => {
+    if (!showBreakdown) return;
+    setFetchingBreakdown(true);
+    fetchPaylistBenefitBreakdown(paylistUuid).then((r) => {
+      const raw = r?.payload?.data?.paylistBenefitBreakdown;
+      setBreakdown(typeof raw === 'string' ? JSON.parse(raw || 'null') : raw || null);
+      setFetchingBreakdown(false);
+    });
+  }, [showBreakdown, paylistUuid, status, paylist?.pendingCount]);
+  const handleExportBreakdown = () => {
+    setExportingBreakdown(true);
+    exportPaylistBenefitBreakdown(paylistUuid).then((r) => {
+      setExportingBreakdown(false);
+      const name = r?.payload?.data?.paylistBenefitBreakdownExport;
+      const file = `${formatMessage('breakdown.filename')}_${breakdown?.reference || ''}.csv`;
+      if (name) downloadExport(name, file, 'csv')();
+    });
+  };
   const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL;
   const awaitingMuse = status === PAYLIST_STATUS.SUBMITTED;
   useEffect(() => {
@@ -196,7 +222,7 @@ function PaylistDetailPage({
   }, [awaitingMuse, paylistUuid]);
   const isResend = status === PAYLIST_STATUS.REJECTED;
   const canSubmit = SUBMITTABLE.includes(status) && !(isResend && paylist?.pendingCount === 0)
-    && !paylist?.lastSubmit?.sending;
+    && !paylist?.lastSubmit?.sending && !breakdown?.blocked;
   const back = () => (history.length > 1
     ? history.goBack()
     : history.push(`/${modulesManager.getRef('tasafPayment.route.workspace')}?tab=${WS_TAB_PAYLISTS}`));
@@ -372,6 +398,16 @@ function PaylistDetailPage({
         </FilterExtrasProvider>
         <ReturnedPaymentDialog item={returnedItem} onClose={() => setReturnedItem(null)} />
       </PaylistActionsContext.Provider>
+      {showBreakdown && (
+        <BenefitBreakdownPanel
+          t={formatMessage}
+          tv={formatMessageWithValues}
+          breakdown={breakdown}
+          fetching={fetchingBreakdown}
+          exporting={exportingBreakdown}
+          onExport={handleExportBreakdown}
+        />
+      )}
       {paylist?.destination === 'MUSE' && (
         <MuseLogPanel
           t={formatMessage}
@@ -419,6 +455,7 @@ const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
     fetchPaylistItems, approvePaylist, submitPaylist, moveRejectedToCaseManagement, fetchPaylistHeader,
     fetchPaylistForExport, fetchMusePaylistPreview, fetchPaylistMuseLog, fetchPaylistFspOptions, exportPaylistItems, downloadExport,
+    fetchPaylistBenefitBreakdown, exportPaylistBenefitBreakdown,
     journalize, coreConfirm, clearConfirm,
   },
   dispatch,

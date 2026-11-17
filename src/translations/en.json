@@ -1075,5 +1075,19 @@
   "tasafPayment.returned.withdraw.confirmSend": "Confirm and send",
   "tasafPayment.returned.withdraw.mutation": "Send unapplied withdrawals to MUSE",
   "tasafPayment.returned.withdraw.failed": "The withdrawals could not be sent",
-  "tasafPayment.returned.withdraw.done": "Sending to MUSE in the background. You get a notification with the result."
+  "tasafPayment.returned.withdraw.done": "Sending to MUSE in the background. You get a notification with the result.",
+  "tasafPayment.breakdown.title": "Benefit breakdown",
+  "tasafPayment.breakdown.export": "Download CSV",
+  "tasafPayment.breakdown.filename": "benefit_breakdown",
+  "tasafPayment.breakdown.blocked": "This batch cannot be submitted until its benefit breakdown adds up to the batch total.",
+  "tasafPayment.breakdown.col.line": "Line",
+  "tasafPayment.breakdown.col.households": "Households",
+  "tasafPayment.breakdown.col.people": "People",
+  "tasafPayment.breakdown.col.amount": "Amount (TZS)",
+  "tasafPayment.breakdown.components": "Components total",
+  "tasafPayment.breakdown.cap": "Household cap reduction",
+  "tasafPayment.breakdown.benefits": "Benefits",
+  "tasafPayment.breakdown.charges": "Withdrawal charges",
+  "tasafPayment.breakdown.unexplained": "Unexplained difference",
+  "tasafPayment.breakdown.batch": "Batch total sent to MUSE ({reference})"
 }

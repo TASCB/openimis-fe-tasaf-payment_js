@@ -808,6 +808,16 @@ export function exportPaylistItems(paylistUuid, filterArgs) {
   return graphql(`{ paylistItemsExport(${args.join(', ')}) }`, ACTION_TYPE.EXPORT_PAYLIST_ITEMS);
 }
 
+export function fetchPaylistBenefitBreakdown(paylistUuid) {
+  return graphql(`{ paylistBenefitBreakdown(paylistUuid: "${paylistUuid}") }`, ACTION_TYPE.PAYLIST_BENEFIT_BREAKDOWN);
+}
+
+export function exportPaylistBenefitBreakdown(paylistUuid) {
+  return graphql(
+    `{ paylistBenefitBreakdownExport(paylistUuid: "${paylistUuid}") }`, ACTION_TYPE.EXPORT_PAYLIST_BENEFIT_BREAKDOWN,
+  );
+}
+
 // ─── Reports (read-only, auditor tab) ──────────────────────────────────────────
 
 export const reportFilterArgs = ({
