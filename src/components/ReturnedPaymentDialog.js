@@ -1,37 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useHistory } from 'react-router-dom';
-import { Button, TextField } from '@material-ui/core';
+import {
+  Button, Divider, Link, TextField, Tooltip,
+} from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
-import UndoIcon from '@material-ui/icons/Undo';
 import { useModulesManager, useTranslations, formatDateFromISO } from '@openimis/fe-core';
 import {
-  PreviewDialog, PreviewField, PreviewSection, usePreviewStyles, PREVIEW_BORDER, PREVIEW_MUTED,
+  PreviewDialog, PreviewField, PreviewSection, usePreviewStyles, PREVIEW_INK, PREVIEW_MUTED,
 } from '@openimis/fe-tasaf_common';
 
 import { MODULE_NAME, UNAPPLIED_ACTIONS } from '../constants';
 
-const PROGRESS_GREY = '#9e9e9e';
-
 const REPAY_STEPS = ['RETURNED', 'AWAITING_ACTION', 'REPAYING', 'REPAID'];
 const CASE_STEPS = ['RETURNED', 'AWAITING_ACTION', 'IN_CORRECTION', 'REPAYING', 'REPAID'];
 const NO_STEPS = ['LAPSED', 'UNAPPLIED_WITHDRAWN'];
+const HINTED = ['IN_CORRECTION', 'REPAYING', 'REPAID', 'LAPSED', 'UNAPPLIED_WITHDRAWN'];
 
 const useStyles = makeStyles((theme) => ({
-  identity: { alignItems: 'center', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 10 },
-  tile: {
-    width: 64, height: 64, borderRadius: 16, background: theme.palette.primary.main, color: '#fff',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', '& svg': { fontSize: 32 },
+  identity: { display: 'flex', flexDirection: 'column', gap: 16 },
+  payee: { display: 'flex', flexDirection: 'column', gap: 4 },
+  amount: { fontSize: 24, fontWeight: 800, color: PREVIEW_INK, lineHeight: 1.2 },
+  waiting: { fontSize: 15, fontWeight: 700, color: theme.palette.warning?.dark || '#b45309' },
+  facts: { display: 'flex', flexDirection: 'column', gap: 14 },
+  steps: {
+    display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20, fontSize: 13,
   },
-  steps: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 },
-  step: {
-    padding: '4px 10px', borderRadius: 14, fontSize: 12, border: `1px solid ${PREVIEW_BORDER}`, color: PREVIEW_MUTED,
-  },
-  reason: { fontSize: 15, fontWeight: 600, marginBottom: 4 },
+  step: { color: PREVIEW_MUTED },
+  stepCurrent: { color: PREVIEW_INK, fontWeight: 700 },
+  stepSep: { color: PREVIEW_MUTED },
+  reason: { fontSize: 15, fontWeight: 600, marginBottom: 12, color: theme.palette.error.main },
+  decisionTaken: { fontSize: 15, fontWeight: 600, marginBottom: 4, color: PREVIEW_INK },
   section: { marginTop: 20 },
   hint: { fontSize: 12.5, color: PREVIEW_MUTED, marginTop: 6 },
-  error: { color: theme.palette.error.main, fontSize: 13, marginRight: 'auto' },
+  error: { color: theme.palette.error.main, fontSize: 13 },
+  confirm: { color: PREVIEW_INK, fontSize: 13.5, fontWeight: 600 },
 }));
+
+const money = (v) => (v == null || v === '' ? null : `TZS ${Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 })}`);
 
 const parse = (value) => (typeof value === 'string' ? JSON.parse(value || 'null') : value);
 
@@ -47,8 +53,13 @@ function ReturnedPaymentDialog({ item, onClose, canDecide, onDecide }) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [noteError, setNoteError] = useState(false);
+  const [confirming, setConfirming] = useState(null);
+  const noteRef = useRef(null);
 
-  useEffect(() => { setNote(''); setError(null); setBusy(false); }, [item?.uuid]);
+  useEffect(() => {
+    setNote(''); setError(null); setBusy(false); setNoteError(false); setConfirming(null);
+  }, [item?.uuid]);
 
   const row = item || {};
   const account = row.paymentAccount || {};
@@ -64,30 +75,104 @@ function ReturnedPaymentDialog({ item, onClose, canDecide, onDecide }) {
   const go = (path) => { onClose(); history.push(path); };
   const actionLabel = (action) => formatMessage(`returned.action.${action}`);
 
-  const decide = async (action) => {
+  const send = async (action) => {
     setBusy(true);
     setError(null);
     const message = await onDecide(row, action, note.trim());
     setBusy(false);
+    setConfirming(null);
     if (message) setError(message);
   };
 
+  const decide = (action) => {
+    const noteNeeded = action === 'WITHDRAW' || (row.suggestedAction && action !== row.suggestedAction);
+    if (noteNeeded && !note.trim()) {
+      setNoteError(true);
+      noteRef.current?.focus();
+      return;
+    }
+    if (action === 'WITHDRAW') setConfirming(action);
+    else send(action);
+  };
+
+  const daysWaiting = awaiting && row.returnedAt
+    ? Math.max(0, Math.floor((Date.now() - new Date(row.returnedAt).getTime()) / 86400000))
+    : null;
+
   const aside = (
     <div className={classes.identity}>
-      <div className={classes.tile}><UndoIcon /></div>
-      <h2 className={p.heading}>{account.groupBeneficiary?.group?.code ?? '—'}</h2>
-      <span className={p.code}>{account.accountName || row.payeeCode}</span>
-      <div className={p.tags} style={{ justifyContent: 'center' }}>
-        <span className={p.tag}>{formatMessage(`paylistItem.status.${row.status}`)}</span>
-        {resolution && (
-          <span className={p.statusTag} style={{ background: PROGRESS_GREY, color: '#fff' }}>
-            {formatMessage(`returned.resolution.${resolution}`)}
-          </span>
+      <div className={classes.payee}>
+        <h2 className={p.heading}>{account.accountName || row.payeeCode || '—'}</h2>
+        <span className={p.code}>{account.groupBeneficiary?.group?.code ?? '—'}</span>
+        {reached < 0 && resolution && <span className={p.sub}>{formatMessage(`returned.resolution.${resolution}`)}</span>}
+      </div>
+      <Divider />
+      <div className={classes.facts}>
+        <div>
+          <div className={p.label}>{formatMessage('paylistItem.amount')}</div>
+          <div className={classes.amount}>{money(row.amount) || '—'}</div>
+        </div>
+        {row.returnedAt && (
+          <div>
+            {daysWaiting != null && (
+              <div className={classes.waiting}>
+                {formatMessageWithValues('returned.daysWaitingValue', { days: daysWaiting })}
+              </div>
+            )}
+            <div className={p.sub}>{formatMessageWithValues('returned.receivedOn', { date: fmtDate(row.returnedAt) })}</div>
+          </div>
         )}
       </div>
-      <PreviewField label={formatMessage('paylistItem.amount')} value={row.amount} />
+      <Divider />
+      <div className={classes.facts}>
+        <PreviewField label={formatMessage('paylistItem.accountNumber')} value={account.accountNumber} />
+        <PreviewField label={formatMessage('returned.provider')} value={account.fspName} />
+        <PreviewField
+          label={formatMessage('returned.verification')}
+          value={account.verificationStatus != null
+            ? formatMessage(`paymentAccount.verificationStatus.${verificationKey(account.verificationStatus)}`) : null}
+        />
+        {followUp && (
+          <PreviewField
+            label={formatMessage('returned.followUp')}
+            value={account.uuid ? (
+              <Link component="button" onClick={() => go(`/caseManagement/accountCorrection/${account.uuid}`)}>
+                {formatMessage(`returned.followUp.${followUp.status}`)}
+              </Link>
+            ) : formatMessage(`returned.followUp.${followUp.status}`)}
+          />
+        )}
+      </div>
     </div>
   );
+
+  const deciding = canDecide && awaiting && !decision;
+  const meta = (confirming && <span className={classes.confirm}>{formatMessage(`returned.decision.confirm.${confirming}`)}</span>)
+    || (error && <span className={classes.error}>{error}</span>);
+  const actions = deciding && (confirming ? (
+    <>
+      <Button onClick={() => setConfirming(null)} disabled={busy}>
+        {formatMessage('returned.decision.confirm.cancel')}
+      </Button>
+      <Button color="primary" variant="contained" disableElevation disabled={busy} onClick={() => send(confirming)}>
+        {actionLabel(confirming)}
+      </Button>
+    </>
+  ) : UNAPPLIED_ACTIONS.slice().reverse().map((action) => (
+    <Tooltip key={action} title={formatMessage(`returned.action.${action}.hint`)} arrow>
+      <span>
+        <Button
+          color="primary"
+          variant={action === (row.suggestedAction || 'REPAY') ? 'contained' : 'text'}
+          disableElevation
+          disabled={busy}
+          onClick={() => decide(action)}
+        >
+          {actionLabel(action)}
+        </Button>
+      </span>
+    </Tooltip>
+  )));
 
   return (
     <PreviewDialog
@@ -96,52 +181,18 @@ function ReturnedPaymentDialog({ item, onClose, canDecide, onDecide }) {
       title={formatMessage('returned.dialog.title')}
       closeLabel={formatMessage('review.close')}
       aside={aside}
-      meta={row.returnedAt ? <span>{fmtDate(row.returnedAt)}</span> : null}
-      actions={(
-        <>
-          {error && <span className={classes.error}>{error}</span>}
-          {row.paylist?.uuid && (
-            <Button color="primary" onClick={() => go(`/tasafPayment/paylist/${row.paylist.uuid}`)}>
-              {formatMessage('returned.action.openPaylist')}
-            </Button>
-          )}
-          {account.uuid && followUp && (
-            <Button color="primary" onClick={() => go(`/caseManagement/accountCorrection/${account.uuid}`)}>
-              {formatMessage('returned.action.openCorrection')}
-            </Button>
-          )}
-          {canDecide && awaiting && (
-            <>
-              {UNAPPLIED_ACTIONS.slice().reverse().map((action) => {
-                const primary = action === (row.suggestedAction || 'REPAY');
-                return (
-                  <Button
-                    key={action}
-                    color="primary"
-                    variant={primary ? 'contained' : 'text'}
-                    disableElevation
-                    disabled={busy}
-                    onClick={() => decide(action)}
-                  >
-                    {actionLabel(action)}
-                  </Button>
-                );
-              })}
-            </>
-          )}
-        </>
-      )}
+      meta={meta || null}
+      actions={actions || null}
     >
       {reached >= 0 && (
         <div className={classes.steps}>
           {steps.map((step, index) => (
-            <span
-              key={step}
-              className={classes.step}
-              style={index <= reached ? { background: PROGRESS_GREY, color: '#fff', borderColor: 'transparent' } : {}}
-            >
-              {formatMessage(`returned.resolution.${step}`)}
-            </span>
+            <React.Fragment key={step}>
+              {index > 0 && <span className={classes.stepSep}>›</span>}
+              <span className={index === reached ? classes.stepCurrent : classes.step}>
+                {formatMessage(`returned.resolution.${step}`)}
+              </span>
+            </React.Fragment>
           ))}
         </div>
       )}
@@ -150,38 +201,27 @@ function ReturnedPaymentDialog({ item, onClose, canDecide, onDecide }) {
         <div className={classes.reason}>{row.returnReason || '—'}</div>
         <div className={p.grid}>
           <PreviewField label={formatMessage('returnFeedback.reasonCode')} value={row.returnReasonCode} />
-          <PreviewField label={formatMessage('paylist.museBatchReference')} value={row.paylist?.museBatchReference} />
-          <PreviewField label={formatMessage('paylistItem.benefitCode')} value={row.benefitConsumption?.code} />
+          <PreviewField
+            label={formatMessage('paylist.museBatchReference')}
+            value={row.paylist?.uuid && row.paylist?.museBatchReference ? (
+              <Link component="button" onClick={() => go(`/tasafPayment/paylist/${row.paylist.uuid}`)}>
+                {row.paylist.museBatchReference}
+              </Link>
+            ) : row.paylist?.museBatchReference}
+          />
+          <PreviewField label={formatMessage('returned.benefitCode')} value={row.benefitConsumption?.code} />
           {row.status === 'UNAPPLIED' && (
             <PreviewField label={formatMessage('returned.timesReturned')} value={row.timesReturned} />
           )}
         </div>
       </PreviewSection>
 
-      <div className={classes.section}>
-        <PreviewSection label={formatMessage('returned.section.account')}>
-          <div className={p.grid}>
-            <PreviewField label={formatMessage('paylistItem.accountNumber')} value={account.accountNumber} />
-            <PreviewField label={formatMessage('paylistItem.fspName')} value={account.fspName} />
-            <PreviewField
-              label={formatMessage('returned.verification')}
-              value={account.verificationStatus != null
-                ? formatMessage(`paymentAccount.verificationStatus.${verificationKey(account.verificationStatus)}`) : null}
-            />
-            <PreviewField
-              label={formatMessage('returned.followUp')}
-              value={followUp ? formatMessage(`returned.followUp.${followUp.status}`) : formatMessage('returned.followUp.none')}
-            />
-          </div>
-        </PreviewSection>
-      </div>
-
-      {(decision || (canDecide && awaiting)) && (
+      {(decision || deciding) && (
         <div className={classes.section}>
           <PreviewSection label={formatMessage('returned.section.decision')}>
             {decision ? (
               <>
-                <div className={classes.reason}>
+                <div className={classes.decisionTaken}>
                   {formatMessageWithValues('returned.decision.taken', {
                     action: actionLabel(decision.action), by: decision.by, date: fmtDate(decision.at),
                   })}
@@ -208,51 +248,49 @@ function ReturnedPaymentDialog({ item, onClose, canDecide, onDecide }) {
               </>
             ) : (
               <>
-                <div className={classes.hint} style={{ marginTop: 0, marginBottom: 10 }}>
+                <div className={classes.hint} style={{ marginTop: 0, marginBottom: 12 }}>
                   {row.suggestedAction
                     ? formatMessageWithValues('returned.decision.suggested', { action: actionLabel(row.suggestedAction) })
                     : formatMessage('returned.decision.noSuggestion')}
                 </div>
                 <TextField
+                  label={formatMessage('returned.decision.note')}
                   value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder={formatMessage('returned.decision.notePlaceholder')}
+                  onChange={(e) => { setNote(e.target.value); setNoteError(false); }}
+                  helperText={formatMessage(noteError ? 'returned.decision.noteRequired' : 'returned.decision.noteHelp')}
+                  error={noteError}
+                  inputRef={noteRef}
                   multiline
                   rows={2}
                   fullWidth
                   variant="outlined"
                   disabled={busy}
                 />
-                {UNAPPLIED_ACTIONS.map((action) => (
-                  <div key={action} className={classes.hint}>
-                    <strong>{actionLabel(action)}</strong>
-                    {' — '}
-                    {formatMessage(`returned.action.${action}.hint`)}
-                  </div>
-                ))}
               </>
             )}
           </PreviewSection>
         </div>
       )}
 
-      <div className={classes.section}>
-        <PreviewSection label={formatMessage('returned.section.repayment')}>
-          <div className={p.grid}>
-            <PreviewField
-              label={formatMessage('returned.repaidOn')}
-              value={repayment
-                ? `${repayment.museBatchReference || repayment.paylistUuid.slice(0, 8)} · ${formatMessage(`paylistItem.status.${repayment.itemStatus}`)}`
-                : (resolution ? formatMessage(`returned.resolution.${resolution}.hint`) : '—')}
-            />
-          </div>
-          {repayment && (
-            <Button size="small" color="primary" onClick={() => go(`/tasafPayment/paylist/${repayment.paylistUuid}`)}>
-              {formatMessage('returned.action.openRepayment')}
-            </Button>
-          )}
-        </PreviewSection>
-      </div>
+      {(repayment || HINTED.includes(resolution)) && (
+        <div className={classes.section}>
+          <PreviewSection label={formatMessage('returned.section.repayment')}>
+            {repayment ? (
+              <>
+                <div className={p.grid}>
+                  <PreviewField
+                    label={formatMessage('returned.repaidOn')}
+                    value={`${repayment.museBatchReference || repayment.paylistUuid.slice(0, 8)} · ${formatMessage(`paylistItem.status.${repayment.itemStatus}`)}`}
+                  />
+                </div>
+                <Button size="small" color="primary" onClick={() => go(`/tasafPayment/paylist/${repayment.paylistUuid}`)}>
+                  {formatMessage('returned.action.openRepayment')}
+                </Button>
+              </>
+            ) : <div className={p.text}>{formatMessage(`returned.resolution.${resolution}.hint`)}</div>}
+          </PreviewSection>
+        </div>
+      )}
     </PreviewDialog>
   );
 }

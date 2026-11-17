@@ -37,10 +37,6 @@ const parseList = (raw) => {
   try { return (typeof raw === 'string' ? JSON.parse(raw || '[]') : raw) || []; } catch (e) { return []; }
 };
 
-const parseDecision = (value) => {
-  try { return typeof value === 'string' ? JSON.parse(value || 'null') : value; } catch (e) { return null; }
-};
-
 const useStyles = makeStyles((theme) => ({
   ...defaultPageStyles(theme),
   notice: { margin: '8px 16px', fontSize: 13, color: theme.palette.text.secondary },
@@ -51,6 +47,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const MUTATION_SUCCESS = 2;
+const AWAITING_ACTION = 'AWAITING_ACTION';
 
 function UnappliedPaymentsPage({
   fetchUnappliedItems,
@@ -73,8 +70,14 @@ function UnappliedPaymentsPage({
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
   const location = useLocation();
   const linked = new URLSearchParams(location.search);
-  const defaultFilters = Object.fromEntries(['resolution', 'fspName'].filter((key) => linked.get(key))
+  const linkedFilters = Object.fromEntries(['resolution', 'fspName'].filter((key) => linked.get(key))
     .map((key) => [key, { value: linked.get(key), filter: `${key}: "${linked.get(key).replace(/"/g, '')}"` }]));
+  const defaultFilters = linked.get('resolution') ? linkedFilters : {
+    ...linkedFilters,
+    resolution: { value: AWAITING_ACTION, filter: `resolution: "${AWAITING_ACTION}"` },
+  };
+  const awaitingFirst = defaultFilters.resolution.value === AWAITING_ACTION;
+  const [progress, setProgress] = useState(defaultFilters.resolution.value);
   const [selected, setSelected] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [withdrawals, setWithdrawals] = useState(0);
@@ -129,7 +132,10 @@ function UnappliedPaymentsPage({
     else setNotice(formatMessage('returned.export.failed'));
   };
 
-  const fetch = (params) => fetchUnappliedItems([...(params || []), 'status: UNAPPLIED']);
+  const fetch = (params) => {
+    setProgress((params || []).join(' ').match(/resolution: "(\w+)"/)?.[1] ?? null);
+    return fetchUnappliedItems([...(params || []), 'status: UNAPPLIED']);
+  };
 
   const headers = () => [
     formatMessage('paylistItem.hhid'),
@@ -137,10 +143,8 @@ function UnappliedPaymentsPage({
     formatMessage('paylistItem.accountNumber'),
     formatMessage('paylistItem.amount'),
     formatMessage('paylist.museBatchReference'),
-    formatMessage('returned.reason'),
     formatMessage('returnFeedback.receivedAt'),
     formatMessage('returned.daysWaiting'),
-    formatMessage('returned.suggested'),
     formatMessage('returned.progress'),
     '',
   ];
@@ -151,18 +155,10 @@ function UnappliedPaymentsPage({
     (row) => [row.paymentAccount?.accountNumber, row.paymentAccount?.fspName].filter(Boolean).join(' · ') || '-',
     (row) => row.amount ?? '-',
     (row) => row.paylist?.museBatchReference ?? '-',
-    (row) => [row.returnReasonCode, row.returnReason].filter(Boolean).join(' · ') || '-',
     (row) => formatDateTimeFromISO(modulesManager, null, row.returnedAt) || '-',
-    (row) => (row.resolution === 'AWAITING_ACTION' && row.returnedAt
+    (row) => (row.resolution === AWAITING_ACTION && row.returnedAt
       ? Math.max(0, Math.floor((Date.now() - new Date(row.returnedAt).getTime()) / 86400000))
       : '-'),
-    (row) => {
-      const decided = parseDecision(row.unappliedDecision)?.action;
-      if (decided) return formatMessage(`returned.action.${decided}`);
-      return row.suggestedAction
-        ? formatMessageWithValues('returned.suggestedShort', { action: formatMessage(`returned.action.${row.suggestedAction}`) })
-        : '-';
-    },
     (row) => (row.resolution
       ? <StatusChip label={formatMessage(`returned.resolution.${row.resolution}`)} />
       : '-'),
@@ -188,12 +184,16 @@ function UnappliedPaymentsPage({
         fetchingItems={fetchingUnappliedItems}
         fetchedItems={fetchedUnappliedItems}
         errorItems={errorUnappliedItems}
-        tableTitle={formatMessageWithValues('returned.searcher.results', { totalCount: unappliedItemsTotalCount })}
+        tableTitle={progress
+          ? formatMessageWithValues('returned.searcher.resultsByProgress', {
+            totalCount: unappliedItemsTotalCount, progress: formatMessage(`returned.resolution.${progress}`),
+          })
+          : formatMessageWithValues('returned.searcher.results', { totalCount: unappliedItemsTotalCount })}
         headers={headers}
         itemFormatters={itemFormatters}
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         defaultPageSize={DEFAULT_PAGE_SIZE}
-        defaultOrderBy="-dateUpdated"
+        defaultOrderBy={awaitingFirst ? 'dateUpdated' : '-dateUpdated'}
         rowIdentifier={(row) => row.id}
         onDoubleClick={(row) => setSelected(row)}
         searcherActions={searcherActions}
