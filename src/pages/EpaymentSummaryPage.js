@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import {
-  Button, Grid, Paper, Typography,
+  Button, Divider, Grid, Paper, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import {
@@ -14,19 +14,20 @@ import {
   DESTINATION_LIST, MODULE_NAME, RIGHT_REPORTS, WS_TAB_RETURNS,
 } from '../constants';
 import {
-  exportEpaymentSummaryByFsp, fetchEpaymentSummaryByFsp, fetchUnappliedReconciliation, fetchUnappliedSummary,
-  reportFilterArgs,
+  exportEpaymentSummaryByFsp, exportUnappliedReconciliation, fetchEpaymentSummaryByFsp, fetchUnappliedReconciliation,
+  fetchUnappliedSummary, reportFilterArgs,
 } from '../actions';
 import { cycleUuid } from '../components/preAudit/cycleUuid';
 import EpaymentFspItemsPage from './EpaymentFspItemsPage';
-import UnappliedReconciliationTable from '../components/UnappliedReconciliationTable';
+import UnappliedReconciliationPanel from '../components/UnappliedReconciliationPanel';
 
 const useStyles = makeStyles((theme) => ({
   page: theme.page,
   paper: theme.paper.paper,
   item: theme.paper.item,
-  tableTitle: theme.table.title,
-  titleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  paperHeader: theme.paper.header,
+  paperHeaderTitle: theme.paper.title,
+  paperHeaderAction: { ...theme.paper.action, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' },
   cards: { padding: theme.spacing(1) },
   card: { padding: 20, height: '100%' },
   clickable: { cursor: 'pointer' },
@@ -39,12 +40,12 @@ const useStyles = makeStyles((theme) => ({
 
 const TOTAL_KEY = '__total__';
 const int = (v) => (v ?? 0).toLocaleString();
-const money = (v) => (v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const money = (v) => (Number(v) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
 function EpaymentSummaryPage({
   epaymentSummary, fetchingEpaymentSummary, errorEpaymentSummary, fetchEpaymentSummaryByFsp,
   epaymentSummaryExport, fetchingEpaymentSummaryExport, exportEpaymentSummaryByFsp, downloadExport,
-  fetchUnappliedSummary, fetchUnappliedReconciliation,
+  fetchUnappliedSummary, fetchUnappliedReconciliation, exportUnappliedReconciliation,
 }) {
   const classes = useStyles();
   const history = useHistory();
@@ -58,7 +59,8 @@ function EpaymentSummaryPage({
   const [dateFrom, setDateFrom] = useState(null);
   const [dateTo, setDateTo] = useState(null);
   const [unapplied, setUnapplied] = useState(null);
-  const [reconciliation, setReconciliation] = useState([]);
+  const [reconciliation, setReconciliation] = useState(null);
+  const [exportingReconciliation, setExportingReconciliation] = useState(false);
 
   const filters = {
     paymentCycleUuid: cycleUuid(paymentCycle), destination, dateFrom, dateTo,
@@ -71,9 +73,9 @@ function EpaymentSummaryPage({
       const value = r?.payload?.data?.unappliedSummary;
       setUnapplied(typeof value === 'string' ? JSON.parse(value) : value ?? null);
     });
-    fetchUnappliedReconciliation(filters.paymentCycleUuid).then((r) => {
+    fetchUnappliedReconciliation(filters).then((r) => {
       const value = r?.payload?.data?.unappliedReconciliation;
-      setReconciliation((typeof value === 'string' ? JSON.parse(value || '[]') : value) || []);
+      setReconciliation((typeof value === 'string' ? JSON.parse(value || 'null') : value) || null);
     });
   }, [filterKey]);
 
@@ -87,6 +89,20 @@ function EpaymentSummaryPage({
       );
     }
   }, [epaymentSummaryExport]);
+
+  const exportReconciliation = async () => {
+    setExportingReconciliation(true);
+    const r = await exportUnappliedReconciliation(filters);
+    setExportingReconciliation(false);
+    const name = r?.payload?.data?.unappliedReconciliationExport;
+    if (name) downloadExport(name, `${formatMessage('returned.reconciliation.filename')}.csv`, 'csv');
+  };
+  const openUnapplied = (part, fsp) => {
+    const params = new URLSearchParams({ tab: WS_TAB_RETURNS });
+    if (part !== 'returned') params.set('resolution', part);
+    if (fsp) params.set('fspName', fsp);
+    history.push(`/tasafPayment/workspace?${params}`);
+  };
 
   if (!rights.includes(RIGHT_REPORTS)) return null;
 
@@ -238,18 +254,21 @@ function EpaymentSummaryPage({
           </Grid>
 
           <Paper className={classes.paper}>
-            <div className={`${classes.tableTitle} ${classes.titleRow}`}>
-              <Typography variant="h6">
+            <Grid container alignItems="center" className={classes.paperHeader}>
+              <Grid item xs={8} className={classes.paperHeaderTitle}>
                 {formatMessageWithValues('report.epaymentByFsp.heading', { count: rows.length })}
-              </Typography>
-              <Button
-                color="primary"
-                disabled={fetchingEpaymentSummaryExport || !rows.length}
-                onClick={() => exportEpaymentSummaryByFsp(filters)}
-              >
-                {formatMessage('report.export')}
-              </Button>
-            </div>
+              </Grid>
+              <Grid item xs={4} className={classes.paperHeaderAction}>
+                <Button
+                  color="primary"
+                  disabled={fetchingEpaymentSummaryExport || !rows.length}
+                  onClick={() => exportEpaymentSummaryByFsp(filters)}
+                >
+                  {formatMessage('report.export')}
+                </Button>
+              </Grid>
+            </Grid>
+            <Divider />
             <div className={classes.tableWrap}>
               <Table
                 module={MODULE_NAME}
@@ -266,17 +285,12 @@ function EpaymentSummaryPage({
             </Typography>
           </Paper>
 
-          <Paper className={classes.paper}>
-            <div className={classes.tableTitle}>
-              <Typography variant="h6">{formatMessage('returned.reconciliation.title')}</Typography>
-            </div>
-            <div className={classes.tableWrap}>
-              <UnappliedReconciliationTable rows={reconciliation} />
-            </div>
-            <Typography variant="caption" className={classes.note}>
-              {formatMessage('returned.reconciliation.help')}
-            </Typography>
-          </Paper>
+          <UnappliedReconciliationPanel
+            report={reconciliation}
+            exporting={exportingReconciliation}
+            onExport={exportReconciliation}
+            onOpen={openUnapplied}
+          />
         </>
       )}
     </div>
@@ -294,7 +308,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => bindActionCreators(
   {
     fetchEpaymentSummaryByFsp, exportEpaymentSummaryByFsp, downloadExport, fetchUnappliedSummary,
-    fetchUnappliedReconciliation,
+    fetchUnappliedReconciliation, exportUnappliedReconciliation,
   }, dispatch,
 );
 

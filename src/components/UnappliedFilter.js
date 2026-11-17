@@ -13,6 +13,7 @@ import { defaultFilterStyles } from '../utils/styles';
 const TEXT_FILTERS = [
   ['hhid', 'filter.hhid'],
   ['accountNumber', 'filter.accountNumber'],
+  ['fspName', 'filter.fspName'],
   ['batchReference', 'filter.museBatchReference'],
 ];
 
@@ -35,6 +36,7 @@ function UnappliedFilter({ classes, filters, onChangeFilters }) {
   const resolutionOptions = [
     { value: null, label: formatMessage('tooltip.any') },
     ...RETURN_RESOLUTIONS.map((r) => ({ value: r, label: formatMessage(`returned.resolution.${r}`) })),
+    { value: 'HELD', label: formatMessage('returned.resolution.HELD') },
   ];
 
   return (

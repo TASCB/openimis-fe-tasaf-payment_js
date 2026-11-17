@@ -1,34 +1,32 @@
 import React, { useState } from 'react';
 import {
-  Paper, Typography, IconButton, Tooltip, LinearProgress,
-  Table, TableBody, TableCell, TableHead, TableRow,
+  Divider, Grid, IconButton, LinearProgress, Paper, Tooltip, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import RefreshIcon from '@material-ui/icons/Refresh';
+import VisibilityOutlined from '@material-ui/icons/VisibilityOutlined';
+import { Table } from '@openimis/fe-core';
 import { formatDisplayTime } from '@openimis/fe-tasaf_common';
 
+import { MODULE_NAME } from '../constants';
+
 const useStyles = makeStyles((theme) => ({
-  paper: { ...theme.paper.paper, margin: 0, marginTop: theme.spacing(3), marginBottom: theme.spacing(2) },
-  header: {
-    ...theme.paper.header,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: theme.spacing(1),
-  },
+  paper: { ...theme.paper.body, marginTop: theme.spacing(3), marginBottom: theme.spacing(2) },
+  paperHeader: theme.paper.header,
+  paperHeaderTitle: theme.paper.title,
+  paperHeaderAction: { ...theme.paper.action, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' },
   empty: { padding: theme.spacing(2), color: theme.palette.grey[600] },
-  row: { cursor: 'pointer' },
   body: {
     fontFamily: 'monospace',
     fontSize: 12,
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-all',
-    background: theme.palette.grey[50],
   },
   note: { color: theme.palette.error.main, display: 'block', fontSize: 12 },
   details: { padding: theme.spacing(1, 2), background: theme.palette.grey[50] },
   detailRow: { display: 'flex', gap: theme.spacing(1), fontSize: 13, padding: theme.spacing(0.25, 0) },
   detailLabel: { minWidth: 150, color: theme.palette.grey[600] },
+  viewCell: { whiteSpace: 'nowrap', textAlign: 'right' },
 }));
 
 const formatTime = (value) => formatDisplayTime(value) || '-';
@@ -69,56 +67,71 @@ export default function MuseLogPanel({
     ['museLog.attempt', row.direction === 'OUT' ? row.attemptNumber : null],
   ].filter(([, value]) => value !== null && value !== undefined && value !== '');
 
+  const selected = open === null ? null : rows[open];
+  const toggle = (row) => {
+    const index = rows.indexOf(row);
+    setOpen(open === index ? null : index);
+  };
+
   return (
     <Paper className={classes.paper}>
-      <div className={classes.header}>
-        <Typography variant="h6">{t('museLog.title')}</Typography>
-        <Tooltip title={t('museLog.refresh')}>
-          <IconButton onClick={onRefresh}><RefreshIcon /></IconButton>
-        </Tooltip>
-      </div>
+      <Grid container alignItems="center" className={classes.paperHeader}>
+        <Grid item xs={8} className={classes.paperHeaderTitle}>{t('museLog.title')}</Grid>
+        <Grid item xs={4} className={classes.paperHeaderAction}>
+          <Tooltip title={t('museLog.refresh')}>
+            <IconButton onClick={onRefresh}><RefreshIcon /></IconButton>
+          </Tooltip>
+        </Grid>
+      </Grid>
       {fetching && <LinearProgress />}
+      <Divider />
       {!rows.length ? (
         <Typography variant="body2" className={classes.empty}>{t('museLog.empty')}</Typography>
       ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('museLog.time')}</TableCell>
-              <TableCell>{t('museLog.what')}</TableCell>
-              <TableCell>{t('museLog.feedback')}</TableCell>
-              <TableCell>{t('museLog.result')}</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row, index) => (
-              <React.Fragment key={`${row.createdAt}-${index}`}>
-                <TableRow hover className={classes.row} onClick={() => setOpen(open === index ? null : index)}>
-                  <TableCell>{formatTime(row.createdAt)}</TableCell>
-                  <TableCell>{what(row)}</TableCell>
-                  <TableCell>{row.museFeedback || '-'}</TableCell>
-                  <TableCell>
-                    {result(row)}
-                    {!!row.errorMessage && <span className={classes.note}>{row.errorMessage}</span>}
-                  </TableCell>
-                </TableRow>
-                {open === index && (
-                  <TableRow>
-                    <TableCell colSpan={4} className={classes.details}>
-                      {details(row).map(([label, value]) => (
-                        <div className={classes.detailRow} key={label}>
-                          <span className={classes.detailLabel}>{t(label)}</span>
-                          <span>{value}</span>
-                        </div>
-                      ))}
-                      <div className={classes.body}>{row.responseBody ? prettyBody(row.responseBody) : t('museLog.noBody')}</div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
-            ))}
-          </TableBody>
-        </Table>
+        <>
+          <Table
+            size="small"
+            module={MODULE_NAME}
+            headers={['museLog.time', 'museLog.what', 'museLog.feedback', 'museLog.result', '']}
+            itemFormatters={[
+              (row) => formatTime(row.createdAt),
+              (row) => what(row),
+              (row) => row.museFeedback || '-',
+              (row) => (
+                <>
+                  {result(row)}
+                  {!!row.errorMessage && <span className={classes.note}>{row.errorMessage}</span>}
+                </>
+              ),
+              (row) => (
+                <div className={classes.viewCell}>
+                  <Tooltip title={t('museLog.view')}>
+                    <IconButton size="small" onClick={() => toggle(row)}>
+                      <VisibilityOutlined fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              ),
+            ]}
+            items={rows}
+            itemIdentifier={(row) => `${row.createdAt}-${rows.indexOf(row)}`}
+            rowHighlighted={(row) => row === selected}
+            onDoubleClick={toggle}
+          />
+          {selected && (
+            <div className={classes.details}>
+              {details(selected).map(([label, value]) => (
+                <div className={classes.detailRow} key={label}>
+                  <span className={classes.detailLabel}>{t(label)}</span>
+                  <span>{value}</span>
+                </div>
+              ))}
+              <div className={classes.body}>
+                {selected.responseBody ? prettyBody(selected.responseBody) : t('museLog.noBody')}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </Paper>
   );

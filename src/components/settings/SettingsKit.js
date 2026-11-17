@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useIntl } from 'react-intl';
 import {
   Button, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
-  Paper, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography,
+  Paper, TextField, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
 import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import { formatMessage, formatMessageWithValues } from '@openimis/fe-core';
+import { Table, formatMessage, formatMessageWithValues } from '@openimis/fe-core';
 
 import { MODULE_NAME } from '../../constants';
 
@@ -158,78 +158,85 @@ export function ChangeRequests({
         {changes.length === 0 ? (
           <Typography className={classes.empty}>{t('museChanges.none')}</Typography>
         ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('museChanges.col.what')}</TableCell>
-                <TableCell>{t('museChanges.col.changes')}</TableCell>
-                <TableCell>{t('museChanges.col.requested')}</TableCell>
-                <TableCell>{t('museChanges.col.status')}</TableCell>
-                <TableCell>{t('museChanges.col.decided')}</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {changes.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell>{kindLabel(c, t, tv)}</TableCell>
-                  <TableCell>
-                    {LIST_CHANGES[c.kind] && <ListDiff change={c} classes={classes} />}
-                    {!LIST_CHANGES[c.kind] && (c.changed || []).map((f) => (
-                      <div key={f} className={classes.diff}>
-                        <b>{t(`museChanges.field.${FIELD_KEYS[f] || f}`)}</b>
-                        {': '}
-                        <span className={classes.before}>{show((c.current || {})[f])}</span>
-                        {show((c.proposed || {})[f])}
-                      </div>
-                    ))}
-                    {c.reason && (
-                      <Typography variant="caption" display="block" color="textSecondary">
-                        {tv('museChanges.reason', { reason: c.reason })}
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {c.requested_by}
-                    <br />
-                    <Typography variant="caption" color="textSecondary">{(c.requested_at || '').slice(0, 16).replace('T', ' ')}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography className={`${classes.status} ${classes[`status${c.status}`]}`}>
-                      {t(`museChanges.status.${c.status}`)}
+          <Table
+            size="small"
+            module={MODULE_NAME}
+            headers={['museChanges.col.what', 'museChanges.col.changes', 'museChanges.col.requested',
+              'museChanges.col.status', 'museChanges.col.decided', '']}
+            itemFormatters={[
+              (c) => kindLabel(c, t, tv),
+              (c) => (
+                <>
+                  {LIST_CHANGES[c.kind] && <ListDiff change={c} classes={classes} />}
+                  {!LIST_CHANGES[c.kind] && (c.changed || []).map((f) => (
+                    <div key={f} className={classes.diff}>
+                      <b>{t(`museChanges.field.${FIELD_KEYS[f] || f}`)}</b>
+                      {': '}
+                      <span className={classes.before}>{show((c.current || {})[f])}</span>
+                      {show((c.proposed || {})[f])}
+                    </div>
+                  ))}
+                  {c.reason && (
+                    <Typography variant="caption" display="block" color="textSecondary">
+                      {tv('museChanges.reason', { reason: c.reason })}
                     </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {c.decided_by || '—'}
-                    {c.comment && (
-                      <Typography variant="caption" display="block" color="textSecondary">{c.comment}</Typography>
-                    )}
-                  </TableCell>
-                  <TableCell align="right" style={{ whiteSpace: 'nowrap' }}>
-                    {c.can_decide && canApprove && (
-                      <>
-                        <Button size="small" color="primary" variant="contained" disabled={submitting} onClick={() => onApprove(c)}>
-                          {t('museChanges.approve')}
-                        </Button>
-                        {' '}
-                        <Button size="small" disabled={submitting} onClick={() => setRejecting(c)}>
-                          {t('museChanges.reject')}
-                        </Button>
-                      </>
-                    )}
-                    {c.can_cancel && (
-                      <Button size="small" disabled={submitting} onClick={() => onCancel(c)}>
-                        {t('museChanges.cancel')}
+                  )}
+                </>
+              ),
+              (c) => (
+                <>
+                  {c.requested_by}
+                  <Typography variant="caption" display="block" color="textSecondary">
+                    {(c.requested_at || '').slice(0, 16).replace('T', ' ')}
+                  </Typography>
+                </>
+              ),
+              (c) => (
+                <Typography className={`${classes.status} ${classes[`status${c.status}`]}`}>
+                  {t(`museChanges.status.${c.status}`)}
+                </Typography>
+              ),
+              (c) => (
+                <>
+                  {c.decided_by || '—'}
+                  {c.comment && (
+                    <Typography variant="caption" display="block" color="textSecondary">{c.comment}</Typography>
+                  )}
+                </>
+              ),
+              (c) => (
+                <div style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                  {c.can_decide && canApprove && (
+                    <>
+                      <Button
+                        size="small"
+                        color="primary"
+                        variant="contained"
+                        disabled={submitting}
+                        onClick={() => onApprove(c)}
+                      >
+                        {t('museChanges.approve')}
                       </Button>
-                    )}
-                    {c.status === 'PENDING' && !c.can_decide && !c.can_cancel && (
-                      <Typography variant="caption" color="textSecondary">{t('museChanges.awaitingOther')}</Typography>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                      {' '}
+                      <Button size="small" disabled={submitting} onClick={() => setRejecting(c)}>
+                        {t('museChanges.reject')}
+                      </Button>
+                    </>
+                  )}
+                  {c.can_cancel && (
+                    <Button size="small" disabled={submitting} onClick={() => onCancel(c)}>
+                      {t('museChanges.cancel')}
+                    </Button>
+                  )}
+                  {c.status === 'PENDING' && !c.can_decide && !c.can_cancel && (
+                    <Typography variant="caption" color="textSecondary">{t('museChanges.awaitingOther')}</Typography>
+                  )}
+                </div>
+              ),
+            ]}
+            items={changes}
+            itemIdentifier={(c) => c.id}
+          />
         )}
       </Section>
 

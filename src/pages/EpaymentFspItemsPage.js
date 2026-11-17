@@ -23,6 +23,7 @@ const useStyles = makeStyles((theme) => ({
   },
   spacer: { flexGrow: 1 },
   amount: { fontVariantNumeric: 'tabular-nums' },
+  noWrap: { whiteSpace: 'nowrap' },
   nameButton: { padding: 0, minWidth: 0, textTransform: 'none', fontWeight: 500, textAlign: 'left' },
 }));
 
@@ -30,7 +31,7 @@ const ITEM_STATUS_COLORS = {
   PROCESSED: '#9e9e9e', UNAPPLIED: '#9e9e9e', PENDING: '#9e9e9e',
 };
 
-const money = (v) => (v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
+const money = (v) => (Number(v) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
 function EpaymentFspItemsPage({
   epaymentCode, onBack, filterArgs = [],
@@ -58,7 +59,6 @@ function EpaymentFspItemsPage({
     formatMessage('fspItems.benefitCode'),
     formatMessage('returnFeedback.feedbackType'),
     formatMessage('fspItems.netAmount'),
-    formatMessage('fspItems.chargeAmount'),
     formatMessage('fspItems.grossAmount'),
     formatMessage('fspItems.settledAt'),
     formatMessage('fspItems.museReference'),
@@ -87,10 +87,12 @@ function EpaymentFspItemsPage({
       <StatusChip label={row.status} color={ITEM_STATUS_COLORS[row.status]} />
     ),
     (row) => <span className={classes.amount}>{money(row.netAmount ?? row.amount)}</span>,
-    (row) => <span className={classes.amount}>{money(row.chargeAmount)}</span>,
     (row) => <span className={classes.amount}>{money(row.amount)}</span>,
-    (row) => (row.settledAt
-      ? formatDateFromISO(modulesManager, null, row.settledAt) : '-'),
+    (row) => (
+      <span className={classes.noWrap}>
+        {row.settledAt ? formatDateFromISO(modulesManager, null, row.settledAt) : '-'}
+      </span>
+    ),
     (row) => row.museReference ?? '-',
   ];
 
@@ -139,6 +141,7 @@ function EpaymentFspItemsPage({
         })}
         headers={headers}
         itemFormatters={itemFormatters}
+        aligns={() => ['left', 'left', 'left', 'left', 'right', 'right', 'left', 'left']}
         rowIdentifier={(row) => row.uuid}
         defaultPageSize={DEFAULT_PAGE_SIZE}
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}

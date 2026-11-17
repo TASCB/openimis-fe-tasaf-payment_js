@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
+import { useLocation } from 'react-router-dom';
 import { IconButton, Tooltip } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import VisibilityOutlined from '@material-ui/icons/VisibilityOutlined';
@@ -70,6 +71,10 @@ function UnappliedPaymentsPage({
   const modulesManager = useModulesManager();
   const { formatMessage, formatMessageWithValues } = useTranslations(MODULE_NAME, modulesManager);
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
+  const location = useLocation();
+  const linked = new URLSearchParams(location.search);
+  const defaultFilters = Object.fromEntries(['resolution', 'fspName'].filter((key) => linked.get(key))
+    .map((key) => [key, { value: linked.get(key), filter: `${key}: "${linked.get(key).replace(/"/g, '')}"` }]));
   const [selected, setSelected] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [withdrawals, setWithdrawals] = useState(0);
@@ -173,7 +178,8 @@ function UnappliedPaymentsPage({
       <Helmet title={formatMessage('returned.page.title')} />
       {notice && <div className={classes.notice}>{notice}</div>}
       <Searcher
-        key={refreshKey}
+        key={`${refreshKey}${location.search}`}
+        defaultFilters={defaultFilters}
         module={MODULE_NAME}
         FilterPane={UnappliedFilter}
         fetch={fetch}

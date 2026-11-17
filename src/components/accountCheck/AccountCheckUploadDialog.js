@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import {
-  Button, Dialog, DialogActions, DialogContent, DialogTitle, Table, TableBody, TableCell, TableHead, TableRow,
-  Typography,
+  Button, LinearProgress, Link, Typography,
 } from '@material-ui/core';
+import Alert from '@material-ui/lab/Alert';
 import { makeStyles } from '@material-ui/core/styles';
-import { baseApiUrl, useModulesManager, useTranslations } from '@openimis/fe-core';
+import {
+  Table, baseApiUrl, useModulesManager, useTranslations,
+} from '@openimis/fe-core';
+import {
+  FileDrop, ImportDialog, StatRow, formatFileSize,
+} from '@openimis/fe-tasaf_common';
 
 import { ACCOUNT_CHECK_UPLOAD_URL, sendAccountCheck } from '../../actions';
 import { MODULE_NAME } from '../../constants';
@@ -13,10 +18,8 @@ import { MODULE_NAME } from '../../constants';
 const MUTATION_SUCCESS = 2;
 const TEMPLATE = 'HHID,Name,Account number,FSP\n';
 
-const useStyles = makeStyles((theme) => ({
-  line: { marginBottom: theme.spacing(1) },
-  error: { color: theme.palette.error.main, marginTop: theme.spacing(1) },
-  problems: { maxHeight: 260, overflowY: 'auto', marginTop: theme.spacing(1) },
+const useStyles = makeStyles(() => ({
+  problems: { maxHeight: 260, overflowY: 'auto' },
 }));
 
 function AccountCheckUploadDialog({ onClose }) {
@@ -67,71 +70,96 @@ function AccountCheckUploadDialog({ onClose }) {
     onClose(true);
   };
 
+  const stat = (label, value) => ({ label: formatMessage(label), value: Number(value || 0).toLocaleString() });
+
   return (
-    <Dialog open fullWidth maxWidth="md" onClose={() => onClose(!!job)}>
-      <DialogTitle>{formatMessage('accountCheck.dialog.title')}</DialogTitle>
-      <DialogContent>
-        {!job ? (
-          <>
-            <Typography variant="body2" className={classes.line}>
-              {formatMessage('accountCheck.dialog.help')}
-            </Typography>
-            <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-          </>
-        ) : (
-          <>
-            <Typography variant="body2" className={classes.line}>
-              {formatMessageWithValues('accountCheck.dialog.summary', {
-                rows: job.row_count, valid: job.valid_count, invalid: job.row_count - job.valid_count,
-              })}
-            </Typography>
-            <Typography variant="body2" className={classes.line}>
+    <ImportDialog
+      title={formatMessage('accountCheck.dialog.title')}
+      step={formatMessage(job ? 'accountCheck.dialog.step2' : 'accountCheck.dialog.step1')}
+      onClose={() => onClose(!!job)}
+      busy={busy}
+      closeLabel={formatMessage('button.cancel')}
+      actions={(
+        <>
+          <Button variant="outlined" onClick={() => onClose(!!job)} disabled={busy}>
+            {formatMessage('button.cancel')}
+          </Button>
+          {!job ? (
+            <Button color="primary" variant="contained" disableElevation disabled={!file || busy} onClick={upload}>
+              {formatMessage('accountCheck.check')}
+            </Button>
+          ) : (
+            <Button
+              color="primary"
+              variant="contained"
+              disableElevation
+              disabled={!job.valid_count || busy}
+              onClick={send}
+            >
+              {formatMessageWithValues('accountCheck.send', { count: job.valid_count })}
+            </Button>
+          )}
+        </>
+      )}
+    >
+      {!job ? (
+        <>
+          <Typography variant="body2">
+            {formatMessage('accountCheck.dialog.help')}
+            {' '}
+            <Link component="button" variant="body2" onClick={template}>
+              {formatMessage('accountCheck.templateLink')}
+            </Link>
+          </Typography>
+          <FileDrop
+            file={file}
+            meta={file ? formatFileSize(file.size) : null}
+            dropText={formatMessage('accountCheck.dialog.drop')}
+            browseText={formatMessage('accountCheck.dialog.browse')}
+            removeLabel={formatMessage('accountCheck.dialog.remove')}
+            accept=".csv,text/csv"
+            onPick={(picked) => { setFile(picked); setError(null); }}
+            onRemove={() => setFile(null)}
+          />
+        </>
+      ) : (
+        <>
+          <StatRow
+            stats={[
+              stat('accountCheck.stat.rows', job.row_count),
+              stat('accountCheck.stat.valid', job.valid_count),
+              stat('accountCheck.stat.invalid', job.row_count - job.valid_count),
+            ]}
+          />
+          {!!(job.by_fsp || []).length && (
+            <Typography variant="body2" color="textSecondary">
               {(job.by_fsp || []).map((f) => `${f.fsp_code}: ${f.rows}`).join(' · ')}
             </Typography>
-            {(job.problems || []).length > 0 && (
-              <div className={classes.problems}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>{formatMessage('accountCheck.col.row')}</TableCell>
-                      <TableCell>{formatMessage('accountCheck.col.name')}</TableCell>
-                      <TableCell>{formatMessage('accountCheck.col.account')}</TableCell>
-                      <TableCell>{formatMessage('accountCheck.col.fsp')}</TableCell>
-                      <TableCell>{formatMessage('accountCheck.col.problem')}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {job.problems.map((p) => (
-                      <TableRow key={p.row_number}>
-                        <TableCell>{p.row_number}</TableCell>
-                        <TableCell>{p.name || '-'}</TableCell>
-                        <TableCell>{p.account_number || '-'}</TableCell>
-                        <TableCell>{p.fsp || '-'}</TableCell>
-                        <TableCell>{p.problem}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </>
-        )}
-        {error && <Typography variant="body2" className={classes.error}>{error}</Typography>}
-      </DialogContent>
-      <DialogActions>
-        {!job && <Button color="primary" onClick={template}>{formatMessage('accountCheck.template')}</Button>}
-        <Button color="primary" onClick={() => onClose(!!job)} disabled={busy}>{formatMessage('button.cancel')}</Button>
-        {!job ? (
-          <Button color="primary" variant="contained" disableElevation disabled={!file || busy} onClick={upload}>
-            {formatMessage('accountCheck.check')}
-          </Button>
-        ) : (
-          <Button color="primary" variant="contained" disableElevation disabled={!job.valid_count || busy} onClick={send}>
-            {formatMessageWithValues('accountCheck.send', { count: job.valid_count })}
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+          )}
+          {(job.problems || []).length > 0 && (
+            <div className={classes.problems}>
+              <Table
+                size="small"
+                module={MODULE_NAME}
+                headers={['accountCheck.col.row', 'accountCheck.col.name', 'accountCheck.col.account',
+                  'accountCheck.col.fsp', 'accountCheck.col.problem']}
+                itemFormatters={[
+                  (p) => p.row_number,
+                  (p) => p.name || '-',
+                  (p) => p.account_number || '-',
+                  (p) => p.fsp || '-',
+                  (p) => p.problem,
+                ]}
+                items={job.problems}
+                itemIdentifier={(p) => p.row_number}
+              />
+            </div>
+          )}
+        </>
+      )}
+      {busy && <LinearProgress />}
+      {error && <Alert severity="error">{error}</Alert>}
+    </ImportDialog>
   );
 }
 

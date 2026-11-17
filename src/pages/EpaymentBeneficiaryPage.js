@@ -2,13 +2,12 @@ import React, { useEffect } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import {
-  Button, Divider, Grid, Paper, Table, TableBody, TableCell, TableHead, TableRow,
-  Typography,
+  Button, Divider, Grid, Paper, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import ArrowBackIcon from '@material-ui/icons/ArrowBack';
 import {
-  ProgressOrError, formatDateFromISO, useModulesManager, useTranslations,
+  ProgressOrError, Table, formatDateFromISO, useModulesManager, useTranslations,
 } from '@openimis/fe-core';
 
 import { MODULE_NAME } from '../constants';
@@ -23,10 +22,10 @@ const useStyles = makeStyles((theme) => ({
   },
   card: { padding: 20, height: '100%' },
   cardLabel: { color: theme.palette.primary.main },
-  band: { ...theme.table.title, padding: theme.spacing(1, 2), marginTop: theme.spacing(2) },
-  num: { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
-  strong: { fontWeight: 600 },
-  capRow: { color: theme.palette.text.secondary },
+  paper: { ...theme.paper.body, marginTop: theme.spacing(2) },
+  paperHeader: theme.paper.header,
+  paperHeaderTitle: theme.paper.title,
+  empty: { padding: theme.spacing(2) },
   note: { color: theme.palette.text.secondary, display: 'block' },
 }));
 
@@ -84,12 +83,28 @@ function EpaymentBeneficiaryPage({
   const components = breakdown ? [
     ['beneficiary.component.base', null, breakdown.base_amount],
     ['beneficiary.component.disability', breakdown.has_disability ? 1 : 0, breakdown.disability_amount],
+    ['beneficiary.component.pregnant', breakdown.pregnant_count, breakdown.pregnant_amount],
     ['beneficiary.component.youngChild', breakdown.young_child_count, breakdown.young_child_amount],
     ['beneficiary.component.primary', breakdown.primary_count, breakdown.primary_amount],
     ['beneficiary.component.secondary', breakdown.secondary_count, breakdown.secondary_amount],
   ] : [];
 
   const capped = breakdown && Number(breakdown.capped_total) < Number(breakdown.raw_total);
+  const componentRows = breakdown ? [
+    ...components.map(([label, count, amount]) => ({
+      key: label, label: formatMessage(label), count: count ?? '-', amount: money(amount),
+    })),
+    { key: 'raw', label: formatMessage('beneficiary.rawTotal'), amount: money(breakdown.raw_total), total: true },
+    ...(capped ? [{
+      key: 'cap',
+      label: formatMessageWithValues('beneficiary.cap', { cap: money(breakdown.household_cap_amount) }),
+      amount: `-${money(Number(breakdown.raw_total) - Number(breakdown.capped_total))}`,
+    }] : []),
+    {
+      key: 'entitlement', label: formatMessage('beneficiary.entitlement'), amount: money(breakdown.capped_total),
+      total: true,
+    },
+  ] : [];
 
   return (
     <div className={classes.page}>
@@ -115,115 +130,65 @@ function EpaymentBeneficiaryPage({
         ))}
       </Grid>
 
-      <div className={classes.band}>
-        <Typography variant="h6">{formatMessage('beneficiary.breakdown.title')}</Typography>
-      </div>
-
-      <Paper>
-        {!breakdown && (
-          <Typography variant="body2" style={{ padding: 16 }}>
+      <Paper className={classes.paper}>
+        <Grid container className={classes.paperHeader}>
+          <Grid item xs={12} className={classes.paperHeaderTitle}>
+            {formatMessage('beneficiary.breakdown.title')}
+          </Grid>
+        </Grid>
+        <Divider />
+        {breakdown ? (
+          <Table
+            size="small"
+            module={MODULE_NAME}
+            headers={['beneficiary.component', 'beneficiary.count', 'beneficiary.amount']}
+            aligns={['left', 'right', 'right']}
+            itemFormatters={[
+              (row) => row.label,
+              (row) => (row.count === null || row.count === undefined ? '' : row.count),
+              (row) => row.amount,
+            ]}
+            items={componentRows}
+            itemIdentifier={(row) => row.key}
+            rowHighlighted={(row) => !!row.total}
+          />
+        ) : (
+          <Typography variant="body2" className={classes.empty}>
             {formatMessage('beneficiary.breakdown.none')}
           </Typography>
         )}
-        {breakdown && (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{formatMessage('beneficiary.component')}</TableCell>
-                <TableCell className={classes.num}>{formatMessage('beneficiary.count')}</TableCell>
-                <TableCell className={classes.num}>{formatMessage('beneficiary.amount')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {components.map(([label, count, amount]) => (
-                <TableRow key={label}>
-                  <TableCell>{formatMessage(label)}</TableCell>
-                  <TableCell className={classes.num}>{count === null ? '-' : count}</TableCell>
-                  <TableCell className={classes.num}>{money(amount)}</TableCell>
-                </TableRow>
-              ))}
-              <TableRow>
-                <TableCell className={classes.strong}>
-                  {formatMessage('beneficiary.rawTotal')}
-                </TableCell>
-                <TableCell className={classes.num} />
-                <TableCell className={`${classes.num} ${classes.strong}`}>
-                  {money(breakdown.raw_total)}
-                </TableCell>
-              </TableRow>
-              {capped && (
-                <TableRow className={classes.capRow}>
-                  <TableCell>
-                    {formatMessageWithValues('beneficiary.cap', {
-                      cap: money(breakdown.household_cap_amount),
-                    })}
-                  </TableCell>
-                  <TableCell className={classes.num} />
-                  <TableCell className={classes.num}>
-                    {`-${money(Number(breakdown.raw_total) - Number(breakdown.capped_total))}`}
-                  </TableCell>
-                </TableRow>
-              )}
-              <TableRow>
-                <TableCell className={classes.strong}>
-                  {formatMessage('beneficiary.entitlement')}
-                </TableCell>
-                <TableCell className={classes.num} />
-                <TableCell className={`${classes.num} ${classes.strong}`}>
-                  {money(breakdown.capped_total)}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        )}
       </Paper>
 
-      <div className={classes.band}>
-        <Typography variant="h6">
-          {formatMessageWithValues('beneficiary.history.title', {
-            totalCount: beneficiaryItemsTotalCount,
-          })}
-        </Typography>
-      </div>
-
-      <ProgressOrError progress={fetchingBeneficiaryItems} error={errorBeneficiaryItems} />
-
-      {!fetchingBeneficiaryItems && (
-        <Paper>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{formatMessage('fspItems.benefitCode')}</TableCell>
-                <TableCell>{formatMessage('returnFeedback.feedbackType')}</TableCell>
-                <TableCell className={classes.num}>{formatMessage('fspItems.netAmount')}</TableCell>
-                <TableCell className={classes.num}>{formatMessage('fspItems.chargeAmount')}</TableCell>
-                <TableCell className={classes.num}>{formatMessage('fspItems.grossAmount')}</TableCell>
-                <TableCell>{formatMessage('fspItems.settledAt')}</TableCell>
-                <TableCell>{formatMessage('fspItems.museReference')}</TableCell>
-                <TableCell>{formatMessage('beneficiary.reason')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {(beneficiaryItems || []).map((row) => (
-                <TableRow key={row.uuid}>
-                  <TableCell>{row.benefitConsumption?.code ?? '-'}</TableCell>
-                  <TableCell>
-                    <StatusChip label={row.status} color={ITEM_STATUS_COLORS[row.status]} />
-                  </TableCell>
-                  <TableCell className={classes.num}>{money(row.netAmount ?? row.amount)}</TableCell>
-                  <TableCell className={classes.num}>{money(row.chargeAmount)}</TableCell>
-                  <TableCell className={classes.num}>{money(row.amount)}</TableCell>
-                  <TableCell>
-                    {row.settledAt ? formatDateFromISO(modulesManager, null, row.settledAt) : '-'}
-                  </TableCell>
-                  <TableCell>{row.museReference ?? '-'}</TableCell>
-                  <TableCell>{row.returnReason ?? '-'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Paper>
-      )}
+      <Paper className={classes.paper}>
+        <Grid container className={classes.paperHeader}>
+          <Grid item xs={12} className={classes.paperHeaderTitle}>
+            {formatMessageWithValues('beneficiary.history.title', { totalCount: beneficiaryItemsTotalCount })}
+          </Grid>
+        </Grid>
+        <Divider />
+        <ProgressOrError progress={fetchingBeneficiaryItems} error={errorBeneficiaryItems} />
+        <Table
+          size="small"
+          module={MODULE_NAME}
+          fetching={fetchingBeneficiaryItems}
+          headers={['fspItems.benefitCode', 'returnFeedback.feedbackType', 'fspItems.netAmount',
+            'fspItems.chargeAmount', 'fspItems.grossAmount', 'fspItems.settledAt', 'fspItems.museReference',
+            'beneficiary.reason']}
+          aligns={['left', 'left', 'right', 'right', 'right', 'left', 'left', 'left']}
+          itemFormatters={[
+            (row) => row.benefitConsumption?.code ?? '-',
+            (row) => <StatusChip label={row.status} color={ITEM_STATUS_COLORS[row.status]} />,
+            (row) => money(row.netAmount ?? row.amount),
+            (row) => money(row.chargeAmount),
+            (row) => money(row.amount),
+            (row) => (row.settledAt ? formatDateFromISO(modulesManager, null, row.settledAt) : '-'),
+            (row) => row.museReference ?? '-',
+            (row) => row.returnReason ?? '-',
+          ]}
+          items={beneficiaryItems || []}
+          itemIdentifier={(row) => row.uuid}
+        />
+      </Paper>
 
       <Divider style={{ margin: '16px 0' }} />
       <Typography variant="caption" className={classes.note}>

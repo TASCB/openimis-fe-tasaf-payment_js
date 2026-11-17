@@ -2,12 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 import {
-  Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem,
-  Table, TableBody, TableCell, TableHead, TablePagination, TableRow, TextField, Typography,
+  Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, TextField,
+  Typography,
 } from '@material-ui/core';
-import { formatMessage, formatMessageWithValues } from '@openimis/fe-core';
+import {
+  Table, downloadExport, formatMessage, formatMessageWithValues,
+} from '@openimis/fe-core';
 
-import { fetchGepgItems, releaseGepgVerification, resendGepgVerification } from '../actions';
+import {
+  exportGepgItems, fetchGepgItems, releaseGepgVerification, resendGepgVerification,
+} from '../actions';
 import { MODULE_NAME, RIGHT_RUN_VERIFICATION } from '../constants';
 
 const RESENDABLE = ['FAILED', 'REFUSED', 'REJECTED', 'EXPIRED'];
@@ -15,6 +19,9 @@ const RELEASABLE = ['SENDING', 'SENT', 'ACCEPTED'];
 const DECISIONS = ['', 'VERIFIED', 'MANUAL', 'FAILED', 'UNCHECKED', 'NONE'];
 const PAGE_SIZES = [50, 100, 500];
 const when = (v) => (v ? v.slice(0, 16).replace('T', ' ') : '—');
+const mono = { fontFamily: 'monospace' };
+const caption = (text) => (text
+  ? <Typography variant="caption" display="block" color="textSecondary">{text}</Typography> : null);
 
 function GepgRequestsTable({ requests, emptyClassName }) {
   const intl = useIntl();
@@ -33,6 +40,7 @@ function GepgRequestsTable({ requests, emptyClassName }) {
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [decision, setDecision] = useState('');
+  const [exporting, setExporting] = useState(null);
   useEffect(() => { if (!submitting) setSending(null); }, [submitting]);
   useEffect(() => {
     const timer = setTimeout(() => { setQuery(search.trim()); setPage(0); }, 400);
@@ -45,6 +53,14 @@ function GepgRequestsTable({ requests, emptyClassName }) {
   }, [viewing, page, pageSize, query, decision]);
   const classes = { empty: emptyClassName };
   const items = state?.gepgItems || { total: 0, rows: [] };
+
+  const exportCsv = async (accVerifId, filters = {}) => {
+    setExporting(accVerifId);
+    const response = await dispatch(exportGepgItems(accVerifId, filters));
+    setExporting(null);
+    const name = response?.payload?.data?.gepgVerificationItemsExport;
+    if (name) dispatch(downloadExport(name, `${accVerifId}-accounts.csv`, 'csv'));
+  };
 
   const view = (r) => {
     setPage(0);
@@ -59,87 +75,87 @@ function GepgRequestsTable({ requests, emptyClassName }) {
       {requests.length === 0 ? (
         <Typography className={classes.empty}>{t('gepg.requests.none')}</Typography>
       ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>{t('gepg.requests.col.id')}</TableCell>
-              <TableCell>{t('gepg.requests.col.fsp')}</TableCell>
-              <TableCell align="right">{t('gepg.requests.col.accounts')}</TableCell>
-              <TableCell>{t('gepg.requests.col.results')}</TableCell>
-              <TableCell>{t('gepg.requests.col.status')}</TableCell>
-              <TableCell>{t('gepg.requests.col.sent')}</TableCell>
-              <TableCell>{t('gepg.requests.col.answered')}</TableCell>
-              <TableCell />
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {requests.map((r) => (
-              <TableRow key={r.acc_verif_id}>
-                <TableCell style={{ fontFamily: 'monospace' }}>
-                  {r.acc_verif_id}
-                  {r.esb_request_id && (
-                    <Typography variant="caption" display="block" color="textSecondary">
-                      {tv('gepg.requests.esbRequestId', { id: r.esb_request_id })}
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {r.fsp_code}
-                  <Typography variant="caption" display="block" color="textSecondary">{r.bic}</Typography>
-                </TableCell>
-                <TableCell align="right">{r.item_count}</TableCell>
-                <TableCell>
-                  {r.answered
-                    ? tv(r.unchecked ? 'gepg.requests.resultsUnchecked' : 'gepg.requests.results', {
-                      verified: r.verified, manual: r.manual, failed: r.failed, unchecked: r.unchecked,
-                    })
-                    : '—'}
-                </TableCell>
-                <TableCell>
-                  {t(`gepg.status.${r.status}`)}
-                  {r.status_desc && (
-                    <Typography variant="caption" display="block" color="textSecondary">
-                      {r.status_code ? `${r.status_code} ` : ''}
-                      {r.status_desc}
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {when(r.sent_at)}
-                  <Typography variant="caption" display="block" color="textSecondary">{r.requested_by}</Typography>
-                </TableCell>
-                <TableCell>{when(r.answered_at)}</TableCell>
-                <TableCell align="right" style={{ whiteSpace: 'nowrap' }}>
-                  <Button size="small" onClick={() => view(r)}>{t('gepg.requests.view')}</Button>
-                  {canResend && RESENDABLE.includes(r.status) && (
-                    <Button
-                      size="small"
-                      color="primary"
-                      disabled={submitting}
-                      startIcon={sending === r.acc_verif_id ? <CircularProgress size={14} /> : null}
-                      onClick={() => {
-                        setSending(r.acc_verif_id);
-                        dispatch(resendGepgVerification(r.acc_verif_id, t('gepg.mutation.resend')));
-                      }}
-                    >
-                      {t(sending === r.acc_verif_id ? 'gepg.requests.sending' : 'gepg.requests.resend')}
-                    </Button>
-                  )}
-                  {canResend && RELEASABLE.includes(r.status) && (
-                    <Button
-                      size="small"
-                      disabled={submitting}
-                      startIcon={sending === r.acc_verif_id ? <CircularProgress size={14} /> : null}
-                      onClick={() => setReleasing(r)}
-                    >
-                      {t('gepg.requests.release')}
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Table
+          size="small"
+          module={MODULE_NAME}
+          headers={['gepg.requests.col.id', 'gepg.requests.col.fsp', 'gepg.requests.col.accounts',
+            'gepg.requests.col.results', 'gepg.requests.col.status', 'gepg.requests.col.sent',
+            'gepg.requests.col.answered', '']}
+          aligns={['left', 'left', 'right', 'left', 'left', 'left', 'left', 'right']}
+          itemFormatters={[
+            (r) => (
+              <>
+                <span style={mono}>{r.acc_verif_id}</span>
+                {r.esb_request_id && caption(tv('gepg.requests.esbRequestId', { id: r.esb_request_id }))}
+              </>
+            ),
+            (r) => (
+              <>
+                {r.fsp_code}
+                {caption(r.bic)}
+              </>
+            ),
+            (r) => r.item_count,
+            (r) => (r.answered
+              ? tv(r.unchecked ? 'gepg.requests.resultsUnchecked' : 'gepg.requests.results', {
+                verified: r.verified, manual: r.manual, failed: r.failed, unchecked: r.unchecked,
+              })
+              : '—'),
+            (r) => (
+              <>
+                {t(`gepg.status.${r.status}`)}
+                {r.status_desc && caption(`${r.status_code ? `${r.status_code} ` : ''}${r.status_desc}`)}
+              </>
+            ),
+            (r) => (
+              <>
+                {when(r.sent_at)}
+                {caption(r.requested_by)}
+              </>
+            ),
+            (r) => when(r.answered_at),
+            (r) => (
+              <div style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
+                <Button size="small" onClick={() => view(r)}>{t('gepg.requests.view')}</Button>
+                {!!r.item_count && (
+                  <Button
+                    size="small"
+                    disabled={exporting === r.acc_verif_id}
+                    onClick={() => exportCsv(r.acc_verif_id)}
+                  >
+                    {t('gepg.requests.export')}
+                  </Button>
+                )}
+                {canResend && RESENDABLE.includes(r.status) && (
+                  <Button
+                    size="small"
+                    color="primary"
+                    disabled={submitting}
+                    startIcon={sending === r.acc_verif_id ? <CircularProgress size={14} /> : null}
+                    onClick={() => {
+                      setSending(r.acc_verif_id);
+                      dispatch(resendGepgVerification(r.acc_verif_id, t('gepg.mutation.resend')));
+                    }}
+                  >
+                    {t(sending === r.acc_verif_id ? 'gepg.requests.sending' : 'gepg.requests.resend')}
+                  </Button>
+                )}
+                {canResend && RELEASABLE.includes(r.status) && (
+                  <Button
+                    size="small"
+                    disabled={submitting}
+                    startIcon={sending === r.acc_verif_id ? <CircularProgress size={14} /> : null}
+                    onClick={() => setReleasing(r)}
+                  >
+                    {t('gepg.requests.release')}
+                  </Button>
+                )}
+              </div>
+            ),
+          ]}
+          items={requests}
+          itemIdentifier={(r) => r.acc_verif_id}
+        />
       )}
       <Dialog open={!!releasing} onClose={() => setReleasing(null)} maxWidth="sm" fullWidth>
         <DialogTitle>{releasing && tv('gepg.release.title', { id: releasing.acc_verif_id })}</DialogTitle>
@@ -206,52 +222,48 @@ function GepgRequestsTable({ requests, emptyClassName }) {
           {!state?.fetchingGepgItems && items.rows.length === 0 ? (
             <Typography className={classes.empty}>{t('gepg.items.none')}</Typography>
           ) : (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>{t('gepg.items.col.item')}</TableCell>
-                  <TableCell>{t('gepg.items.col.hhid')}</TableCell>
-                  <TableCell>{t('gepg.items.col.account')}</TableCell>
-                  <TableCell>{t('gepg.items.col.expected')}</TableCell>
-                  <TableCell>{t('gepg.items.col.returned')}</TableCell>
-                  <TableCell>{t('gepg.items.col.code')}</TableCell>
-                  <TableCell>{t('gepg.items.col.decision')}</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {items.rows.map((i) => (
-                  <TableRow key={i.item_id}>
-                    <TableCell>{i.item_id}</TableCell>
-                    <TableCell>{i.hhid || '—'}</TableCell>
-                    <TableCell style={{ fontFamily: 'monospace' }}>{i.acc_num}</TableCell>
-                    <TableCell>{i.expected_name || '—'}</TableCell>
-                    <TableCell>{i.acc_name || '—'}</TableCell>
-                    <TableCell>
-                      {i.acc_sts_code || '—'}
-                      {i.acc_sts_desc && (
-                        <Typography variant="caption" display="block" color="textSecondary">{i.acc_sts_desc}</Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {(DECISIONS.includes(i.decision) && i.decision && t(`gepg.items.decision.${i.decision}`))
-                        || i.decision || t(`gepg.itemStatus.${i.status}`)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <Table
+              size="small"
+              module={MODULE_NAME}
+              fetching={state?.fetchingGepgItems}
+              headers={['gepg.items.col.item', 'gepg.items.col.hhid', 'gepg.items.col.account',
+                'gepg.items.col.expected', 'gepg.items.col.returned', 'gepg.items.col.code',
+                'gepg.items.col.decision']}
+              itemFormatters={[
+                (i) => i.item_id,
+                (i) => i.hhid || '—',
+                (i) => <span style={mono}>{i.acc_num}</span>,
+                (i) => i.expected_name || '—',
+                (i) => i.acc_name || '—',
+                (i) => (
+                  <>
+                    {i.acc_sts_code || '—'}
+                    {caption(i.acc_sts_desc)}
+                  </>
+                ),
+                (i) => (DECISIONS.includes(i.decision) && i.decision && t(`gepg.items.decision.${i.decision}`))
+                  || i.decision || t(`gepg.itemStatus.${i.status}`),
+              ]}
+              items={items.rows}
+              itemIdentifier={(i) => i.item_id}
+              withPagination
+              count={items.total}
+              page={page}
+              pageSize={pageSize}
+              rowsPerPageOptions={PAGE_SIZES}
+              onChangePage={(_, p) => setPage(p)}
+              onChangeRowsPerPage={(size) => { setPageSize(Number(size)); setPage(0); }}
+            />
           )}
-          <TablePagination
-            component="div"
-            count={items.total}
-            page={page}
-            rowsPerPage={pageSize}
-            rowsPerPageOptions={PAGE_SIZES}
-            onPageChange={(_, p) => setPage(p)}
-            onRowsPerPageChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
-          />
         </DialogContent>
         <DialogActions>
+          <Button
+            color="primary"
+            disabled={!items.total || exporting === viewing?.acc_verif_id}
+            onClick={() => exportCsv(viewing.acc_verif_id, { search: query, decision })}
+          >
+            {t('gepg.items.export')}
+          </Button>
           <Button color="primary" onClick={() => setViewing(null)}>{t('payloadPreview.close')}</Button>
         </DialogActions>
       </Dialog>

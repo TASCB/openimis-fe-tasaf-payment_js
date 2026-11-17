@@ -392,6 +392,14 @@ export function fetchGepgItems(accVerifId, { offset = 0, limit = 100, search = '
   );
 }
 
+export function exportGepgItems(accVerifId, { search = '', decision = '' } = {}) {
+  return graphql(
+    `query { gepgVerificationItemsExport(accVerifId: "${formatGQLString(accVerifId)}", `
+    + `search: "${formatGQLString(search)}", decision: "${formatGQLString(decision)}") }`,
+    ACTION_TYPE.EXPORT_GEPG_ITEMS,
+  );
+}
+
 export function releaseGepgVerification(accVerifId, clientMutationLabel) {
   return mutate('releaseGepgVerification', `accVerifId: "${formatGQLString(accVerifId)}"`,
     ACTION_TYPE.RELEASE_GEPG_VERIFICATION, clientMutationLabel);
@@ -755,9 +763,16 @@ export function fetchUnappliedResendPreview() {
   return graphql('{ unappliedResendPreview }', ACTION_TYPE.UNAPPLIED_RESEND_PREVIEW);
 }
 
-export function fetchUnappliedReconciliation(paymentCycleUuid) {
-  const args = paymentCycleUuid ? `(paymentCycleId: "${paymentCycleUuid}")` : '';
-  return graphql(`{ unappliedReconciliation${args} }`, ACTION_TYPE.UNAPPLIED_RECONCILIATION);
+export function fetchUnappliedReconciliation(filters) {
+  const args = reportFilterArgs(filters);
+  return graphql(`{ unappliedReconciliation${args.length ? `(${args.join(', ')})` : ''} }`,
+    ACTION_TYPE.UNAPPLIED_RECONCILIATION);
+}
+
+export function exportUnappliedReconciliation(filters) {
+  const args = reportFilterArgs(filters);
+  return graphql(`{ unappliedReconciliationExport${args.length ? `(${args.join(', ')})` : ''} }`,
+    ACTION_TYPE.EXPORT_UNAPPLIED_RECONCILIATION);
 }
 
 export function createUnappliedResends(clientMutationLabel) {

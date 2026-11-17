@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Button, Link, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Typography,
+  Button, Link, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
+import { Table } from '@openimis/fe-core';
+
+import { MODULE_NAME } from '../constants';
 
 const useStyles = makeStyles((theme) => ({
   root: { padding: theme.spacing(1, 2, 2) },
@@ -12,6 +15,7 @@ const useStyles = makeStyles((theme) => ({
   older: { color: theme.palette.grey[600], fontSize: 13, marginTop: theme.spacing(1) },
   note: { color: theme.palette.grey[600], display: 'block', fontSize: 12 },
   account: { fontFamily: 'monospace' },
+  actionCell: { whiteSpace: 'nowrap', textAlign: 'right' },
 }));
 
 const ACTIONS = ['WITHDRAWN', 'KEPT', 'NEEDS_REVIEW', 'MOVED'];
@@ -98,50 +102,43 @@ export default function MuseRejectionPanel({
       </div>
       {open && (
         <>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>{t('museRejection.account')}</TableCell>
-                <TableCell>{t('museRejection.reason')}</TableCell>
-                <TableCell>{t('museRejection.outcome')}</TableCell>
-                <TableCell />
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {payees.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map((row) => (
-                <TableRow key={`${row.account}-${row.item || ''}`}>
-                  <TableCell className={classes.account}>{row.account}</TableCell>
-                  <TableCell>{row.reason}</TableCell>
-                  <TableCell>
-                    {action(row)}
-                    {!!row.note && <span className={classes.note}>{row.note}</span>}
-                  </TableCell>
-                  <TableCell align="right">
-                    {['WITHDRAWN', 'MOVED'].includes(row.action) && !!row.account_uuid && (
-                      <Button size="small" color="primary" onClick={() => onOpenAccount(row.account_uuid)}>
-                        {t('museRejection.correct')}
-                      </Button>
-                    )}
-                    {row.action === 'NEEDS_REVIEW' && canMove && (
-                      <Button size="small" color="primary" disabled={moving} onClick={() => onMove([row.account])}>
-                        {t('museRejection.move')}
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {payees.length > PAGE_SIZE && (
-            <TablePagination
-              component="div"
-              count={payees.length}
-              page={page}
-              rowsPerPage={PAGE_SIZE}
-              rowsPerPageOptions={[PAGE_SIZE]}
-              onChangePage={(e, p) => setPage(p)}
-            />
-          )}
+          <Table
+            size="small"
+            module={MODULE_NAME}
+            headers={['museRejection.account', 'museRejection.reason', 'museRejection.outcome', '']}
+            itemFormatters={[
+              (row) => <span className={classes.account}>{row.account}</span>,
+              (row) => row.reason,
+              (row) => (
+                <>
+                  {action(row)}
+                  {!!row.note && <span className={classes.note}>{row.note}</span>}
+                </>
+              ),
+              (row) => (
+                <div className={classes.actionCell}>
+                  {['WITHDRAWN', 'MOVED'].includes(row.action) && !!row.account_uuid && (
+                    <Button size="small" color="primary" onClick={() => onOpenAccount(row.account_uuid)}>
+                      {t('museRejection.correct')}
+                    </Button>
+                  )}
+                  {row.action === 'NEEDS_REVIEW' && canMove && (
+                    <Button size="small" color="primary" disabled={moving} onClick={() => onMove([row.account])}>
+                      {t('museRejection.move')}
+                    </Button>
+                  )}
+                </div>
+              ),
+            ]}
+            items={payees.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)}
+            itemIdentifier={(row) => `${row.account}-${row.item || ''}`}
+            withPagination={payees.length > PAGE_SIZE}
+            count={payees.length}
+            page={page}
+            pageSize={PAGE_SIZE}
+            rowsPerPageOptions={[PAGE_SIZE]}
+            onChangePage={(e, p) => setPage(p)}
+          />
         </>
       )}
       {holdLines}
