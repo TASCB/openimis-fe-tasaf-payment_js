@@ -6,7 +6,7 @@ import { bindActionCreators } from 'redux';
 
 import {
   Box, Grid, Button, Typography, Divider, LinearProgress,
-  Stepper, Step, StepLabel, Table, TableBody, TableCell, TableHead, TableRow,
+  Stepper, Step, StepButton, Table, TableBody, TableCell, TableHead, TableRow,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import { alpha } from '@material-ui/core/styles/colorManipulator';
@@ -175,8 +175,12 @@ function PaymentGenerationStepper({
   return (
     <Box className={classes.root}>
       <Stepper activeStep={activeStep} alternativeLabel className={classes.stepperBar}>
-        {steps.map((label) => (
-          <Step key={label}><StepLabel>{label}</StepLabel></Step>
+        {steps.map((label, index) => (
+          <Step key={label}>
+            <StepButton disabled={index >= activeStep || submittingMutation} onClick={() => setActiveStep(index)}>
+              {label}
+            </StepButton>
+          </Step>
         ))}
       </Stepper>
 
