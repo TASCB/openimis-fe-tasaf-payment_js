@@ -30,6 +30,7 @@ import UnappliedFilter from '../components/UnappliedFilter';
 import ReturnedPaymentDialog from '../components/ReturnedPaymentDialog';
 import UnappliedMuseDialog from '../components/UnappliedMuseDialog';
 import StatusChip from '../components/StatusChip';
+import { mutationErrorText } from '../utils/errors';
 
 const parseList = (raw) => {
   try { return (typeof raw === 'string' ? JSON.parse(raw || '[]') : raw) || []; } catch (e) { return []; }
@@ -89,7 +90,7 @@ function UnappliedPaymentsPage({
   const canGenerate = rights.includes(RIGHT_GENERATE_PAYLIST);
   const refresh = () => setRefreshKey((k) => k + 1);
   const outcome = (log, fallback) => {
-    if (log?.status !== MUTATION_SUCCESS) return log?.error ? String(log.error) : formatMessage(fallback);
+    if (log?.status !== MUTATION_SUCCESS) return mutationErrorText(log?.error) || formatMessage(fallback);
     refresh();
     return null;
   };

@@ -1075,5 +1075,5 @@
   "tasafPayment.returned.withdraw.confirmSend": "Confirm and send",
   "tasafPayment.returned.withdraw.mutation": "Send unapplied withdrawals to MUSE",
   "tasafPayment.returned.withdraw.failed": "The withdrawals could not be sent",
-  "tasafPayment.returned.withdraw.done": "Sent. Each payment shows Received by MUSE when MUSE answers."
+  "tasafPayment.returned.withdraw.done": "Sending to MUSE in the background. You get a notification with the result."
 }

@@ -3,6 +3,7 @@ import {
   Button, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Tab, Table, TableBody, TableCell, TableHead,
   TableRow, Typography,
 } from '@material-ui/core';
+import Alert from '@material-ui/lab/Alert';
 import { makeStyles } from '@material-ui/styles';
 import { PublishedComponent, useModulesManager, useTranslations } from '@openimis/fe-core';
 
@@ -21,7 +22,7 @@ const useStyles = makeStyles((theme) => ({
   muted: { color: theme.palette.text.secondary },
   stepAction: { display: 'flex', justifyContent: 'flex-end', marginTop: theme.spacing(1) },
   message: { marginRight: 'auto', fontSize: 13 },
-  error: { color: theme.palette.error.main },
+  alert: { marginTop: theme.spacing(2), whiteSpace: 'pre-line', wordBreak: 'break-word' },
 }));
 
 const money = (value) => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
@@ -155,13 +156,10 @@ function UnappliedMuseDialog({
             </div>
           )}
         </PublishedComponent>
+        {message?.error && <Alert severity="error" className={classes.alert}>{message.error}</Alert>}
       </DialogContent>
       <DialogActions>
-        {message && (
-          <span className={`${classes.message} ${message.error ? classes.error : ''}`}>
-            {message.error || message.text}
-          </span>
-        )}
+        {message?.text && <span className={classes.message}>{message.text}</span>}
         <Button onClick={onClose} disabled={busy}>{formatMessage('review.close')}</Button>
       </DialogActions>
     </Dialog>
