@@ -176,5 +176,4 @@ export const WS_TAB_GENERATE     = 'generate';
 export const WS_TAB_PAYLISTS     = 'paylists';
 export const WS_TAB_RETURNS      = 'returns';
 export const WS_TAB_CHARGES      = 'charges';
-export const WS_TAB_REPORTS      = 'reports';
 export const WS_TAB_MUSE         = 'muse';

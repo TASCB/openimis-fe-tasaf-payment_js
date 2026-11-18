@@ -24,13 +24,14 @@ import PaylistDetailPage from './pages/PaylistDetailPage';
 import UnappliedPaymentsPage from './pages/UnappliedPaymentsPage';
 import PaymentDashboardPage from './pages/PaymentDashboardPage';
 import TasafPaymentsPage from './pages/TasafPaymentsPage';
+import EpaymentSummaryPage from './pages/EpaymentSummaryPage';
 import PaymentGenerationStepper from './components/generation/PaymentGenerationStepper';
 import PaylistItemsActions, { PAYLIST_ITEMS_ACTIONS_KEY } from './components/PaylistItemsActions';
 import {
   DashboardTabLabel, VerificationTabLabel, PreAuditTabLabel,
-  GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel, ReportsTabLabel,
+  GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel,
   DashboardTabPanel, VerificationTabPanel, PreAuditTabPanel,
-  GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel, ReportsTabPanel,
+  GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel,
   ChargesTabLabel, ChargesTabPanel,
   MuseTabLabel, MuseTabPanel,
 } from './components/workspace/WorkspaceTabs';
@@ -46,6 +47,8 @@ import {
   RIGHT_GENERATE_PAYLIST,
   RIGHT_RETURN_FEEDBACK,
   RIGHT_DASHBOARD,
+  RIGHT_REPORTS,
+  MODULE_NAME,
 } from './constants';
 
 const ROUTE_WORKSPACE        = 'tasafPayment/workspace';
@@ -78,13 +81,25 @@ const DEFAULT_CONFIG = {
   // Consolidated workspace tabs (pipeline order). Other modules can inject tabs here.
   [TASAF_WORKSPACE_TABS_LABEL_CONTRIBUTION_KEY]: [
     DashboardTabLabel, VerificationTabLabel, PreAuditTabLabel,
-    GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel, ReportsTabLabel, ChargesTabLabel, MuseTabLabel,
+    GenerateTabLabel, PaylistsTabLabel, ReturnsTabLabel, ChargesTabLabel, MuseTabLabel,
   ],
   [TASAF_WORKSPACE_TABS_PANEL_CONTRIBUTION_KEY]: [
     DashboardTabPanel, VerificationTabPanel, PreAuditTabPanel,
-    GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel, ReportsTabPanel, ChargesTabPanel, MuseTabPanel,
+    GenerateTabPanel, PaylistsTabPanel, ReturnsTabPanel, ChargesTabPanel, MuseTabPanel,
   ],
 
+  'report.ReportTabs': [
+    {
+      key: 'payment',
+      module: MODULE_NAME,
+      label: 'reportTab.payment',
+      rights: [RIGHT_REPORTS],
+      position: 2,
+      reports: [
+        { key: 'epaymentByFsp', label: 'reportTab.epaymentByFsp', component: EpaymentSummaryPage },
+      ],
+    },
+  ],
   'core.Router': [
     // Consolidated workspace (single menu entry).
     { path: ROUTE_WORKSPACE,        component: TasafPaymentsPage },
@@ -100,6 +115,13 @@ const DEFAULT_CONFIG = {
   ],
   [PAYLIST_ITEMS_ACTIONS_KEY]: [PaylistItemsActions],
   'invoice.MainMenu': [
+    {
+      text: <FormattedMessage module="tasafPayment" id="reportTab.payment" />,
+      icon: <AccountBalanceWalletIcon />,
+      route: '/reports?tab=payment',
+      filter: (rights) => rights.includes(RIGHT_REPORTS),
+      id: 'tasafPayment.reportsTab',
+    },
     {
       text: <FormattedMessage module="tasafPayment" id="menu.workspace" />,
       icon: <AccountBalanceWalletIcon />,
