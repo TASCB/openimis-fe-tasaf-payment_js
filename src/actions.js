@@ -354,7 +354,7 @@ export function saveMuseSettings(s, clientMutationLabel, reason = '') {
 }
 
 export function fetchMuseChanges() {
-  return graphql('query { museChangeRequests(kinds: ["SETTINGS", "FSP_PROFILE", "FSP_CHARGES", "FSP_NAMES"]) }', ACTION_TYPE.FETCH_MUSE_CHANGES);
+  return graphql('query { museChangeRequests(kinds: ["SETTINGS", "FSP_PROFILE", "FSP_CHARGES", "FSP_NAMES"], limit: 500) }', ACTION_TYPE.FETCH_MUSE_CHANGES);
 }
 
 export function fetchGepgSettings() {
@@ -369,7 +369,7 @@ export function fetchGepgSettings() {
 }
 
 export function fetchGepgChanges() {
-  return graphql('query { museChangeRequests(kinds: ["GEPG_SETTINGS"]) }', ACTION_TYPE.FETCH_GEPG_CHANGES);
+  return graphql('query { museChangeRequests(kinds: ["GEPG_SETTINGS"], limit: 500) }', ACTION_TYPE.FETCH_GEPG_CHANGES);
 }
 
 export function saveGepgSettings(s, clientMutationLabel, reason = '') {

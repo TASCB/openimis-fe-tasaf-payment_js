@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import {
@@ -6,7 +6,7 @@ import {
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 import {
-  ProgressOrError, PublishedComponent, SelectInput, Table, useHistory, useModulesManager, useTranslations,
+  ProgressOrError, PublishedComponent, SearcherPane, SelectInput, Table, useHistory, useModulesManager, useTranslations,
   downloadExport,
 } from '@openimis/fe-core';
 
@@ -30,6 +30,7 @@ const useStyles = makeStyles((theme) => ({
   paperHeaderAction: { ...theme.paper.action, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' },
   cards: { padding: theme.spacing(1) },
   card: { padding: 20, height: '100%' },
+  results: { marginTop: theme.spacing(2) },
   clickable: { cursor: 'pointer' },
   sub: { color: theme.palette.grey[600] },
   tableWrap: { overflowX: 'auto' },
@@ -39,6 +40,9 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const TOTAL_KEY = '__total__';
+const EMPTY_FILTERS = {
+  paymentCycle: null, destination: null, dateFrom: null, dateTo: null,
+};
 const int = (v) => (v ?? 0).toLocaleString();
 const money = (v) => (Number(v) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
@@ -54,16 +58,28 @@ function EpaymentSummaryPage({
   // makeTabPanel passes no props, so rights come from the store.
   const rights = useSelector((store) => store.core?.user?.i_user?.rights ?? []);
   const [selectedCode, setSelectedCode] = useState(null);
-  const [paymentCycle, setPaymentCycle] = useState(null);
-  const [destination, setDestination] = useState(null);
-  const [dateFrom, setDateFrom] = useState(null);
-  const [dateTo, setDateTo] = useState(null);
+  const [draft, setDraft] = useState(EMPTY_FILTERS);
+  const [applied, setApplied] = useState(EMPTY_FILTERS);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const setDraftValue = (key) => (value) => setDraft((current) => ({ ...current, [key]: value }));
+  const refresh = useCallback(() => setApplied({ ...draftRef.current }), []);
+  const reset = useCallback(() => {
+    setDraft(EMPTY_FILTERS);
+    setApplied(EMPTY_FILTERS);
+  }, []);
+  const {
+    paymentCycle, destination, dateFrom, dateTo,
+  } = draft;
   const [unapplied, setUnapplied] = useState(null);
   const [reconciliation, setReconciliation] = useState(null);
   const [exportingReconciliation, setExportingReconciliation] = useState(false);
 
   const filters = {
-    paymentCycleUuid: cycleUuid(paymentCycle), destination, dateFrom, dateTo,
+    paymentCycleUuid: cycleUuid(applied.paymentCycle),
+    destination: applied.destination,
+    dateFrom: applied.dateFrom,
+    dateTo: applied.dateTo,
   };
   const filterKey = JSON.stringify(filters);
 
@@ -178,7 +194,9 @@ function EpaymentSummaryPage({
 
   return (
     <div className={classes.page}>
-      <Paper className={classes.paper}>
+      <SearcherPane
+        module={MODULE_NAME}
+        filterPane={(
         <Grid container>
           <Grid item xs={12} sm={6} md={3} className={classes.item}>
             <PublishedComponent
@@ -186,7 +204,7 @@ function EpaymentSummaryPage({
               withLabel
               label={formatMessage('report.filter.paymentCycle')}
               value={paymentCycle}
-              onChange={setPaymentCycle}
+              onChange={setDraftValue('paymentCycle')}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3} className={classes.item}>
@@ -195,7 +213,7 @@ function EpaymentSummaryPage({
               label="report.filter.destination"
               options={destinationOptions}
               value={destination}
-              onChange={setDestination}
+              onChange={setDraftValue('destination')}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3} className={classes.item}>
@@ -205,7 +223,7 @@ function EpaymentSummaryPage({
               label="report.filter.dateFrom"
               value={dateFrom}
               {...(dateTo ? { maxDate: dateTo } : {})}
-              onChange={setDateFrom}
+              onChange={setDraftValue('dateFrom')}
             />
           </Grid>
           <Grid item xs={12} sm={6} md={3} className={classes.item}>
@@ -215,20 +233,23 @@ function EpaymentSummaryPage({
               label="report.filter.dateTo"
               value={dateTo}
               {...(dateFrom ? { minDate: dateFrom } : {})}
-              onChange={setDateTo}
+              onChange={setDraftValue('dateTo')}
             />
           </Grid>
         </Grid>
-      </Paper>
+        )}
+        reset={reset}
+        refresh={refresh}
+      />
 
       <ProgressOrError progress={fetchingEpaymentSummary} error={errorEpaymentSummary} />
 
       {!fetchingEpaymentSummary && (
         <>
-          <Grid container spacing={2} className={classes.cards}>
+          <Grid container spacing={2} className={`${classes.cards} ${classes.results}`}>
             {cards.map(([label, value]) => (
               <Grid item xs={12} sm={6} md={3} key={label}>
-                <Paper elevation={3} className={classes.card}>
+                <Paper className={classes.card}>
                   <Typography variant="h6" gutterBottom>{formatMessage(label)}</Typography>
                   <Typography variant="body1">{value}</Typography>
                 </Paper>
@@ -236,7 +257,6 @@ function EpaymentSummaryPage({
             ))}
             <Grid item xs={12} sm={6} md={3}>
               <Paper
-                elevation={3}
                 className={`${classes.card} ${classes.clickable}`}
                 onClick={() => history.push(`/tasafPayment/workspace?tab=${WS_TAB_RETURNS}`)}
               >

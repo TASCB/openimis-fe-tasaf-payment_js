@@ -139,6 +139,11 @@ export function ChangeRequests({
   const tv = (id, values) => formatMessageWithValues(intl, MODULE_NAME, id, values);
   const [rejecting, setRejecting] = useState(null);
   const [comment, setComment] = useState('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const lastPage = Math.max(0, Math.ceil(changes.length / pageSize) - 1);
+  const shownPage = Math.min(page, lastPage);
+  const pageItems = changes.slice(shownPage * pageSize, (shownPage + 1) * pageSize);
 
   const confirmReject = () => {
     onReject(rejecting, comment);
@@ -234,8 +239,18 @@ export function ChangeRequests({
                 </div>
               ),
             ]}
-            items={changes}
+            items={pageItems}
             itemIdentifier={(c) => c.id}
+            withPagination
+            page={shownPage}
+            pageSize={pageSize}
+            count={changes.length}
+            rowsPerPageOptions={[10, 20, 50]}
+            onChangePage={(event, next) => setPage(next)}
+            onChangeRowsPerPage={(size) => {
+              setPageSize(size);
+              setPage(0);
+            }}
           />
         )}
       </Section>
