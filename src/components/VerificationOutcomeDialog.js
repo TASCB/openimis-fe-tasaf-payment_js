@@ -52,7 +52,9 @@ function VerificationOutcomeDialog({ outcome, onClose, onOpenRequests }) {
         </Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onOpenRequests} color="primary">{formatMessage('verificationOutcome.openRequests')}</Button>
+        {onOpenRequests && (
+          <Button onClick={onOpenRequests} color="primary">{formatMessage('verificationOutcome.openRequests')}</Button>
+        )}
         <Button onClick={onClose} color="primary" variant="contained">{formatMessage('verificationOutcome.close')}</Button>
       </DialogActions>
     </Dialog>

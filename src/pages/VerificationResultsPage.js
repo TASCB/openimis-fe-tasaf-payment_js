@@ -3,8 +3,7 @@ import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import { makeStyles } from '@material-ui/styles';
-import { Button, IconButton, Paper, Typography } from '@material-ui/core';
-import RefreshIcon from '@material-ui/icons/Refresh';
+import { Button, Paper, Typography } from '@material-ui/core';
 import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 import CodeIcon from '@material-ui/icons/Code';
 
@@ -33,8 +32,9 @@ import {
   TAB_REVIEW,
   TAB_SUCCESS,
   TAB_FAILED,
-  TAB_GEPG,
   TAB_CHECK,
+  WS_TAB_MUSE,
+  RIGHT_MUSE_SETTINGS_SEARCH,
   RIGHT_ACCOUNT_CHECK,
 } from '../constants';
 import {
@@ -45,7 +45,6 @@ import {
   approvePaymentAccounts,
   fetchVerificationPreview,
   reviewPaymentAccount,
-  fetchGepgRequests,
   fetchVerificationOutcome,
 } from '../actions';
 import { ACTION_TYPE } from '../reducer';
@@ -57,7 +56,6 @@ import PaymentAccountFilter from '../components/PaymentAccountFilter';
 import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
 import StatusBadge from '../components/StatusBadge';
 import VerificationTabs from '../components/VerificationTabs';
-import GepgRequestsTable from '../components/GepgRequestsTable';
 import AccountCheckPanel from '../components/accountCheck/AccountCheckPanel';
 import { defaultPageStyles } from '../utils/styles';
 
@@ -67,8 +65,6 @@ const AccountFilterPane = withFilterExtras(PaymentAccountFilter);
 const useStyles = makeStyles((theme) => ({
   ...defaultPageStyles(theme),
   paper: theme.paper.paper,
-  gepg: { '& table': { tableLayout: 'auto' } },
-  gepgBar: { display: 'flex', justifyContent: 'flex-end', padding: theme.spacing(1, 1, 0) },
   empty: { padding: theme.spacing(2) },
   selectionNote: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
@@ -104,9 +100,7 @@ function VerificationResultsPage({
   approvePaymentAccounts,
   fetchVerificationPreview,
   reviewPaymentAccount,
-  fetchGepgRequests,
   fetchVerificationOutcome,
-  gepgRequests,
   fetchingVerificationPreview,
   verificationPreview,
   errorVerificationPreview,
@@ -132,7 +126,7 @@ function VerificationResultsPage({
 
   // Pending first: an operator's day starts with work not yet sent, not with results.
   const [activeTab, setActiveTab] = useState(
-    () => ({ gepg: TAB_GEPG, check: TAB_CHECK })[new URLSearchParams(history.location.search).get('verification')]
+    () => ({ check: TAB_CHECK })[new URLSearchParams(history.location.search).get('verification')]
       || TAB_PENDING,
   );
   const [outcome, setOutcome] = useState(null);
@@ -184,7 +178,6 @@ function VerificationResultsPage({
 
   useEffect(() => {
     fetchAccountStatusCounts();
-    fetchGepgRequests();
   }, [fetchAccountStatusCounts, refreshKey]);
 
   useEffect(() => {
@@ -249,7 +242,6 @@ function VerificationResultsPage({
   useEffect(() => {
     if (prevSubmittingMutationRef.current && !submittingMutation) {
       journalize(mutation);
-      fetchGepgRequests();
       if ([ACTION_TYPE.RUN_VERIFICATION, ACTION_TYPE.RUN_BATCH_VERIFICATION].includes(mutation?.actionType)) {
         fetchVerificationOutcome(mutation.clientMutationId).then((result) => {
           if (result) setOutcome(result);
@@ -411,7 +403,6 @@ function VerificationResultsPage({
     failedCount,
     manualCount,
     pendingCount,
-    gepgCount: (gepgRequests || []).length,
   };
 
   if (activeTab === TAB_CHECK && rights.includes(RIGHT_ACCOUNT_CHECK)) {
@@ -425,22 +416,8 @@ function VerificationResultsPage({
     );
   }
 
-  if (activeTab === TAB_GEPG) {
-    return (
-      <div className={classes.page}>
-        <Helmet title={formatMessage('verificationResults.page.title')} />
-        <Paper className={`${classes.paper} ${classes.gepg}`}>
-          <VerificationTabs tabs={verificationTabs} />
-          <div className={classes.gepgBar}>
-            <IconButton size="small" onClick={() => fetchGepgRequests()} title={formatMessage('gepg.requests.refresh')}>
-              <RefreshIcon fontSize="small" />
-            </IconButton>
-          </div>
-          <GepgRequestsTable requests={gepgRequests || []} emptyClassName={classes.empty} />
-        </Paper>
-      </div>
-    );
-  }
+  const canOpenRequests = rights.includes(RIGHT_MUSE_SETTINGS_SEARCH);
+  const openRequests = () => history.push(`/tasafPayment/workspace?tab=${WS_TAB_MUSE}&integration=gepg`);
 
   return (
     <div className={classes.page}>
@@ -448,8 +425,8 @@ function VerificationResultsPage({
       {selectionNote && (
         <Paper className={classes.selectionNote}>
           <Typography variant="body2">{selectionNote}</Typography>
-          {!submittingMutation && (
-            <Button size="small" color="primary" onClick={() => handleTabChange(null, TAB_GEPG)}>
+          {!submittingMutation && canOpenRequests && (
+            <Button size="small" color="primary" onClick={openRequests}>
               {formatMessage('verificationResults.selection.openRequests')}
             </Button>
           )}
@@ -491,7 +468,7 @@ function VerificationResultsPage({
       <VerificationOutcomeDialog
         outcome={outcome}
         onClose={() => setOutcome(null)}
-        onOpenRequests={() => { setOutcome(null); handleTabChange(null, TAB_GEPG); }}
+        onOpenRequests={canOpenRequests ? () => { setOutcome(null); openRequests(); } : null}
       />
       <VerificationReviewDialog
         account={reviewed}
@@ -519,7 +496,6 @@ const mapStateToProps = (state) => ({
   paymentAccountsPageInfo: state.tasafPayment.paymentAccountsPageInfo,
   paymentAccountsTotalCount: state.tasafPayment.paymentAccountsTotalCount,
   accountStatusCounts: state.tasafPayment.accountStatusCounts,
-  gepgRequests: state.tasafPayment.gepgRequests,
   fetchingVerificationPreview: state.tasafPayment.fetchingVerificationPreview,
   verificationPreview: state.tasafPayment.verificationPreview,
   errorVerificationPreview: state.tasafPayment.errorVerificationPreview,
@@ -537,7 +513,6 @@ const mapDispatchToProps = (dispatch) => bindActionCreators(
     approvePaymentAccounts,
     fetchVerificationPreview,
     reviewPaymentAccount,
-    fetchGepgRequests,
     fetchVerificationOutcome,
     journalize,
     coreConfirm,

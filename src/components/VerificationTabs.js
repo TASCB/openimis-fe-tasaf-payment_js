@@ -39,7 +39,6 @@ function VerificationTabs({ tabs }) {
           failedCount={tabs.failedCount}
           manualCount={tabs.manualCount}
           pendingCount={tabs.pendingCount}
-          gepgCount={tabs.gepgCount}
         />
       </Grid>
     </Grid>
