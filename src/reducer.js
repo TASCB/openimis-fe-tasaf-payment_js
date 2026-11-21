@@ -71,6 +71,13 @@ export const ACTION_TYPE = {
   EXPORT_GEPG_ITEMS:              'TASAF_PAYMENT_EXPORT_GEPG_ITEMS',
   RESEND_GEPG_VERIFICATION:       'TASAF_PAYMENT_RESEND_GEPG_VERIFICATION',
   RELEASE_GEPG_VERIFICATION:      'TASAF_PAYMENT_RELEASE_GEPG_VERIFICATION',
+  FETCH_TIPS_SETTINGS:            'TASAF_PAYMENT_TIPS_SETTINGS',
+  FETCH_TIPS_CHANGES:             'TASAF_PAYMENT_TIPS_CHANGES',
+  SAVE_TIPS_SETTINGS:             'TASAF_PAYMENT_SAVE_TIPS_SETTINGS',
+  FETCH_TIPS_REQUESTS:            'TASAF_PAYMENT_TIPS_REQUESTS',
+  FETCH_TIPS_ITEMS:               'TASAF_PAYMENT_TIPS_ITEMS',
+  RESEND_TIPS_LOOKUP:             'TASAF_PAYMENT_RESEND_TIPS_LOOKUP',
+  RELEASE_TIPS_LOOKUP:            'TASAF_PAYMENT_RELEASE_TIPS_LOOKUP',
   DECIDE_UNAPPLIED:               'TASAF_PAYMENT_DECIDE_UNAPPLIED',
   SEARCH_ACCOUNT_CHECKS:          'TASAF_PAYMENT_ACCOUNT_CHECKS',
   ACCOUNT_CHECK_SUMMARY:          'TASAF_PAYMENT_ACCOUNT_CHECK_SUMMARY',
@@ -198,6 +205,10 @@ const STORE_STATE = {
   gepgReadiness: null,
   gepgChanges: [],
   gepgRequests: [],
+  tipsSettings: null,
+  tipsReadiness: null,
+  tipsChanges: [],
+  tipsRequests: [],
   fetchingGepgRequests: false,
   gepgItems: { total: 0, rows: [] },
   fetchingGepgItems: false,
@@ -465,6 +476,28 @@ function reducer(state = STORE_STATE, action) {
       return { ...state, fetchingGepgItems: false, gepgItems: parseJson(action.payload.data?.gepgVerificationItems) || { total: 0, rows: [] } };
     case ERROR(ACTION_TYPE.FETCH_GEPG_ITEMS):
       return { ...state, fetchingGepgItems: false };
+    case SUCCESS(ACTION_TYPE.FETCH_TIPS_SETTINGS):
+      return {
+        ...state,
+        tipsSettings: parseJson(action.payload.data?.tipsSettings) || null,
+        tipsReadiness: parseJson(action.payload.data?.tipsReadiness) || null,
+      };
+    case SUCCESS(ACTION_TYPE.FETCH_TIPS_CHANGES):
+      return { ...state, tipsChanges: parseJson(action.payload.data?.museChangeRequests) || [] };
+    case REQUEST(ACTION_TYPE.FETCH_TIPS_REQUESTS):
+      return { ...state, fetchingTipsRequests: true };
+    case SUCCESS(ACTION_TYPE.FETCH_TIPS_REQUESTS):
+      return {
+        ...state, fetchingTipsRequests: false, tipsRequests: parseJson(action.payload.data?.tipsLookupRequests) || [],
+      };
+    case ERROR(ACTION_TYPE.FETCH_TIPS_REQUESTS):
+      return { ...state, fetchingTipsRequests: false };
+    case REQUEST(ACTION_TYPE.FETCH_TIPS_ITEMS):
+      return { ...state, fetchingTipsItems: true };
+    case SUCCESS(ACTION_TYPE.FETCH_TIPS_ITEMS):
+      return { ...state, fetchingTipsItems: false, tipsItems: parseJson(action.payload.data?.tipsLookupItems) || { total: 0, rows: [] } };
+    case ERROR(ACTION_TYPE.FETCH_TIPS_ITEMS):
+      return { ...state, fetchingTipsItems: false };
     case SUCCESS(ACTION_TYPE.FETCH_MUSE_SETTINGS): {
       const s = action.payload.data?.museSettings ?? null;
       let gl = s?.glAccounts ?? [];
@@ -844,6 +877,12 @@ function reducer(state = STORE_STATE, action) {
       return mutationResp(state, 'resendGepgVerification', action);
     case SUCCESS(ACTION_TYPE.RELEASE_GEPG_VERIFICATION):
       return mutationResp(state, 'releaseGepgVerification', action);
+    case SUCCESS(ACTION_TYPE.SAVE_TIPS_SETTINGS):
+      return mutationResp(state, 'saveTipsSettings', action);
+    case SUCCESS(ACTION_TYPE.RESEND_TIPS_LOOKUP):
+      return mutationResp(state, 'resendTipsLookup', action);
+    case SUCCESS(ACTION_TYPE.RELEASE_TIPS_LOOKUP):
+      return mutationResp(state, 'releaseTipsLookup', action);
 
     default:
       return state;

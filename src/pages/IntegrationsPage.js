@@ -8,9 +8,12 @@ import { formatMessage } from '@openimis/fe-core';
 import { MODULE_NAME } from '../constants';
 import MuseSettingsPage from './MuseSettingsPage';
 import GepgSettingsPage from './GepgSettingsPage';
+import TipsSettingsPage from './TipsSettingsPage';
 
 const TAB_MUSE = 'muse';
 const TAB_GEPG = 'gepg';
+const TAB_TIPS = 'tips';
+const TABS = [TAB_MUSE, TAB_GEPG, TAB_TIPS];
 
 const useStyles = makeStyles((theme) => ({
   page: theme.page,
@@ -25,9 +28,10 @@ function IntegrationsPage() {
   const intl = useIntl();
   const classes = useStyles();
   const location = useLocation();
-  const [tab, setTab] = useState(
-    () => (new URLSearchParams(location.search).get('integration') === TAB_GEPG ? TAB_GEPG : TAB_MUSE),
-  );
+  const [tab, setTab] = useState(() => {
+    const asked = new URLSearchParams(location.search).get('integration');
+    return TABS.includes(asked) ? asked : TAB_MUSE;
+  });
   const tabStyle = (value) => (value === tab ? classes.selectedTab : classes.unselectedTab);
   const label = (value) => formatMessage(intl, MODULE_NAME, `integrations.tab.${value}`);
 
@@ -35,7 +39,7 @@ function IntegrationsPage() {
     <div className={classes.page}>
       <Paper className={classes.paper}>
         <Grid container className={`${classes.tableTitle} ${classes.tabs}`}>
-          {[TAB_MUSE, TAB_GEPG].map((value) => (
+          {TABS.map((value) => (
             <Tab
               key={value}
               onChange={(_, v) => setTab(v)}
@@ -49,6 +53,7 @@ function IntegrationsPage() {
       </Paper>
       {tab === TAB_MUSE && <MuseSettingsPage />}
       {tab === TAB_GEPG && <GepgSettingsPage />}
+      {tab === TAB_TIPS && <TipsSettingsPage />}
     </div>
   );
 }

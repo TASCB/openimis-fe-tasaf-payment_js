@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { connect, useSelector } from 'react-redux';
+import { connect, useDispatch, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import { makeStyles } from '@material-ui/styles';
@@ -46,6 +46,7 @@ import {
   fetchVerificationPreview,
   reviewPaymentAccount,
   fetchVerificationOutcome,
+  fetchTipsSettings,
 } from '../actions';
 import { ACTION_TYPE } from '../reducer';
 import VerificationPayloadDialog from '../components/VerificationPayloadDialog';
@@ -417,7 +418,19 @@ function VerificationResultsPage({
   }
 
   const canOpenRequests = rights.includes(RIGHT_MUSE_SETTINGS_SEARCH);
-  const openRequests = () => history.push(`/tasafPayment/workspace?tab=${WS_TAB_MUSE}&integration=gepg`);
+  const dispatch = useDispatch();
+  const openRequests = async () => {
+    let integration = 'gepg';
+    try {
+      const response = await dispatch(fetchTipsSettings());
+      const raw = response?.payload?.data?.tipsReadiness;
+      const readiness = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (readiness?.route === 'TIPS') integration = 'tips';
+    } catch (e) {
+      integration = 'gepg';
+    }
+    history.push(`/tasafPayment/workspace?tab=${WS_TAB_MUSE}&integration=${integration}`);
+  };
 
   return (
     <div className={classes.page}>

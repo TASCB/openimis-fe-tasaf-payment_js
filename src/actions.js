@@ -410,6 +410,46 @@ export function resendGepgVerification(accVerifId, clientMutationLabel) {
     ACTION_TYPE.RESEND_GEPG_VERIFICATION, clientMutationLabel);
 }
 
+export function fetchTipsSettings() {
+  return graphql('query { tipsSettings tipsReadiness }', ACTION_TYPE.FETCH_TIPS_SETTINGS);
+}
+
+export function fetchTipsChanges() {
+  return graphql('query { museChangeRequests(kinds: ["TIPS_SETTINGS"], limit: 500) }', ACTION_TYPE.FETCH_TIPS_CHANGES);
+}
+
+export function saveTipsSettings(s, clientMutationLabel, reason = '') {
+  const q = (v) => `"${formatGQLString(v ?? '')}"`;
+  const text = ['sender', 'receiver', 'serviceCodeSingle', 'serviceCodeBulk', 'summaryIdentifierType',
+    'summaryIdentifier', 'summaryFspCode', 'verificationRoute'];
+  const args = text.map((k) => `${k}: ${q((s[k] || '').trim())}`)
+    .concat([`fspCodes: ${q(JSON.stringify(s.fspCodes || {}))}`])
+    .concat(reason.trim() ? [`reason: ${q(reason.trim())}`] : []).join(', ');
+  return mutate('saveTipsSettings', args, ACTION_TYPE.SAVE_TIPS_SETTINGS, clientMutationLabel);
+}
+
+export function fetchTipsRequests() {
+  return graphql('query { tipsLookupRequests(limit: 100) }', ACTION_TYPE.FETCH_TIPS_REQUESTS);
+}
+
+export function fetchTipsItems(msgId, { offset = 0, limit = 100, search = '' } = {}) {
+  return graphql(
+    `query { tipsLookupItems(msgId: "${formatGQLString(msgId)}", offset: ${offset}, limit: ${limit}, `
+    + `search: "${formatGQLString(search)}") }`,
+    ACTION_TYPE.FETCH_TIPS_ITEMS,
+  );
+}
+
+export function releaseTipsLookup(msgId, clientMutationLabel) {
+  return mutate('releaseTipsLookup', `msgId: "${formatGQLString(msgId)}"`,
+    ACTION_TYPE.RELEASE_TIPS_LOOKUP, clientMutationLabel);
+}
+
+export function resendTipsLookup(msgId, clientMutationLabel) {
+  return mutate('resendTipsLookup', `msgId: "${formatGQLString(msgId)}"`,
+    ACTION_TYPE.RESEND_TIPS_LOOKUP, clientMutationLabel);
+}
+
 function museChangeMutation(name, changeId, comment, clientMutationLabel) {
   const args = [`changeId: "${changeId}"`]
     .concat(comment ? [`comment: "${formatGQLString(comment)}"`] : []).join(', ');
