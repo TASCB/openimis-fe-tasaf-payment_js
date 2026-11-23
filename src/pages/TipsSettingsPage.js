@@ -25,20 +25,17 @@ import TipsRequestsTable from '../components/TipsRequestsTable';
 const ROUTES = ['GEPG', 'TIPS'];
 const SUMMARY_TYPES = ['BANK', 'MSISDN', 'WALLET', 'ALIAS'];
 const EMPTY = {
-  sender: '', receiver: '', serviceCodeSingle: '', serviceCodeBulk: '', summaryIdentifierType: 'BANK',
+  sender: '', receiver: '', summaryIdentifierType: 'BANK',
   summaryIdentifier: '', summaryFspCode: '', verificationRoute: 'GEPG', fspCodes: {},
 };
 const SNAKE = {
-  sender: 'sender', receiver: 'receiver', serviceCodeSingle: 'service_code_single',
-  serviceCodeBulk: 'service_code_bulk', summaryIdentifierType: 'summary_identifier_type',
+  sender: 'sender', receiver: 'receiver', summaryIdentifierType: 'summary_identifier_type',
   summaryIdentifier: 'summary_identifier', summaryFspCode: 'summary_fsp_code',
   verificationRoute: 'verification_route', fspCodes: 'fsp_codes',
 };
 const RULES = {
   sender: /^[A-Za-z0-9]{0,20}$/,
   receiver: /^[A-Za-z0-9]{0,20}$/,
-  serviceCodeSingle: /^[A-Za-z0-9_-]{0,50}$/,
-  serviceCodeBulk: /^[A-Za-z0-9_-]{0,50}$/,
   summaryIdentifier: /^[A-Za-z0-9]{0,50}$/,
   summaryFspCode: /^(\d{3})?$/,
 };
@@ -58,7 +55,7 @@ function TipsSettingsPage() {
   const [form, setForm] = useState(EMPTY);
   const [reason, setReason] = useState('');
   const [open, setOpen] = useState({
-    route: true, party: true, connection: true, summary: true, codes: true, changes: true, requests: true,
+    route: true, party: true, summary: true, codes: true, changes: true, requests: true,
   });
   const submitting = state?.submittingMutation;
   const prevSubmitting = useRef();
@@ -184,16 +181,6 @@ function TipsSettingsPage() {
       >
         {field('sender', 20, { required: true })}
         {field('receiver', 20, { required: true })}
-      </Section>
-
-      <Section
-        classes={classes}
-        title={t('gepg.section.connection')}
-        open={open.connection}
-        onToggle={() => setOpen({ ...open, connection: !open.connection })}
-      >
-        {field('serviceCodeSingle', 50, { required: true })}
-        {field('serviceCodeBulk', 50, { required: true })}
       </Section>
 
       <Section

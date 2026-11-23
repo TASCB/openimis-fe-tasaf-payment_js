@@ -421,7 +421,7 @@ export function fetchTipsChanges() {
 
 export function saveTipsSettings(s, clientMutationLabel, reason = '') {
   const q = (v) => `"${formatGQLString(v ?? '')}"`;
-  const text = ['sender', 'receiver', 'serviceCodeSingle', 'serviceCodeBulk', 'summaryIdentifierType',
+  const text = ['sender', 'receiver', 'summaryIdentifierType',
     'summaryIdentifier', 'summaryFspCode', 'verificationRoute'];
   const args = text.map((k) => `${k}: ${q((s[k] || '').trim())}`)
     .concat([`fspCodes: ${q(JSON.stringify(s.fspCodes || {}))}`])
