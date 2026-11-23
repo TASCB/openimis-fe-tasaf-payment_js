@@ -48,7 +48,7 @@ export default function PaylistItemsActions() {
       {canSearch && (
         <Button color="primary" disabled={exportingItems} onClick={onExportItems}>{t('button.exportPaylistItems')}</Button>
       )}
-      {primary(approve, <CheckCircleIcon />, t('button.approvePaylist'), t('paylist.detail.approveNotAllowed'))}
+      {primary(approve, <CheckCircleIcon />, t('button.approvePaylist'), approve.notAllowed || t('paylist.detail.approveNotAllowed'))}
       {primary(submit, <SendIcon />, submit.label || t('button.submitPaylist'), t('paylist.detail.submitNotAllowed'))}
     </div>
   );

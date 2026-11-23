@@ -647,6 +647,7 @@ function reducer(state = STORE_STATE, action) {
           ...paylist,
           summary: parseJson(paylist.summary),
           lastSubmit: parseJson(paylist.lastSubmit),
+          approval: parseJson(paylist.approval),
           museRejections: parseJson(paylist.museRejections) || [],
           withdrawnHold: parseJson(paylist.withdrawnHold),
         },

@@ -113,7 +113,7 @@ function PaylistListPage({
         itemFormatters={itemFormatters}
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
         defaultPageSize={DEFAULT_PAGE_SIZE}
-        defaultOrderBy="-generatedAt"
+        defaultOrderBy="-dateUpdated"
         sorts={sorts}
         rowIdentifier={(row) => row.id}
         onDoubleClick={(row) => history.push(`/tasafPayment/paylist/${row.uuid}`)}

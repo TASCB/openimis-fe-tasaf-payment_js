@@ -12,7 +12,7 @@ const useStyles = makeStyles((theme) => ({
 const formatTime = (value) => (value ? new Date(value).toLocaleString() : '');
 
 // Engine refusals arrive as message keys; show the paylist wording when there is one.
-const reasonText = (t, error) => {
+export const reasonText = (t, error) => {
   if (!error) return t('paylist.action.noReason');
   const id = `paylist.refused.${error}`;
   const text = /^[\w]+(\.[\w]+)+$/.test(error) ? t(id) : id;

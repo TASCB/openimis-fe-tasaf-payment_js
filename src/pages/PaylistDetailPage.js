@@ -45,7 +45,7 @@ import MusePayloadDialog from '../components/MusePayloadDialog';
 import PaylistItemFilter from '../components/PaylistItemFilter';
 import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
 import PaylistSummary from '../components/PaylistSummary';
-import PaylistActionNotice from '../components/PaylistActionNotice';
+import PaylistActionNotice, { reasonText } from '../components/PaylistActionNotice';
 import MuseLogPanel from '../components/MuseLogPanel';
 import BenefitBreakdownPanel from '../components/BenefitBreakdownPanel';
 import MuseRejectionPanel from '../components/MuseRejectionPanel';
@@ -216,7 +216,16 @@ function PaylistDetailPage({
       if (name) downloadExport(name, file, 'csv');
     });
   };
-  const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL;
+  const approval = paylist?.approval;
+  const canApprove = status === PAYLIST_STATUS.PENDING_APPROVAL && approval?.canSign !== false;
+  const approvalLine = status === PAYLIST_STATUS.PENDING_APPROVAL && approval?.total ? formatMessageWithValues(
+    'paylist.approval.progress', {
+      done: approval.signed.length,
+      total: approval.total,
+      signed: approval.signed.map((s) => `${s.label}: ${s.by}`).join(', ') || formatMessage('paylist.approval.nobody'),
+      next: approval.currentLabel || '-',
+    },
+  ) : null;
   const awaitingMuse = status === PAYLIST_STATUS.SUBMITTED;
   useEffect(() => {
     if (!awaitingMuse) return undefined;
@@ -282,7 +291,13 @@ function PaylistDetailPage({
     onExport: handleExportPdf,
     onExportItems: handleExportItems,
     exportingItems: fetchingPaylistItemsExport,
-    approve: { visible: rights.includes(RIGHT_APPROVE_PAYLIST), allowed: canApprove, onClick: handleApprove },
+    approve: {
+      visible: rights.includes(RIGHT_APPROVE_PAYLIST),
+      allowed: canApprove,
+      onClick: handleApprove,
+      notAllowed: status === PAYLIST_STATUS.PENDING_APPROVAL && approval?.reason
+        ? reasonText(formatMessage, approval.reason) : null,
+    },
     submit: {
       visible: rights.includes(RIGHT_SUBMIT_PAYLIST),
       allowed: canSubmit,
@@ -355,6 +370,9 @@ function PaylistDetailPage({
           result={paylistActionResult?.kind && mutation?.paylistUuid === paylistUuid ? paylistActionResult : null}
           lastSubmit={paylist?.lastSubmit}
         />
+        {!!approvalLine && (
+          <Typography variant="body2" className={classes.museReply}>{approvalLine}</Typography>
+        )}
         {!!paylist?.museStatusDesc && (
           <Typography variant="body2" className={classes.museReply}>
             {formatMessageWithValues('paylist.detail.museReply', { text: paylist.museStatusDesc })}
