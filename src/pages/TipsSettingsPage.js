@@ -153,6 +153,14 @@ function TipsSettingsPage() {
           })}
         </Notice>
       )}
+      {!!readiness?.settings_missing?.length && (
+        <Notice tone={readiness.route === 'TIPS' ? 'error' : 'warning'} classes={classes}>
+          {tv('tips.notice.settings', {
+            fields: readiness.settings_missing
+              .map((f) => t(`tips.${Object.keys(SNAKE).find((k) => SNAKE[k] === f) || f}`)).join(', '),
+          })}
+        </Notice>
+      )}
       {readiness?.route === 'TIPS' && !!readiness?.providers_missing?.length && (
         <Notice tone="warning" classes={classes}>
           {tv('tips.notice.codes', { fsps: readiness.providers_missing.join(', ') })}
@@ -190,8 +198,8 @@ function TipsSettingsPage() {
         onToggle={() => setOpen({ ...open, summary: !open.summary })}
       >
         {select('summaryIdentifierType', SUMMARY_TYPES)}
-        {field('summaryIdentifier', 50)}
-        {field('summaryFspCode', 3)}
+        {field('summaryIdentifier', 50, { required: true })}
+        {field('summaryFspCode', 3, { required: true })}
       </Section>
 
       <Section

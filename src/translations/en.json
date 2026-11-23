@@ -773,6 +773,7 @@
   "tasafPayment.tips.codes.col.code": "TIPS code",
   "tasafPayment.tips.codes.none": "No providers with accounts yet.",
   "tasafPayment.tips.notice.govesb": "GovESB is not configured on this server, so nothing can be sent to TIPS.",
+  "tasafPayment.tips.notice.settings": "Nothing can be sent to TIPS until these are set: {fields}",
   "tasafPayment.tips.notice.codes": "Accounts at these providers are skipped until their TIPS code is entered: {fsps}",
   "tasafPayment.tips.mutation.save": "Propose TIPS settings",
   "tasafPayment.tips.mutation.approve": "Approve TIPS change",
