@@ -677,7 +677,7 @@ export function fetchAccountStatusCounts() {
 // ─── Paylist mutations ────────────────────────────────────────────────────────
 
 export function generatePaylist(
-  payrollId, batchType, paymentCycleId, destination, clientMutationLabel, fspCode,
+  payrollId, batchType, paymentCycleId, destination, clientMutationLabel, fspCode, perFsp = true,
 ) {
   // payrollId / paymentCycleId are UUIDs and destination is a String, so all quoted.
   const parts = [
@@ -687,6 +687,7 @@ export function generatePaylist(
   if (paymentCycleId) parts.push(`paymentCycleId: "${paymentCycleId}"`);
   if (destination) parts.push(`destination: "${destination}"`);
   if (fspCode) parts.push(`fspCode: "${fspCode}"`);
+  else parts.push(`perFsp: ${perFsp ? 'true' : 'false'}`);
   const mutation = formatMutation('generatePaylist', parts.join(', '), clientMutationLabel);
   return graphql(
     mutation.payload,

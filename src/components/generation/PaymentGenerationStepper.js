@@ -94,6 +94,7 @@ function PaymentGenerationStepper({
   const [destination, setDestination] = useState(DESTINATION.MUSE);
   const [fspCode, setFspCode] = useState(null);
   const [fspCodes, setFspCodes] = useState([]);
+  const [perFsp, setPerFsp] = useState(true);
 
   useEffect(() => { fetchPayrolls([`status: ${PAYROLL_STATUS_APPROVED}`]); }, []);
 
@@ -105,6 +106,7 @@ function PaymentGenerationStepper({
       setBatchType(null);
       setDestination(DESTINATION.MUSE);
       setFspCode(null);
+      setPerFsp(true);
     }
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingRef.current = submittingMutation; });
@@ -154,6 +156,7 @@ function PaymentGenerationStepper({
       destination,
       formatMessage('mutation.generatePaylistLabel'),
       fspCode,
+      perFsp,
     );
   };
 
@@ -164,6 +167,11 @@ function PaymentGenerationStepper({
       label: p.paymentCycle?.code ? `${p.name} — ${p.paymentCycle.code}` : p.name,
     })),
   ];
+
+  const fspCount = (generationPreview?.per_fsp || []).length;
+  const groupingLabel = perFsp
+    ? formatMessageWithValues('generation.grouping.perFsp.count', { count: fspCount })
+    : formatMessage('generation.grouping.mixed');
 
   const reviewRow = (labelKey, value) => (
     <Grid container className={classes.reviewRow}>
@@ -249,6 +257,20 @@ function PaymentGenerationStepper({
                   />
                 </Grid>
               )}
+              {!!batchType && !fspCode && (
+                <Grid item xs={12} sm={6}>
+                  <SelectInput
+                    module={MODULE_NAME}
+                    label="generation.grouping"
+                    options={[
+                      { value: 'PER_FSP', label: formatMessage('generation.grouping.perFsp') },
+                      { value: 'MIXED', label: formatMessage('generation.grouping.mixed') },
+                    ]}
+                    value={perFsp ? 'PER_FSP' : 'MIXED'}
+                    onChange={(v) => setPerFsp(v !== 'MIXED')}
+                  />
+                </Grid>
+              )}
             </Grid>
           </Block>
         )}
@@ -260,6 +282,7 @@ function PaymentGenerationStepper({
             {reviewRow('batchGeneration.batchType', batchType ? formatMessage(`paylist.batchType.${batchType}`) : null)}
             {reviewRow('batchGeneration.destination', destination ? formatMessage(`paylist.destination.${destination}`) : null)}
             {reviewRow('generation.fsp', fspCode || formatMessage('generation.fsp.all'))}
+            {!fspCode && reviewRow('generation.grouping', groupingLabel)}
             <Divider className={classes.divider} />
             {fetchingGenerationPreview && <LinearProgress />}
             {!!errorGenerationPreview && (
@@ -356,6 +379,7 @@ function PaymentGenerationStepper({
           <Block title={formatMessage('generation.step.generate')} titleVariant="h6">
             {reviewRow('batchGeneration.destination', destination ? formatMessage(`paylist.destination.${destination}`) : null)}
             {reviewRow('generation.fsp', fspCode || formatMessage('generation.fsp.all'))}
+            {!fspCode && reviewRow('generation.grouping', groupingLabel)}
             <Typography variant="body2" color="textSecondary" className={classes.generateNote}>
               {formatMessage('generation.generate.note')}
             </Typography>
