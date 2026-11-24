@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { connect, useDispatch, useSelector } from 'react-redux';
+import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 
 import { makeStyles } from '@material-ui/styles';
-import { Button, Paper, Typography } from '@material-ui/core';
+import {
+  Button, Link, Paper, Typography,
+} from '@material-ui/core';
 import VerifiedUserIcon from '@material-ui/icons/VerifiedUser';
 import CodeIcon from '@material-ui/icons/Code';
 
@@ -33,8 +35,7 @@ import {
   TAB_SUCCESS,
   TAB_FAILED,
   TAB_CHECK,
-  WS_TAB_MUSE,
-  RIGHT_MUSE_SETTINGS_SEARCH,
+  TAB_REQUESTS,
   RIGHT_ACCOUNT_CHECK,
 } from '../constants';
 import {
@@ -46,7 +47,6 @@ import {
   fetchVerificationPreview,
   reviewPaymentAccount,
   fetchVerificationOutcome,
-  fetchTipsSettings,
 } from '../actions';
 import { ACTION_TYPE } from '../reducer';
 import VerificationPayloadDialog from '../components/VerificationPayloadDialog';
@@ -58,6 +58,7 @@ import { FilterExtrasProvider, withFilterExtras } from '../utils/filterExtras';
 import StatusBadge from '../components/StatusBadge';
 import VerificationTabs from '../components/VerificationTabs';
 import AccountCheckPanel from '../components/accountCheck/AccountCheckPanel';
+import VerificationRequestsPanel from '../components/VerificationRequestsPanel';
 import { defaultPageStyles } from '../utils/styles';
 
 // 6 columns, so the shared equal-width rule applies.
@@ -67,6 +68,7 @@ const useStyles = makeStyles((theme) => ({
   ...defaultPageStyles(theme),
   paper: theme.paper.paper,
   empty: { padding: theme.spacing(2) },
+  requestReason: { display: 'block', color: theme.palette.text.secondary, fontSize: 12 },
   selectionNote: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
     gap: theme.spacing(1), padding: theme.spacing(1, 2), margin: theme.spacing(0, 0, 1),
@@ -82,6 +84,10 @@ const BATCH_FILTER_KEYS = {
   locationId: 'locationId',
 };
 const PAYLOAD_SAMPLE_ROWS = 20;
+const URL_TABS = { check: TAB_CHECK, requests: TAB_REQUESTS };
+const parseJson = (raw) => {
+  try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return null; }
+};
 const MUTATION_SUCCESS = 2;
 
 function batchFiltersFrom(params) {
@@ -126,10 +132,9 @@ function VerificationResultsPage({
   const history = useHistory();
 
   // Pending first: an operator's day starts with work not yet sent, not with results.
-  const [activeTab, setActiveTab] = useState(
-    () => ({ check: TAB_CHECK })[new URLSearchParams(history.location.search).get('verification')]
-      || TAB_PENDING,
-  );
+  const urlParams = new URLSearchParams(history.location.search);
+  const [activeTab, setActiveTab] = useState(() => URL_TABS[urlParams.get('verification')] || TAB_PENDING);
+  const [requestChannel, setRequestChannel] = useState(() => (urlParams.get('channel') || '').toUpperCase() || null);
   const [outcome, setOutcome] = useState(null);
   const [selectionNote, setSelectionNote] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
@@ -252,6 +257,31 @@ function VerificationResultsPage({
   }, [submittingMutation]);
   useEffect(() => { prevSubmittingMutationRef.current = submittingMutation; });
 
+  const openRequests = (channel) => {
+    if (channel) setRequestChannel(channel);
+    setSelectionNote(null);
+    setActiveTab(TAB_REQUESTS);
+  };
+  const requestCell = (row) => {
+    const last = parseJson(row.lastRequest);
+    if (!last) return '-';
+    const state = formatMessage(`verificationRequests.state.${last.state}`);
+    const decision = last.state === 'ANSWERED' && last.decision
+      ? ` · ${formatMessage(`gepg.items.decision.${last.decision}`)}` : '';
+    return (
+      <>
+        <Link component="button" variant="body2" onClick={(e) => { e.stopPropagation(); openRequests(last.channel); }}>
+          {`${formatMessage(`verificationRequests.channel.${last.channel}`)} · ${state}${decision}`}
+        </Link>
+        {last.reason && <span className={classes.requestReason}>{last.reason}</span>}
+      </>
+    );
+  };
+  const failedReason = (row) => {
+    const last = parseJson(row.lastRequest);
+    if (last && ['NOT_SENT', 'NO_ANSWER'].includes(last.state)) return requestCell(row);
+    return matchReasonText(latest(row), formatMessage, formatMessageWithValues) || row.lastFailureReason || '-';
+  };
   const latest = (row) => row.verificationAttempts?.[0] || {};
   const nameHeaders = () => [
     formatMessage('paymentAccount.accountNumber'),
@@ -267,7 +297,8 @@ function VerificationResultsPage({
     (row) => latest(row).expectedName || row.recipientName || '-',
     (row) => latest(row).returnedName || '-',
     (row) => (latest(row).matchScore != null ? `${latest(row).matchScore}%` : '-'),
-    (row) => matchReasonText(latest(row), formatMessage, formatMessageWithValues) || row.lastFailureReason || '-',
+    (row) => (activeTab === TAB_FAILED ? failedReason(row)
+      : matchReasonText(latest(row), formatMessage, formatMessageWithValues) || row.lastFailureReason || '-'),
   ];
 
   const headers = () => [
@@ -286,6 +317,15 @@ function VerificationResultsPage({
     (row) => formatMessage(`paymentAccount.fspType.${row.fspType}`),
     (row) => row.fspName,
     (row) => <StatusBadge status={row.verificationStatus} />,
+  ];
+
+  const pendingHeaders = () => [
+    ...headers().slice(0, 3), formatMessage('paymentAccount.fspName'), formatMessage('paymentAccount.verificationStatus'),
+    formatMessage('verificationRequests.col.lastRequest'),
+  ];
+  const pendingFormatters = () => [
+    ...itemFormatters().slice(0, 3), (row) => row.fspName, (row) => <StatusBadge status={row.verificationStatus} />,
+    requestCell,
   ];
 
   const successHeaders = () => [...headers().slice(0, 5), formatMessage('paymentAccount.firstPaymentCheck')];
@@ -393,6 +433,7 @@ function VerificationResultsPage({
   let tableHeaders = headers;
   let tableFormatters = itemFormatters;
   if (showsNames) { tableHeaders = nameHeaders; tableFormatters = nameFormatters; }
+  else if (isPending) { tableHeaders = pendingHeaders; tableFormatters = pendingFormatters; }
   else if (isSuccess) { tableHeaders = successHeaders; tableFormatters = successFormatters; }
 
   const verificationTabs = {
@@ -406,31 +447,19 @@ function VerificationResultsPage({
     pendingCount,
   };
 
-  if (activeTab === TAB_CHECK && rights.includes(RIGHT_ACCOUNT_CHECK)) {
+  const panel = (activeTab === TAB_CHECK && rights.includes(RIGHT_ACCOUNT_CHECK) && <AccountCheckPanel />)
+    || (activeTab === TAB_REQUESTS && <VerificationRequestsPanel channel={requestChannel} />);
+  if (panel) {
     return (
       <div className={classes.page}>
+        <Helmet title={formatMessage('verificationResults.page.title')} />
         <Paper className={classes.paper}>
           <VerificationTabs tabs={verificationTabs} />
         </Paper>
-        <AccountCheckPanel />
+        {panel}
       </div>
     );
   }
-
-  const canOpenRequests = rights.includes(RIGHT_MUSE_SETTINGS_SEARCH);
-  const dispatch = useDispatch();
-  const openRequests = async () => {
-    let integration = 'gepg';
-    try {
-      const response = await dispatch(fetchTipsSettings());
-      const raw = response?.payload?.data?.tipsReadiness;
-      const readiness = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      if (readiness?.route === 'TIPS') integration = 'tips';
-    } catch (e) {
-      integration = 'gepg';
-    }
-    history.push(`/tasafPayment/workspace?tab=${WS_TAB_MUSE}&integration=${integration}`);
-  };
 
   return (
     <div className={classes.page}>
@@ -438,8 +467,8 @@ function VerificationResultsPage({
       {selectionNote && (
         <Paper className={classes.selectionNote}>
           <Typography variant="body2">{selectionNote}</Typography>
-          {!submittingMutation && canOpenRequests && (
-            <Button size="small" color="primary" onClick={openRequests}>
+          {!submittingMutation && (
+            <Button size="small" color="primary" onClick={() => openRequests()}>
               {formatMessage('verificationResults.selection.openRequests')}
             </Button>
           )}
@@ -481,7 +510,7 @@ function VerificationResultsPage({
       <VerificationOutcomeDialog
         outcome={outcome}
         onClose={() => setOutcome(null)}
-        onOpenRequests={canOpenRequests ? () => { setOutcome(null); openRequests(); } : null}
+        onOpenRequests={() => { openRequests(outcome?.route); setOutcome(null); }}
       />
       <VerificationReviewDialog
         account={reviewed}

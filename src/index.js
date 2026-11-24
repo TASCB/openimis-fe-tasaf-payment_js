@@ -14,7 +14,7 @@ import {
   VerificationSuccessTabLabel,
   VerificationFailedTabLabel,
   VerificationCheckTabLabel,
-  
+  VerificationRequestsTabLabel,
 } from './components/VerificationResultsTabLabels';
 import VerificationResultsPage from './pages/VerificationResultsPage';
 import PreAuditPage from './pages/PreAuditPage';
@@ -74,7 +74,7 @@ const DEFAULT_CONFIG = {
   ],
   [TASAF_PAYMENT_TABS_LABEL_CONTRIBUTION_KEY]: [
     VerificationPendingTabLabel, VerificationReviewTabLabel, VerificationFailedTabLabel, VerificationSuccessTabLabel,
-    VerificationCheckTabLabel,
+    VerificationRequestsTabLabel, VerificationCheckTabLabel,
   ],
 
   // Consolidated workspace tabs (pipeline order). Other modules can inject tabs here.

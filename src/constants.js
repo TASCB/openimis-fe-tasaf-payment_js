@@ -159,6 +159,7 @@ export const TAB_REVIEW = 'review';
 export const TAB_SUCCESS = 'success';
 export const TAB_FAILED = 'failed';
 export const TAB_CHECK = 'check';
+export const TAB_REQUESTS = 'requests';
 export const PRE_AUDIT_TAB_OVERVIEW = 'overview';
 export const PRE_AUDIT_TAB_ACCOUNTS = 'accounts';
 export const PRE_AUDIT_TAB_COMPLIANCE = 'compliance';

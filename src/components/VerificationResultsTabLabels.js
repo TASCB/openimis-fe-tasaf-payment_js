@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import { Tab } from '@material-ui/core';
 import { useTranslations } from '@openimis/fe-core';
 import {
-  MODULE_NAME, RIGHT_ACCOUNT_CHECK, TAB_CHECK, TAB_PENDING, TAB_REVIEW, TAB_SUCCESS, TAB_FAILED,
+  MODULE_NAME, RIGHT_ACCOUNT_CHECK, TAB_CHECK, TAB_PENDING, TAB_REQUESTS, TAB_REVIEW, TAB_SUCCESS, TAB_FAILED,
 } from '../constants';
 
 export function VerificationPendingTabLabel({
@@ -99,6 +99,21 @@ export function VerificationCheckTabLabel({
       selected={isSelected(TAB_CHECK)}
       value={TAB_CHECK}
       label={formatMessage('accountCheck.tab')}
+    />
+  );
+}
+
+export function VerificationRequestsTabLabel({
+  onChange, tabStyle, isSelected, modulesManager,
+}) {
+  const { formatMessage } = useTranslations(MODULE_NAME, modulesManager);
+  return (
+    <Tab
+      onChange={onChange}
+      className={tabStyle(TAB_REQUESTS)}
+      selected={isSelected(TAB_REQUESTS)}
+      value={TAB_REQUESTS}
+      label={formatMessage('verificationRequests.tab')}
     />
   );
 }

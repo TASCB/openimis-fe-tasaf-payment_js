@@ -13,6 +13,7 @@ import { ERROR, REQUEST, SUCCESS } from './utils/action-type';
 
 export const PAYMENT_ACCOUNT_PROJECTION = () => [
   'lastFailureReason',
+  'lastRequest',
   'id',
   'uuid',
   'accountNumber',
@@ -382,9 +383,13 @@ export function saveGepgSettings(s, clientMutationLabel, reason = '') {
   return mutate('saveGepgSettings', args, ACTION_TYPE.SAVE_GEPG_SETTINGS, clientMutationLabel);
 }
 
-export function fetchGepgRequests(status) {
-  const args = status ? `(status: "${status}", limit: 100)` : '(limit: 100)';
-  return graphql(`query { gepgVerificationRequests${args} }`, ACTION_TYPE.FETCH_GEPG_REQUESTS);
+const requestArgs = (status, fsp, limit) => [
+  `limit: ${limit}`, status && `status: ${gqlText(status)}`, fsp && `fsp: ${gqlText(fsp)}`,
+].filter(Boolean).join(', ');
+
+export function fetchGepgRequests(status, fsp, limit = 100) {
+  return graphql(`query { gepgVerificationRequests(${requestArgs(status, fsp, limit)}) }`,
+    ACTION_TYPE.FETCH_GEPG_REQUESTS);
 }
 
 export function fetchGepgItems(accVerifId, { offset = 0, limit = 100, search = '', decision = '' } = {}) {
@@ -430,8 +435,8 @@ export function saveTipsSettings(s, clientMutationLabel, reason = '') {
   return mutate('saveTipsSettings', args, ACTION_TYPE.SAVE_TIPS_SETTINGS, clientMutationLabel);
 }
 
-export function fetchTipsRequests() {
-  return graphql('query { tipsLookupRequests(limit: 100) }', ACTION_TYPE.FETCH_TIPS_REQUESTS);
+export function fetchTipsRequests(status, fsp, limit = 100) {
+  return graphql(`query { tipsLookupRequests(${requestArgs(status, fsp, limit)}) }`, ACTION_TYPE.FETCH_TIPS_REQUESTS);
 }
 
 export function fetchTipsItems(msgId, { offset = 0, limit = 100, search = '' } = {}) {
