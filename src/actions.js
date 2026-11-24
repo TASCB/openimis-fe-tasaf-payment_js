@@ -256,6 +256,7 @@ export function importWithdrawalCharges(csvContent, replace, clientMutationLabel
 
 // graphene 2's Decimal only parses string literals: a bare 1739.00 is rejected.
 const gqlDecimal = (v) => JSON.stringify(String(v));
+const gqlText = (v) => JSON.stringify(String(v ?? ''));
 
 function formatChargeGQL(c) {
   const parts = [
@@ -330,7 +331,7 @@ export function deleteFsp(fspCode, clientMutationLabel) {
 export const splitPrefixes = (value) => String(value || '').split(/[\s,;]+/).filter(Boolean);
 
 export function saveFspProfile(p, clientMutationLabel) {
-  const q = (v) => `"${formatGQLString(v ?? '')}"`;
+  const q = gqlText;
   return mutate('saveFspProfile',
     `fspCode: ${q(p.fspCode)}, bankName: ${q(p.bankName)}, fspType: ${q(p.fspType)}, bic: ${q(p.bic)}`
     + `${p.fspType === 'MOBILE' && p.mobilePrefixes !== undefined
@@ -340,7 +341,7 @@ export function saveFspProfile(p, clientMutationLabel) {
 }
 
 export function saveMuseSettings(s, clientMutationLabel, reason = '') {
-  const q = (v) => `"${formatGQLString(v ?? '')}"`;
+  const q = gqlText;
   const blank = (v) => v === '' || v === null || v === undefined;
   const args = [
     `institutionCode: ${q(s.institutionCode)}`,
@@ -374,7 +375,7 @@ export function fetchGepgChanges() {
 }
 
 export function saveGepgSettings(s, clientMutationLabel, reason = '') {
-  const q = (v) => `"${formatGQLString(v ?? '')}"`;
+  const q = gqlText;
   const args = [`spCode: ${q(s.spCode)}`, `spSysId: ${q(s.spSysId)}`,
     `serviceCode: ${q((s.serviceCode || '').trim())}`]
     .concat(reason.trim() ? [`reason: ${q(reason.trim())}`] : []).join(', ');
@@ -420,7 +421,7 @@ export function fetchTipsChanges() {
 }
 
 export function saveTipsSettings(s, clientMutationLabel, reason = '') {
-  const q = (v) => `"${formatGQLString(v ?? '')}"`;
+  const q = gqlText;
   const text = ['sender', 'receiver', 'summaryIdentifierType',
     'summaryIdentifier', 'summaryFspCode', 'verificationRoute'];
   const args = text.map((k) => `${k}: ${q((s[k] || '').trim())}`)
