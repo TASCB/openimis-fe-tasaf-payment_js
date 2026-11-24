@@ -20,7 +20,7 @@ function locationLevels(location) {
 }
 
 function PaaLocationFilter({
-  value, onChange, readOnly = false, allowRegion = false,
+  value, onChange, readOnly = false, allowRegion = false, itemClassName,
 }) {
   const {
     R: region, D: district, W: ward, V: village,
@@ -30,7 +30,7 @@ function PaaLocationFilter({
     <Grid container>
       {allowRegion ? (
         <>
-          <Grid item xs={6} sm={3}>
+          <Grid item xs={6} sm={3} className={itemClassName}>
             <PublishedComponent
               pubRef="location.LocationPicker"
               locationLevel={0}
@@ -42,7 +42,7 @@ function PaaLocationFilter({
               onChange={(r) => onChange(r ?? null)}
             />
           </Grid>
-          <Grid item xs={6} sm={3}>
+          <Grid item xs={6} sm={3} className={itemClassName}>
             <PublishedComponent
               pubRef="location.LocationPicker"
               locationLevel={1}
@@ -57,7 +57,7 @@ function PaaLocationFilter({
           </Grid>
         </>
       ) : (
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12} sm={6} className={itemClassName}>
           <PublishedComponent
             pubRef="location.CoarseLocation"
             readOnly={readOnly}
@@ -69,7 +69,7 @@ function PaaLocationFilter({
           />
         </Grid>
       )}
-      <Grid item xs={6} sm={3}>
+      <Grid item xs={6} sm={3} className={itemClassName}>
         <PublishedComponent
           pubRef="location.LocationPicker"
           locationLevel={2}
@@ -82,7 +82,7 @@ function PaaLocationFilter({
           onChange={(w) => onChange(w ?? district ?? null)}
         />
       </Grid>
-      <Grid item xs={6} sm={3}>
+      <Grid item xs={6} sm={3} className={itemClassName}>
         <PublishedComponent
           pubRef="location.LocationPicker"
           locationLevel={3}

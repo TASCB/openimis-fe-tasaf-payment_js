@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import { useLocation } from 'react-router-dom';
-import { IconButton, Tooltip } from '@material-ui/core';
+import {
+  Divider, IconButton, Menu, MenuItem, Tooltip,
+} from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import VisibilityOutlined from '@material-ui/icons/VisibilityOutlined';
+import ArrowDropDown from '@material-ui/icons/ArrowDropDown';
 import {
   downloadExport,
   formatDateTimeFromISO,
@@ -15,8 +18,9 @@ import {
 } from '@openimis/fe-core';
 
 import {
-  createUnappliedResends, decideUnappliedPayment, exportUnappliedItems, fetchUnappliedItems,
-  fetchUnappliedResendPreview, fetchUnappliedWithdrawalsPending, sendUnappliedWithdrawals,
+  createUnappliedResends, decideUnappliedPayment, decideUnappliedPayments, exportUnappliedItems,
+  fetchUnappliedBulkPreview, fetchUnappliedItems, fetchUnappliedOverdue, fetchUnappliedResendPreview,
+  fetchUnappliedWithdrawalsPending, sendUnappliedWithdrawals, unappliedBulkFilters,
 } from '../actions';
 import {
   MODULE_NAME,
@@ -30,6 +34,7 @@ import { defaultPageStyles } from '../utils/styles';
 import UnappliedFilter from '../components/UnappliedFilter';
 import ReturnedPaymentDialog from '../components/ReturnedPaymentDialog';
 import UnappliedMuseDialog from '../components/UnappliedMuseDialog';
+import UnappliedBulkDialog from '../components/UnappliedBulkDialog';
 import StatusChip from '../components/StatusChip';
 import { mutationErrorText } from '../utils/errors';
 
@@ -40,6 +45,7 @@ const parseList = (raw) => {
 const useStyles = makeStyles((theme) => ({
   ...defaultPageStyles(theme),
   notice: { margin: '8px 16px', fontSize: 13, color: theme.palette.text.secondary },
+  titleNote: { marginLeft: theme.spacing(1.5), fontSize: 14, color: theme.palette.text.secondary },
   // fe-core renders its export after the header buttons.
   downloadFirst: {
     '& .MuiGrid-justify-content-xs-flex-end > .MuiGrid-item:last-child': { order: -1 },
@@ -57,6 +63,9 @@ function UnappliedPaymentsPage({
   fetchUnappliedResendPreview,
   createUnappliedResends,
   sendUnappliedWithdrawals,
+  fetchUnappliedBulkPreview,
+  decideUnappliedPayments,
+  fetchUnappliedOverdue,
   fetchingUnappliedItems,
   fetchedUnappliedItems,
   errorUnappliedItems,
@@ -84,13 +93,18 @@ function UnappliedPaymentsPage({
   const [notice, setNotice] = useState(null);
   const [resendRows, setResendRows] = useState([]);
   const [museOpen, setMuseOpen] = useState(false);
+  const [bulk, setBulk] = useState(null);
+  const [lastParams, setLastParams] = useState([]);
+  const [overdue, setOverdue] = useState(null);
+  const [actionsMenu, setActionsMenu] = useState(null);
   const canView = rights.includes(RIGHT_RETURN_FEEDBACK);
 
   useEffect(() => {
     if (!canView) return;
     fetchUnappliedWithdrawalsPending().then((r) => setWithdrawals(r?.payload?.data?.unappliedWithdrawalsPending ?? 0));
     fetchUnappliedResendPreview().then((r) => setResendRows(parseList(r?.payload?.data?.unappliedResendPreview)));
-  }, [canView, refreshKey, fetchUnappliedWithdrawalsPending, fetchUnappliedResendPreview]);
+    fetchUnappliedOverdue().then(setOverdue);
+  }, [canView, refreshKey, fetchUnappliedWithdrawalsPending, fetchUnappliedResendPreview, fetchUnappliedOverdue]);
 
   if (!canView) return null;
 
@@ -119,10 +133,27 @@ function UnappliedPaymentsPage({
   );
 
   const ready = resendRows.filter((r) => !r.blocked).reduce((n, r) => n + (r.ready || 0), 0);
+  const awaiting = progress === AWAITING_ACTION;
+  const bulkAllowed = canDecide && awaiting && unappliedItemsTotalCount > 0;
+  const openBulk = () => setBulk({ filters: unappliedBulkFilters(lastParams), count: unappliedItemsTotalCount });
+  const menuItems = [
+    bulkAllowed && [formatMessageWithValues('returned.bulk.decideAll', { count: unappliedItemsTotalCount }), openBulk],
+    [formatMessageWithValues('returned.muse.open', { count: ready }), () => setMuseOpen(true)],
+  ].filter(Boolean);
   const searcherActions = [{
-    label: formatMessageWithValues('returned.muse.open', { count: ready }),
-    onClick: () => setMuseOpen(true),
+    label: formatMessage('returned.menu.actions'),
+    icon: <ArrowDropDown />,
+    onClick: (event) => setActionsMenu(event.currentTarget),
     authorized: true,
+  }];
+  const runFromMenu = (run) => () => {
+    setActionsMenu(null);
+    run();
+  };
+  const selectionActions = [{
+    label: 'tasafPayment.returned.bulk.decideSelected',
+    enabled: (rows) => canDecide && awaiting && rows.length > 0,
+    action: (rows) => setBulk({ itemUuids: rows.map((r) => r.uuid), count: rows.length }),
   }];
 
   const exportCsv = async (params) => {
@@ -133,6 +164,7 @@ function UnappliedPaymentsPage({
   };
 
   const fetch = (params) => {
+    setLastParams(params || []);
     setProgress((params || []).join(' ').match(/resolution: "(\w+)"/)?.[1] ?? null);
     return fetchUnappliedItems([...(params || []), 'status: UNAPPLIED']);
   };
@@ -142,26 +174,24 @@ function UnappliedPaymentsPage({
     formatMessage('returned.payee'),
     formatMessage('paylistItem.accountNumber'),
     formatMessage('paylistItem.amount'),
-    formatMessage('paylist.museBatchReference'),
+    formatMessage('returned.col.reason'),
+    formatMessage('returned.col.suggested'),
     formatMessage('returnFeedback.receivedAt'),
-    formatMessage('returned.daysWaiting'),
-    formatMessage('returned.progress'),
+    ...(progress ? [] : [formatMessage('returned.progress')]),
     '',
   ];
 
   const itemFormatters = () => [
     (row) => row.paymentAccount?.groupBeneficiary?.group?.code ?? '-',
     (row) => row.paymentAccount?.accountName || '-',
-    (row) => [row.paymentAccount?.accountNumber, row.paymentAccount?.fspName].filter(Boolean).join(' · ') || '-',
+    (row) => row.paymentAccount?.accountNumber || '-',
     (row) => row.amount ?? '-',
-    (row) => row.paylist?.museBatchReference ?? '-',
+    (row) => row.returnReason || '-',
+    (row) => (row.suggestedAction ? formatMessage(`returned.action.${row.suggestedAction}`) : '-'),
     (row) => formatDateTimeFromISO(modulesManager, null, row.returnedAt) || '-',
-    (row) => (row.resolution === AWAITING_ACTION && row.returnedAt
-      ? Math.max(0, Math.floor((Date.now() - new Date(row.returnedAt).getTime()) / 86400000))
-      : '-'),
-    (row) => (row.resolution
+    ...(progress ? [] : [(row) => (row.resolution
       ? <StatusChip label={formatMessage(`returned.resolution.${row.resolution}`)} />
-      : '-'),
+      : '-')]),
     (row) => (
       <Tooltip title={formatMessage('returned.view')}>
         <IconButton size="small" onClick={() => setSelected(row)}><VisibilityOutlined fontSize="small" /></IconButton>
@@ -184,11 +214,19 @@ function UnappliedPaymentsPage({
         fetchingItems={fetchingUnappliedItems}
         fetchedItems={fetchedUnappliedItems}
         errorItems={errorUnappliedItems}
-        tableTitle={progress
-          ? formatMessageWithValues('returned.searcher.resultsByProgress', {
-            totalCount: unappliedItemsTotalCount, progress: formatMessage(`returned.resolution.${progress}`),
-          })
-          : formatMessageWithValues('returned.searcher.results', { totalCount: unappliedItemsTotalCount })}
+        tableTitle={(
+          <>
+            {formatMessageWithValues('returned.searcher.results', { totalCount: unappliedItemsTotalCount })}
+            {progress && (
+              <span className={classes.titleNote}>
+                {[
+                  formatMessage(`returned.resolution.${progress}`),
+                  awaiting && overdue?.count ? formatMessageWithValues('returned.overdue', overdue) : null,
+                ].filter(Boolean).join(' · ')}
+              </span>
+            )}
+          </>
+        )}
         headers={headers}
         itemFormatters={itemFormatters}
         rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
@@ -196,6 +234,9 @@ function UnappliedPaymentsPage({
         defaultOrderBy={awaitingFirst ? 'dateUpdated' : '-dateUpdated'}
         rowIdentifier={(row) => row.id}
         onDoubleClick={(row) => setSelected(row)}
+        withSelection="multiple"
+        actions={selectionActions}
+        enableActionButtons
         searcherActions={searcherActions}
         searcherActionsPosition="header-right"
         exportable
@@ -210,6 +251,21 @@ function UnappliedPaymentsPage({
         canDecide={canDecide}
         onDecide={decide}
       />
+      <Menu anchorEl={actionsMenu} open={!!actionsMenu} onClose={() => setActionsMenu(null)}>
+        {menuItems.flatMap(([label, run], i) => [
+          i > 0 && <Divider key={`divider-${label}`} />,
+          <MenuItem key={label} onClick={runFromMenu(run)}>{label}</MenuItem>,
+        ]).filter(Boolean)}
+      </Menu>
+      {bulk && (
+        <UnappliedBulkDialog
+          scope={bulk}
+          onClose={() => setBulk(null)}
+          onDone={refresh}
+          fetchPreview={fetchUnappliedBulkPreview}
+          decide={decideUnappliedPayments}
+        />
+      )}
       <UnappliedMuseDialog
         open={museOpen}
         onClose={() => setMuseOpen(false)}
@@ -235,6 +291,7 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => bindActionCreators({
   fetchUnappliedItems, decideUnappliedPayment, fetchUnappliedWithdrawalsPending, exportUnappliedItems,
+  fetchUnappliedBulkPreview, decideUnappliedPayments, fetchUnappliedOverdue,
   fetchUnappliedResendPreview, createUnappliedResends, sendUnappliedWithdrawals,
 }, dispatch);
 

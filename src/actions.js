@@ -754,12 +754,58 @@ export function reviewPaymentAccount(accountUuid, approved, reviewNotes, clientM
 
 export function decideUnappliedPayment(itemUuid, action, note, clientMutationLabel) {
   const args = [`itemUuid: "${itemUuid}"`, `action: "${action}"`];
-  if (note) args.push(`note: "${formatGQLString(note)}"`);
+  if (note) args.push(`note: ${gqlText(note)}`);
   const mutation = formatMutation('decideUnappliedPayment', args.join(', '), clientMutationLabel);
   return async (dispatch) => {
     const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.DECIDE_UNAPPLIED));
     if (!sent || sent.error) return { status: null, error: sent?.payload?.message || 'error' };
     return waitForMutationLog(dispatch, mutation.clientMutationId);
+  };
+}
+
+const UNAPPLIED_BULK_FILTERS = ['hhid', 'fspName', 'accountNumber', 'batchReference', 'locationId', 'reason',
+  'suggested', 'paymentCycleId'];
+
+export const unappliedBulkFilters = (params) => (params || [])
+  .filter((p) => UNAPPLIED_BULK_FILTERS.includes(String(p).split(':')[0].trim()));
+
+const unappliedBulkArgs = (scope) => (scope.itemUuids
+  ? [`itemUuids: [${scope.itemUuids.map((u) => JSON.stringify(u)).join(', ')}]`]
+  : scope.filters || []);
+
+const parseJson = (raw) => {
+  try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (e) { return null; }
+};
+
+export function fetchUnappliedBulkPreview(action, note, scope) {
+  const args = [`action: ${gqlText(action)}`, `note: ${gqlText(note)}`, ...unappliedBulkArgs(scope)];
+  return async (dispatch) => {
+    const response = await dispatch(graphql(
+      `query { unappliedBulkPreview(${args.join(', ')}) }`, ACTION_TYPE.UNAPPLIED_BULK_PREVIEW,
+    ));
+    return parseJson(response?.payload?.data?.unappliedBulkPreview);
+  };
+}
+
+export function decideUnappliedPayments(action, note, scope, clientMutationLabel) {
+  const args = [`action: ${gqlText(action)}`, `note: ${gqlText(note)}`, ...unappliedBulkArgs(scope)];
+  const mutation = formatMutation('decideUnappliedPayments', args.join(', '), clientMutationLabel);
+  return async (dispatch) => {
+    const sent = await dispatch(graphql(mutation.payload, ACTION_TYPE.DECIDE_UNAPPLIED_BULK));
+    if (!sent || sent.error) return { log: { status: null, error: sent?.payload?.message || 'error' } };
+    const log = await waitForMutationLog(dispatch, mutation.clientMutationId);
+    const response = await dispatch(graphql(
+      `query { unappliedBulkOutcome(clientMutationId: ${gqlText(mutation.clientMutationId)}) }`,
+      ACTION_TYPE.UNAPPLIED_BULK_OUTCOME,
+    ));
+    return { log, outcome: parseJson(response?.payload?.data?.unappliedBulkOutcome) };
+  };
+}
+
+export function fetchUnappliedOverdue() {
+  return async (dispatch) => {
+    const response = await dispatch(graphql('query { unappliedOverdue }', ACTION_TYPE.UNAPPLIED_OVERDUE));
+    return parseJson(response?.payload?.data?.unappliedOverdue);
   };
 }
 
