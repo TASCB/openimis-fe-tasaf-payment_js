@@ -13,10 +13,10 @@ import { formatMessage, formatMessageWithValues, journalize } from '@openimis/fe
 
 import {
   fetchMuseSettings, fetchMuseChanges, saveMuseSettings,
-  approveMuseChange, rejectMuseChange, cancelMuseChange,
+  cancelMuseChange,
 } from '../actions';
 import {
-  MODULE_NAME, RIGHT_MUSE_SETTINGS_PROPOSE, RIGHT_MUSE_SETTINGS_APPROVE,
+  MODULE_NAME, RIGHT_MUSE_SETTINGS_PROPOSE,
 } from '../constants';
 import {
   ChangeRequests, Notice, Section, useSettingsStyles,
@@ -36,7 +36,6 @@ function MuseSettingsPage() {
   const state = useSelector((s) => s.tasafPayment);
   const rights = useSelector((s) => s.core?.user?.i_user?.rights ?? []);
   const canPropose = rights.includes(RIGHT_MUSE_SETTINGS_PROPOSE);
-  const canApprove = rights.includes(RIGHT_MUSE_SETTINGS_APPROVE);
 
   const [form, setForm] = useState(EMPTY);
   const [open, setOpen] = useState({ institution: true, description: true, changes: true });
@@ -294,11 +293,8 @@ function MuseSettingsPage() {
         changes={changes}
         open={open.changes}
         onToggle={() => setOpen({ ...open, changes: !open.changes })}
-        canApprove={canApprove}
         submitting={submitting}
-        onApprove={(c) => dispatch(approveMuseChange(c.id, null, t('museChanges.mutation.approve')))}
-        onReject={(c, comment) => dispatch(rejectMuseChange(c.id, comment, t('museChanges.mutation.reject')))}
-        onCancel={(c) => dispatch(cancelMuseChange(c.id, null, t('museChanges.mutation.cancel')))}
+        onCancel={(c) => dispatch(cancelMuseChange(c.id, t('museChanges.mutation.cancel')))}
       />
 
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="sm" fullWidth>

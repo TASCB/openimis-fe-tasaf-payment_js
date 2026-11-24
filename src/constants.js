@@ -26,7 +26,6 @@ export const RIGHT_WITHDRAWAL_CHARGE_MANAGE = 270702;
 
 export const RIGHT_MUSE_SETTINGS_SEARCH  = 270901;
 export const RIGHT_MUSE_SETTINGS_PROPOSE = 270902;
-export const RIGHT_MUSE_SETTINGS_APPROVE = 270903;
 
 export const RIGHT_REPORTS           = 270801;
 // Entity 25: Dashboard

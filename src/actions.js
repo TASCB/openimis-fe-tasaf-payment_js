@@ -451,15 +451,9 @@ export function resendTipsLookup(msgId, clientMutationLabel) {
     ACTION_TYPE.RESEND_TIPS_LOOKUP, clientMutationLabel);
 }
 
-function museChangeMutation(name, changeId, comment, clientMutationLabel) {
-  const args = [`changeId: "${changeId}"`]
-    .concat(comment ? [`comment: "${formatGQLString(comment)}"`] : []).join(', ');
-  return mutate(name, args, ACTION_TYPE.MUSE_CHANGE_DECISION, clientMutationLabel);
-}
-
-export const approveMuseChange = (id, comment, label) => museChangeMutation('approveMuseChange', id, comment, label);
-export const rejectMuseChange = (id, comment, label) => museChangeMutation('rejectMuseChange', id, comment, label);
-export const cancelMuseChange = (id, comment, label) => museChangeMutation('cancelMuseChange', id, comment, label);
+export const cancelMuseChange = (changeId, clientMutationLabel) => mutate(
+  'cancelMuseChange', `changeId: "${changeId}"`, ACTION_TYPE.MUSE_CHANGE_DECISION, clientMutationLabel,
+);
 
 export function saveFspMapping(m, clientMutationLabel) {
   const args = [`fspName: "${formatGQLString(m.fspName)}"`, `fspCode: "${formatGQLString(m.fspCode)}"`]

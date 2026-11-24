@@ -867,11 +867,8 @@ function reducer(state = STORE_STATE, action) {
       return mutationResp(state, 'deleteFsp', action);
     case SUCCESS(ACTION_TYPE.SAVE_MUSE_SETTINGS):
       return mutationResp(state, 'saveMuseSettings', action);
-    case SUCCESS(ACTION_TYPE.MUSE_CHANGE_DECISION): {
-      const name = ['approveMuseChange', 'rejectMuseChange', 'cancelMuseChange']
-        .find((n) => action.payload?.data?.[n]);
-      return mutationResp(state, name || 'approveMuseChange', action);
-    }
+    case SUCCESS(ACTION_TYPE.MUSE_CHANGE_DECISION):
+      return mutationResp(state, 'cancelMuseChange', action);
     case SUCCESS(ACTION_TYPE.SAVE_GEPG_SETTINGS):
       return mutationResp(state, 'saveGepgSettings', action);
     case SUCCESS(ACTION_TYPE.RESEND_GEPG_VERIFICATION):

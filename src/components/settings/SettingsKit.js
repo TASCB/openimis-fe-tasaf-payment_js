@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { useIntl } from 'react-intl';
 import {
-  Button, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, Divider,
-  Paper, TextField, Typography,
+  Button, Collapse, Divider, Paper, Typography,
 } from '@material-ui/core';
 import { makeStyles } from '@material-ui/styles';
 import ErrorOutlineIcon from '@material-ui/icons/ErrorOutline';
@@ -59,13 +59,29 @@ export const FIELD_KEYS = {
   unapplied_sub_budget_class: 'unappliedSubBudgetClass', payment_desc: 'paymentDesc', is_stp: 'isStp',
   gl_accounts: 'glAccounts', bank_name: 'bankName', fsp_type: 'fspType', bic: 'bic',
   sp_code: 'spCode', sp_sys_id: 'spSysId', service_code: 'serviceCode',
+  sender: 'sender', receiver: 'receiver', summary_identifier_type: 'summaryIdentifierType',
+  summary_identifier: 'summaryIdentifier', summary_fsp_code: 'summaryFspCode',
+  fsp_codes: 'fspCodes', verification_route: 'verificationRoute', mobile_prefixes: 'mobilePrefixes',
+};
+
+const VALUE_LABELS = {
+  summary_identifier_type: 'tips.summaryIdentifierType', verification_route: 'tips.verificationRoute',
 };
 
 const show = (v) => {
   if (v === null || v === undefined || v === '') return '—';
-  if (Array.isArray(v)) return v.length ? v.map((g) => g.glaccount).join(', ') : '—';
+  if (Array.isArray(v)) return v.length ? v.map((g) => (typeof g === 'string' ? g : g.glaccount)).join(', ') : '—';
   if (typeof v === 'boolean') return v ? '✓' : '✗';
+  if (typeof v === 'object') {
+    const entries = Object.entries(v).sort(([a], [b]) => a.localeCompare(b));
+    return entries.length ? entries.map(([k, code]) => `${k}: ${code}`).join(', ') : '—';
+  }
   return String(v);
+};
+
+const showField = (change, side, f, t) => {
+  const v = (change[side] || {})[f];
+  return VALUE_LABELS[f] && v ? t(`${VALUE_LABELS[f]}.${v}`) : show(v);
 };
 
 export function Section({
@@ -132,24 +148,17 @@ function ListDiff({ change, classes }) {
 }
 
 export function ChangeRequests({
-  changes, open, onToggle, canApprove, submitting, onApprove, onReject, onCancel, classes,
+  changes, open, onToggle, submitting, onCancel, classes,
 }) {
   const intl = useIntl();
   const t = (id) => formatMessage(intl, MODULE_NAME, id);
   const tv = (id, values) => formatMessageWithValues(intl, MODULE_NAME, id, values);
-  const [rejecting, setRejecting] = useState(null);
-  const [comment, setComment] = useState('');
+  const history = useHistory();
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const lastPage = Math.max(0, Math.ceil(changes.length / pageSize) - 1);
   const shownPage = Math.min(page, lastPage);
   const pageItems = changes.slice(shownPage * pageSize, (shownPage + 1) * pageSize);
-
-  const confirmReject = () => {
-    onReject(rejecting, comment);
-    setRejecting(null);
-    setComment('');
-  };
 
   return (
     <>
@@ -177,8 +186,8 @@ export function ChangeRequests({
                     <div key={f} className={classes.diff}>
                       <b>{t(`museChanges.field.${FIELD_KEYS[f] || f}`)}</b>
                       {': '}
-                      <span className={classes.before}>{show((c.current || {})[f])}</span>
-                      {show((c.proposed || {})[f])}
+                      <span className={classes.before}>{showField(c, 'current', f, t)}</span>
+                      {showField(c, 'proposed', f, t)}
                     </div>
                   ))}
                   {c.reason && (
@@ -211,30 +220,19 @@ export function ChangeRequests({
               ),
               (c) => (
                 <div style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>
-                  {c.can_decide && canApprove && (
-                    <>
-                      <Button
-                        size="small"
-                        color="primary"
-                        variant="contained"
-                        disabled={submitting}
-                        onClick={() => onApprove(c)}
-                      >
-                        {t('museChanges.approve')}
-                      </Button>
-                      {' '}
-                      <Button size="small" disabled={submitting} onClick={() => setRejecting(c)}>
-                        {t('museChanges.reject')}
-                      </Button>
-                    </>
+                  {c.approval_request_id && (
+                    <Button
+                      size="small"
+                      color="primary"
+                      onClick={() => history.push(`/approval/request/${c.approval_request_id}`)}
+                    >
+                      {t(c.status === 'PENDING' ? 'museChanges.openApproval' : 'museChanges.viewApproval')}
+                    </Button>
                   )}
                   {c.can_cancel && (
                     <Button size="small" disabled={submitting} onClick={() => onCancel(c)}>
                       {t('museChanges.cancel')}
                     </Button>
-                  )}
-                  {c.status === 'PENDING' && !c.can_decide && !c.can_cancel && (
-                    <Typography variant="caption" color="textSecondary">{t('museChanges.awaitingOther')}</Typography>
                   )}
                 </div>
               ),
@@ -254,27 +252,6 @@ export function ChangeRequests({
           />
         )}
       </Section>
-
-      <Dialog open={!!rejecting} onClose={() => setRejecting(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>{t('museChanges.rejectTitle')}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            variant="outlined"
-            label={t('museChanges.rejectReason')}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRejecting(null)}>{t('museChanges.back')}</Button>
-          <Button color="primary" variant="contained" disabled={!comment.trim()} onClick={confirmReject}>
-            {t('museChanges.reject')}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </>
   );
 }
