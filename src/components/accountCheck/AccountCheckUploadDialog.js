@@ -17,6 +17,7 @@ import { MODULE_NAME } from '../../constants';
 
 const MUTATION_SUCCESS = 2;
 const TEMPLATE = 'HHID,Name,Account number,FSP\n';
+const CHANNEL_LABELS = { GEPG: 'GePG', TIPS: 'TIPS' };
 
 const useStyles = makeStyles(() => ({
   problems: { maxHeight: 260, overflowY: 'auto' },
@@ -61,21 +62,22 @@ function AccountCheckUploadDialog({ onClose }) {
   const send = async () => {
     setBusy(true);
     setError(null);
-    const log = await dispatch(sendAccountCheck(job.uuid, formatMessage('accountCheck.mutation.send')));
+    const log = await dispatch(sendAccountCheck(job.uuid, formatMessageWithValues('accountCheck.mutation.send', channel)));
     setBusy(false);
     if (log?.status !== MUTATION_SUCCESS) {
-      setError(log?.error ? String(log.error) : formatMessage('accountCheck.sendFailed'));
+      setError(log?.error ? String(log.error) : formatMessageWithValues('accountCheck.sendFailed', channel));
       return;
     }
     onClose(true);
   };
 
+  const channel = { channel: CHANNEL_LABELS[job?.channel] || job?.channel || '' };
   const stat = (label, value) => ({ label: formatMessage(label), value: Number(value || 0).toLocaleString() });
 
   return (
     <ImportDialog
       title={formatMessage('accountCheck.dialog.title')}
-      step={formatMessage(job ? 'accountCheck.dialog.step2' : 'accountCheck.dialog.step1')}
+      step={job ? formatMessageWithValues('accountCheck.dialog.step2', channel) : formatMessage('accountCheck.dialog.step1')}
       onClose={() => onClose(!!job)}
       busy={busy}
       closeLabel={formatMessage('button.cancel')}
@@ -96,7 +98,7 @@ function AccountCheckUploadDialog({ onClose }) {
               disabled={!job.valid_count || busy}
               onClick={send}
             >
-              {formatMessageWithValues('accountCheck.send', { count: job.valid_count })}
+              {formatMessageWithValues('accountCheck.send', { count: job.valid_count, ...channel })}
             </Button>
           )}
         </>

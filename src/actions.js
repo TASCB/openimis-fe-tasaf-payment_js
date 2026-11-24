@@ -769,7 +769,7 @@ export const ACCOUNT_CHECK_UPLOAD_URL = '/tasaf_payment/account_check/upload/';
 
 export function fetchAccountChecks(params) {
   const payload = formatPageQueryWithCount('accountCheckJob', params, [
-    'id', 'uuid', 'fileName', 'status', 'createdBy', 'rowCount', 'validCount', 'createdAt', 'sentAt',
+    'id', 'uuid', 'fileName', 'status', 'createdBy', 'rowCount', 'validCount', 'channel', 'createdAt', 'sentAt',
     'finishedAt', 'results',
   ]);
   return graphql(payload, ACTION_TYPE.SEARCH_ACCOUNT_CHECKS);

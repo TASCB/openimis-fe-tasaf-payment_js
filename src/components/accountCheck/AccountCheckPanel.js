@@ -12,6 +12,7 @@ import { exportAccountCheck, fetchAccountChecks, sendAccountCheck } from '../../
 import { DEFAULT_PAGE_SIZE, MODULE_NAME, ROWS_PER_PAGE_OPTIONS } from '../../constants';
 import AccountCheckUploadDialog from './AccountCheckUploadDialog';
 
+const CHANNEL_LABELS = { GEPG: 'GePG', TIPS: 'TIPS' };
 const ANSWERED = ['VERIFIED', 'REVIEW', 'NAME_MISMATCH', 'NOT_FOUND', 'DORMANT', 'PROVIDER_ERROR', 'NO_ANSWER'];
 
 const parse = (value) => {
@@ -36,7 +37,7 @@ function AccountCheckPanel() {
     setSending(null);
     dispatch(clearConfirm(null));
     if (confirmed) {
-      dispatch(sendAccountCheck(job.uuid, formatMessage('accountCheck.mutation.send')))
+      dispatch(sendAccountCheck(job.uuid, formatMessage('accountCheck.mutation.sendQueued')))
         .then(() => setReload((k) => k + 1));
     }
   }, [confirmed]);
@@ -78,16 +79,18 @@ function AccountCheckPanel() {
 
   const headers = () => [
     'accountCheck.col.file', 'accountCheck.col.uploadedBy', 'accountCheck.col.uploadedAt', 'accountCheck.col.rows',
-    'accountCheck.col.valid', 'accountCheck.col.progress', 'accountCheck.col.status', '',
+    'accountCheck.col.channel', 'accountCheck.col.progress', 'accountCheck.col.status', '',
   ];
   const itemFormatters = () => [
     (job) => job.fileName || '-',
     (job) => job.createdBy || '-',
     (job) => formatDateTimeFromISO(modulesManager, null, toDisplayTime(job.createdAt)) || '-',
     (job) => job.rowCount,
-    (job) => job.validCount,
+    (job) => CHANNEL_LABELS[job.channel] || '-',
     (job) => (job.status === 'VALIDATED' ? '-' : progress(job)),
-    (job) => formatMessage(`accountCheck.status.${job.status}`),
+    (job) => formatMessageWithValues(`accountCheck.status.${job.status}`, {
+      channel: CHANNEL_LABELS[job.channel] || CHANNEL_LABELS.GEPG,
+    }),
     (job) => (
       <>
         {job.status === 'VALIDATED' && job.validCount > 0 && (

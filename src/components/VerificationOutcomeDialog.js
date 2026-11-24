@@ -21,9 +21,12 @@ function VerificationOutcomeDialog({ outcome, onClose, onOpenRequests }) {
   if (!outcome) return null;
 
   const queued = !!outcome.queued && outcome.count == null;
+  const tips = outcome.route === 'TIPS';
+  const system = tips ? 'TIPS' : 'GePG';
+  const text = (key, values = {}) => formatMessageWithValues(`verificationOutcome.${key}`, { system, ...values });
   const row = (key, value, values = {}) => (
     <div className={classes.row} key={key}>
-      <Typography>{formatMessageWithValues(`verificationOutcome.${key}`, values)}</Typography>
+      <Typography>{text(key, values)}</Typography>
       <Typography className={classes.value}>{value ?? 0}</Typography>
     </div>
   );
@@ -31,29 +34,29 @@ function VerificationOutcomeDialog({ outcome, onClose, onOpenRequests }) {
   return (
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>
-        {formatMessage(outcome.count || queued ? 'verificationOutcome.title' : 'verificationOutcome.titleNothing')}
+        {outcome.count || queued ? formatMessage('verificationOutcome.title') : text('titleNothing')}
       </DialogTitle>
       <DialogContent>
         {queued ? (
-          <Typography>{formatMessage('verificationOutcome.queued')}</Typography>
+          <Typography>{text('queued')}</Typography>
         ) : (
           <>
             {row('sent', outcome.count, { requests: outcome.batches ?? 0 })}
             {!!outcome.refused && row('refused', outcome.refused, { requests: outcome.refused_batches ?? 0 })}
             {!!outcome.withdrawn && row('withdrawn', outcome.withdrawn)}
-            {!!outcome.skipped && row('skipped', outcome.skipped)}
+            {!!outcome.skipped && row(tips ? 'skippedTips' : 'skipped', outcome.skipped)}
             {!!outcome.error && (
               <Typography variant="body2" className={classes.error}>{outcome.error}</Typography>
             )}
           </>
         )}
         <Typography variant="body2" color="textSecondary" className={classes.note}>
-          {formatMessage('verificationOutcome.note')}
+          {formatMessage(tips ? 'verificationOutcome.noteTips' : 'verificationOutcome.note')}
         </Typography>
       </DialogContent>
       <DialogActions>
         {onOpenRequests && (
-          <Button onClick={onOpenRequests} color="primary">{formatMessage('verificationOutcome.openRequests')}</Button>
+          <Button onClick={onOpenRequests} color="primary">{text('openRequests')}</Button>
         )}
         <Button onClick={onClose} color="primary" variant="contained">{formatMessage('verificationOutcome.close')}</Button>
       </DialogActions>
